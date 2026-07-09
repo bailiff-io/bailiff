@@ -70,6 +70,28 @@ runtime-supplied catalog. This was verified against copier v9.16.0 **source**.
 - This also orders the imperative task-bearing runs (a module whose `_tasks` must
   run after another's) since clerk sequences the whole graph.
 
+- **Verified: `when:false` beats the alternatives for this.** Research confirmed
+  hidden answers are statically parseable (clerk reads `copier.yml` at catalog
+  time), require **no trust**, and travel with the pinned ref. The
+  `copier-template-extensions` **context-hook** was considered and rejected for
+  metadata: it escalates the whole invocation to `unsafe=True`, adds a pip dep,
+  and its computed output is not statically parseable. Context-hook is blessed
+  only for the narrow case of slug-derived *filenames* (see
+  [[0004-rendering-and-extensions]]).
+
+## Multi-template composition (verified)
+
+- copier does **zero** cross-template coordination — clerk issues **one
+  `run_copy` call per template**, in DAG order, each with a distinct
+  `answers_file` so per-module answers do not collide.
+- clerk threads one module's answers into the next via the `data=` dict (it holds
+  all prior answers in memory). This is why `_external_data` is not needed in the
+  core: `_external_data` only earns its place if a template must read a sibling's
+  answers during a **standalone** `copier update` run done without clerk.
+- If a template's `_external_data` paths traverse **outside** the destination
+  directory, that specific run needs `unsafe=True` — a per-template opt-in flag in
+  the catalog entry, never a global default.
+
 ## Residue not expressible as plain copier questions (kept minimal)
 
 Carried inside the injected catalog data or the hidden `depends_on` answers,

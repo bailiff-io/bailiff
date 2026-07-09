@@ -45,6 +45,7 @@ picks modules, clerk writes the answer files, and copier renders — without
 - [0001 — copier is the engine; clerk is the conductor](docs/decisions/0001-copier-as-engine.md)
 - [0002 — user-owned catalog; copier answers carry the state](docs/decisions/0002-catalog-and-answer-model.md)
 - [0003 — selector-template + runtime catalog injection](docs/decisions/0003-selector-template-and-runtime-injection.md)
+- [0004 — rendering behavior, file handling, and jinja extensions](docs/decisions/0004-rendering-and-extensions.md)
 
 ## Development
 

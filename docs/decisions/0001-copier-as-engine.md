@@ -27,19 +27,56 @@ conductor.
   selects modules and authors answers (the *inputs*); a thin orchestrator for
   multi-module enablement + topological ordering; and the agentic-ecosystem
   wiring copier has no concept of (APM / MCP / SpecKit / ADR).
-- **copier runs WITH `--trust`, in BOTH init and reproduce.** Template `_tasks`
-  and `migrations` are needed (e.g. `specify init`, `apm install`), including at
-  reproduce when a module was added/changed. `--trust` blast radius is bounded:
-  clerk drives **one template per `copier` invocation**, so trust is scoped to a
-  single pinned, user-selected template's tasks per run — not a whole bundle.
-- **copier is invoked via its Python API / `uvx`**, never vendored. Only `uv`
-  remains a hard prerequisite; copier's 13-dep tree is fetched ephemerally.
+- **clerk imports copier as a pinned library dependency and calls its Python
+  API in-process** — `run_copy` / `run_recopy` / `run_update`. These three are
+  copier's verified stable public surface (`copier/__init__.py` `__all__`; every
+  other member emits a DeprecationWarning on access). The API takes answers as a
+  plain `data=` dict (no YAML temp file, no shell-quoting; `--data-file` has no
+  API equivalent) and raises a typed `CopierError` hierarchy instead of integer
+  exit codes. "Never vendored" is re-scoped: **do not inline copier source into
+  clerk's tree; a declared, pinned dependency is the intended composition.** So
+  `uvx clerk` transitively resolves the pinned copier — no separate `uvx copier`
+  whose version would drift independently. Shelling to the CLI is retained only
+  as a fallback escape hatch.
+- **Trust is configured, not blanket-flagged.** clerk does NOT default
+  `unsafe=True`. Instead users add a `trust:` list to copier's `settings.yml`
+  (macOS: `~/Library/Application Support/copier/settings.yml`), passed to the API
+  via the `settings` param. Trailing-slash entries match as **prefixes** (trust
+  all templates under an org path, e.g. `- https://github.com/your-org/`);
+  no-slash entries match **exactly**. This bounds trust by source, cleaner than
+  a per-invocation catchall.
+  - Trust gates ALL of `_tasks`, `migrations`, AND `_jinja_extensions`. So a
+    trusted location **is the sanctioned enabler for tasks/migrations to run** —
+    a template under a trusted prefix fires its `_tasks` (and migrations, on
+    update) with no `unsafe=True` needed. This is the primary mechanism by which
+    clerk's task-bearing modules (`specify init`, `apm install`, …) execute at
+    init AND reproduce. `unsafe=True` is NOT the normal path for tasks.
+  - `unsafe=True` is reserved for the one narrow case a trusted location does not
+    cover: a template whose `_external_data` paths traverse **outside** the
+    destination directory (per-template opt-in in the catalog entry, never
+    global).
+- **`_tasks` run in BOTH init and reproduce** — needed for `specify init`,
+  `apm install`, etc. VERIFIED: `run_recopy` delegates to `run_copy` internally,
+  which fires `_tasks`. Migrations are **update-only** and out of scope for
+  reproduce.
 - **The reproduce invariant is "no AGENT", NOT "no side effects".** Reproduce
-  (`copier recopy` / `just reproduce`, run by a human or CI) replays the
-  committed answers and MAY run tasks, but no LLM/agent participates. Reproduce
+  (`copier recopy` via clerk / `just reproduce`, run by a human or CI) replays the
+  committed answers and DOES run tasks, but no LLM/agent participates. Reproduce
   is therefore **process-deterministic** (same frozen answers + same pinned
   refs → same commands executed), **not** output-byte-deterministic — tasks like
   `apm install` touch network/external state.
+- **Reproduce uses `run_recopy`, not `run_update`.** `recopy` re-applies the
+  pinned ref from the committed answers and fires tasks (`update` does the smart
+  3-way merge, which assumes prompt-captured answers — wrong for agent-authored
+  ones). Note: `_copier_operation` is `'copy'` for BOTH first copy and recopy, so
+  a task cannot distinguish them via that variable — gate first-run-only work
+  with a `when:` condition or a sentinel file instead.
+- **Secrets are injected per-invocation, never persisted.** Secret questions
+  (`secret: true` / `_secret_questions`) are NOT written to `.copier-answers.yml`.
+  clerk inspects `Template.secret_questions` before running, fetches the values
+  from an external store (env var / 1Password / etc.), and passes them via
+  `data={...}`. This works identically at init and reproduce and keeps secrets
+  off disk.
 
 ## Constraint — determinism discipline
 
@@ -51,16 +88,21 @@ make reproduce drift; this is the accepted bargain for supporting `_tasks`.
 ## Consequences
 
 - Strict "stdlib-only" is given up (copier pulls jinja2, pydantic v2,
-  questionary, plumbum, …), accepted because it is fetched ephemerally, not
-  vendored.
+  questionary, plumbum, …), accepted because it is a declared pinned dependency,
+  not inlined source.
 - Determinism now rides on copier + Jinja + the pinned task inputs rather than a
   hand-rolled canonical serializer. See the determinism-discipline constraint
   above.
-- Open verification (before build): confirm against copier source whether
-  `recopy` fires `_tasks`/`migrations` the same way `copy`/`update` do, so the
-  reproduce-runs-tasks assumption holds for the chosen replay command.
+- The `recopy`-fires-tasks assumption is CONFIRMED against source (was an open
+  verification); reproduce correctly re-runs `_tasks`.
+- copier's own task execution uses **plumbum**, not pyinvoke; pyinvoke is
+  irrelevant to the integration (and unneeded for clerk's orchestrator until a
+  second consumer exists — YAGNI).
 - The agentic layer (APM/MCP/SpecKit) has no off-the-shelf analog and stays
   bespoke — this is clerk's distinctive value.
+- Rendering-behavior kwargs (`defaults`/`overwrite`/`quiet`/`exclude`/
+  `skip_if_exists`) and jinja-extension policy are recorded separately in
+  [[0004-rendering-and-extensions]].
 
 ## Related
 

@@ -13,6 +13,18 @@ state and agentic metadata live.
 
 - The catalog is **user-owned configuration**, not baked into clerk's repo. It
   lists **sources**, not templates.
+- **One catalog entry = one git repo + one optional `vcs_ref`.** This is forced
+  by copier's `1 template = 1 git repository` rule: copier's update model reads
+  version info from **repo-wide git tags**, so registering one monorepo as N
+  independent template sources causes tag-namespace collisions and breaks
+  `copier update`/`recopy`. clerk's extraction layer MUST NOT enumerate a repo's
+  subdirectories as separate templates.
+- **A repo that uses a templated `_subdirectory` for variant selection is still
+  ONE catalog entry** — the variant is a *question answer*, not a separate
+  template. clerk's catalog entry for such a repo includes the variant-selecting
+  question; it does not split the repo. (`_subdirectory` is a template-internal
+  setting; clerk only reads it during discovery to find where the template files
+  live — it never sets it from outside.)
 - **Source reference format is APM-style**: `gituser/gitrepo/filepath#tagorsha`.
   Expose all three pin kinds — exact tag, exact sha, and branch.
 - **Freshness is manual**: an explicit `just catalog` / CLI invocation refreshes;
