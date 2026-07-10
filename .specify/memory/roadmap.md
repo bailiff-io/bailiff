@@ -108,7 +108,7 @@ Status legend (lifecycle): **undecided** · **needs-info** · **planned** ·
 
 ## Planned Specs
 
-### 001 — Single-template vertical slice  [status: implemented]
+### 001 — Single-template vertical slice  [status: verified]
 
 - **Description:** Prove the whole conduct→copier→reproduce loop for ONE trusted
   source with ONE template, as **skill + example template + minimal glue** (no
@@ -155,10 +155,19 @@ Status legend (lifecycle): **undecided** · **needs-info** · **planned** ·
 - **Completed 2026-07-10** (branch `001-clerk-vertical-slice`): all 35 tasks done;
   `discover`/`init`/`reproduce`/`trust` verbs + `skills/clerk/SKILL.md` +
   `examples/clerk-template-example/`. 35 hermetic tests + 1 network smoke (skips
-  until `clerk-template-example` is published); ruff/mypy-strict clean. Still open
-  before `verified`: publish `clerk-template-example` to run the live smoke, and a
-  roadmap debrief. It is not yet pushed to its own repo (blocks T034 live run and
-  real-remote use — the catalog that points at it is spec 002).
+  until `clerk-template-example` is published); ruff/mypy-strict clean.
+- **Verified 2026-07-10:** `clerk-template-example` published to its own repo
+  (`copier-clerk/clerk-template-example`, tagged `v1.0.0`); the live network smoke
+  test passes against it — the full discover→init→reproduce loop confirmed against
+  a real remote, not just local fixtures. (Automated authoring/fan-out is 008; the
+  catalog that points at published templates is 002.)
+- **Follow-up (delivery reshape, next spec):** drop the `clerk` console script +
+  generated justfile; bundle the deterministic wrappers (discover/init/reproduce/
+  update) as skill scripts invoked via a portable skill, keeping clerk a pure
+  copier wrapper (C-01). Multi-template reproduce recomputes the order at runtime
+  from the committed answers files (pinned commits → identical edges → stable
+  topo-sort), so nothing clerk-specific need be committed to a project. Deps stay
+  in each template's `copier.yml` (versioned); no catalog dep-cache.
 
 ### 002 — Catalog + runtime injection  [status: planned]
 
