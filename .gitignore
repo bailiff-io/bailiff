@@ -50,3 +50,5 @@ apm_modules/
 specs/**/spec-status.md
 # agent working notes
 .scratch.md
+# orchestrate run stores (ephemeral DAG + ledger; local forensic record only)
+.orchestration/
