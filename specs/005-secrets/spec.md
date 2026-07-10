@@ -33,11 +33,20 @@ for a need scaffolding does not have; introduce one later, with evidence, only i
 concrete template proves it necessary.
 
 The spec is therefore small: a **policy** (clerk templates avoid secret questions),
-a **contributor lint** (fail if a clerk-authored template declares one), and a
-**defensive guardrail** for the case clerk drives a *third-party* template that
-declares a secret question — the SKILL MUST refuse to collect the value and instead
-tell the user how to supply it out-of-band. The existing `secret_questions` discovery
-and the non-persistence test are kept as the safety net.
+a **contributor lint** (fail if a clerk-authored template declares one), and — because
+a prose SKILL rule is not a security boundary — a **mechanical guardrail in the
+deterministic phase**: `runner` refuses to accept a value for any question discovery
+flagged secret, so a secret can never flow through even if the agent misbehaves. The
+existing `secret_questions` discovery and the non-persistence test are kept as the
+safety net.
+
+An adversarial pre-implementation review (against copier 9.16.0 + the code) proved
+the pure-prose policy was unenforced and missed leak channels; this spec folds in
+mechanical enforcement (decision 4a), a discovery parsing fix (decision 6a), error
+scrubbing (decision 5), and fail-loud-not-default (decision 4b). Scope stays a policy
++ small guards — **no secret store, no injection engine, platform-agnostic** — and a
+credential pasted into a *non-secret* field is explicitly the user's responsibility
+(out of scope), not something clerk scans for.
 
 ## Verified copier behavior (9.16.0, source-checked)
 
@@ -72,15 +81,36 @@ and the non-persistence test are kept as the safety net.
    directs the user to supply it out-of-band — via copier's own **masked interactive
    prompt** at the deterministic step, or an environment mechanism — so the value
    never enters the LLM context or a committed file.
-5. **Never on argv; never in logs.** Any value that *does* reach copier (third-party
-   case, via the deterministic step) travels through the programmatic
-   `run_copy(data=…)` path clerk already uses — **never** `copier --data key=SECRET`
-   on a command line (which leaks into `ps`/process listings). Secret values MUST NOT
-   appear in clerk logs, error messages, or the `--pretend` preflight output.
+4a. **Mechanical enforcement (the boundary is CODE, not prose).** `runner.init` and
+   `runner.init_many` MUST reject a run-spec that supplies a value for any key
+   discovery flagged secret — fail loud, non-zero exit, naming the offending KEY (never
+   the value) — on BOTH the single-template and multi-layer paths. This makes decision
+   4 an enforced invariant, not an LLM instruction the agent could violate. (Review
+   finding A5: `runner.py` currently has zero `secret` awareness.)
+4b. **Fail loud, don't default, on a required secret in non-interactive mode.** For a
+   third-party `secret: true` question in a non-interactive reproduce/CI run with no
+   value supplied, clerk MUST fail loud (naming the question) rather than silently
+   letting copier render its placeholder default into output. (Review: defaulting a
+   credential silently ships a placeholder — not sane.)
+5. **Never on argv; never in logs — and scrub surfaced errors.** Any value that *does*
+   reach copier (third-party case) travels through the programmatic `run_copy(data=…)`
+   path clerk already uses — **never** `copier --data key=SECRET` on argv (leaks into
+   `ps`). Secret values MUST NOT appear in clerk logs, error messages, or `--pretend`
+   output. Concretely: `runner`'s error wrapping currently forwards copier's `{exc}`
+   verbatim (`runner.py:146` and the multi-layer paths), and a template `validator`
+   error can carry the answer value — so for any run involving secret keys, clerk MUST
+   **redact secret answer values before wrapping/surfacing** copier errors (generic
+   message, never the value). (Review finding A4: clerk currently re-emits the secret.)
 6. **Platform-agnostic by omission.** Because clerk integrates no store, there is
    nothing OS- or manager-specific to depend on (no `op`, no `vault`, no keychain).
    The generated project's own runtime secret handling is the template author's and
    user's choice, outside clerk.
+6a. **Discovery must recognize BOTH secret forms.** copier flags secrets two ways: a
+   per-question `secret: true`, AND a top-level `_secret_questions: [keys]` list.
+   `discovery.py` currently parses only the per-question key, so a list-form secret is
+   surfaced to the agent as an ordinary question and slips past the guardrail/lint.
+   Discovery MUST parse `_secret_questions:` too, so its `secret_questions` set matches
+   copier's own exclusion set. (Review finding A2 — this is what makes 4a/1 sound.)
 7. **Evidence-gated escalation.** If a real, concrete template ever needs a
    scaffold-time secret that runtime-config cannot cover, a fuller mechanism
    (agent-hands-off env-var/resolver injection) is specced THEN, with that evidence —
@@ -130,9 +160,20 @@ as needing a secret, never a value).
 
 ### Edge Cases
 
-- **Third-party secret question with only its (required) default**: reproduce/CI with
-  no value supplied uses copier's default; clerk does not prompt in a non-interactive
-  path (Constitution V) — it proceeds with the default or fails loud, never hangs.
+- **Third-party secret question with only its (required) default**: in a
+  non-interactive reproduce/CI run with no value supplied, clerk MUST **fail loud**
+  naming the question (decision 4b) — NOT silently render copier's placeholder default
+  into output. clerk never prompts in the non-interactive path (Constitution V), never
+  hangs.
+- **Agent (or a caller) supplies a secret key in the run-spec anyway**: the mechanical
+  guard (4a) rejects it — fail loud naming the key (never the value), non-zero exit —
+  on both single and multi-layer paths, regardless of the SKILL instruction.
+- **Secret rendered into a generated file**: if a template references a secret value in
+  a rendered file, copier writes it to disk — OUTSIDE clerk's answers layer and outside
+  clerk's control. This is documented as inherent (it strengthens the no-scaffold-time-
+  secret policy); clerk does not scan generated output.
+- **Credential pasted into a NON-secret field**: persists to `.copier-answers.yml` like
+  any answer — this is user responsibility, explicitly OUT of scope (no leak-scan).
 - **A task needs a token but none is in the env**: the task fails with the ambient
   tool's own message (e.g. `gh` "not authenticated") — clerk surfaces it; it is not a
   clerk secret-management concern.
@@ -151,14 +192,28 @@ as needing a secret, never a value).
 - **FR-002**: The secrets policy MUST be documented: secrets belong in the generated
   project's runtime config (`.env.example` + docs) or are read from ambient env by
   tasks — never as a copier answer. Template-author guidance MUST state this.
-- **FR-003**: The SKILL MUST instruct the agent, for ANY `secret: true` question
-  surfaced by discovery (third-party templates), to NEVER collect the value and NEVER
-  put it in the run-spec; instead explain out-of-band supply (copier's masked prompt
-  at the deterministic step, or an env mechanism). The value MUST NOT enter the
-  agent's inputs.
+- **FR-003**: The SKILL MUST instruct the agent, for ANY secret question surfaced by
+  discovery (third-party templates), to NEVER collect the value and NEVER put it in the
+  run-spec; instead explain out-of-band supply (copier's masked prompt at the
+  deterministic step, or an env mechanism). The value MUST NOT enter the agent's inputs.
+- **FR-003a (mechanical enforcement)**: `runner.init` and `runner.init_many` MUST
+  reject a run-spec that supplies a value for any discovery-flagged secret key — fail
+  loud, non-zero exit, naming the KEY (never the value) — on BOTH the single-template
+  and multi-layer paths. This is the enforced boundary behind FR-003; it MUST hold
+  regardless of agent behavior (a new error type, e.g. `SecretInAnswersError`).
+- **FR-003b (recognize both secret forms)**: `discovery` MUST populate its
+  `secret_questions` set from BOTH per-question `secret: true` AND the top-level
+  `_secret_questions: [keys]` list form, so the flag set matches copier's own exclusion
+  set (else FR-003a has a blind spot).
+- **FR-003c (fail loud, don't default)**: for a required secret question with no value
+  supplied in a non-interactive run, clerk MUST fail loud naming the question, NOT
+  silently render copier's placeholder default.
 - **FR-004**: Any secret value that reaches copier MUST travel via the programmatic
   `run_copy(data=…)` path, NEVER via `copier --data key=value` on argv. Secret values
-  MUST NOT appear in clerk logs, error messages, or `--pretend` preflight output.
+  MUST NOT appear in clerk logs, error messages, or `--pretend` preflight output —
+  clerk MUST **redact secret answer values before wrapping/surfacing** copier errors
+  (which can carry a value via a template `validator`); it currently forwards `{exc}`
+  verbatim, which MUST be fixed.
 - **FR-005**: The existing non-persistence guarantee MUST be preserved and tested — a
   secret answer is never written to `.copier-answers.yml` (keep
   `test_secret_edge_exclusion.py`).
@@ -166,9 +221,12 @@ as needing a secret, never a value).
   `vault`, keychain, etc.) — remaining platform-agnostic. Generated-project runtime
   secret handling is the template author's / user's choice, outside clerk.
 - **FR-007**: This spec MUST NOT build a secret-injection engine, resolver chain, or
-  store adapter. Escalation to a fuller mechanism is deferred and evidence-gated
-  (C-11); if introduced later it MUST remain agent-hands-off (FR-003) and
-  store-agnostic (FR-006).
+  store adapter, and MUST NOT scan for credentials pasted into non-secret fields (that
+  is the user's responsibility — explicitly out of scope). The mechanical enforcement
+  of FR-003a/003b/003c is a small refusal/redaction guard on the EXISTING
+  discover→run path, NOT a subsystem. Escalation to a fuller injection mechanism is
+  deferred and evidence-gated (C-11); if introduced later it MUST remain
+  agent-hands-off (FR-003) and store-agnostic (FR-006).
 
 ### Key Entities
 
@@ -190,9 +248,18 @@ as needing a secret, never a value).
   secret question is treated as "do not collect — instruct out-of-band"; the value
   never enters the run-spec / agent context.
 - **SC-003**: No secret value appears in `.copier-answers.yml`, clerk logs/errors, or
-  `--pretend` output (persistence test kept; log/dry-run assertions added).
+  `--pretend` output (persistence test kept; log/dry-run + error-redaction assertions
+  added — a `validator`-carried secret is scrubbed, not re-emitted).
+- **SC-003a (mechanical)**: a run-spec supplying a value for a discovery-flagged secret
+  key is REJECTED (fail loud, non-zero, names the key not the value) on both single and
+  multi-layer paths — enforced in code, verified by a test that bypasses the SKILL.
+- **SC-003b**: discovery flags secrets declared BOTH per-question and via
+  `_secret_questions:` list; a test with each form confirms both land in
+  `secret_questions`.
+- **SC-003c**: a required secret with no value in non-interactive mode fails loud
+  (named), does NOT render copier's placeholder default.
 - **SC-004**: clerk introduces no secret-store dependency and remains
-  platform-agnostic (no `op`/`vault`/keychain code).
+  platform-agnostic (no `op`/`vault`/keychain code); no non-secret-field leak scan.
 - **SC-005**: Secrets that generated projects need at runtime are conveyed via
   template `.env.example` + docs, not copier answers (documented; an example template
   may demonstrate the pattern).
