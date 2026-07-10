@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import os
 import subprocess
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path  # noqa: TC003  (used at runtime, not only in annotations)
 from textwrap import dedent
 
@@ -195,4 +195,91 @@ def no_answers_file_template(tmp_path: Path) -> TemplateRepo:
             "template/out.txt.jinja": "name={{ project_name }}\n",
         },
         ship_answers_file=False,
+    )
+
+
+# --------------------------------------------------------------------------- #
+# T003: multi-source catalog fixture                                           #
+# --------------------------------------------------------------------------- #
+
+_SIMPLE_COPIER_YML = dedent(
+    """\
+    project_name:
+      type: str
+    _subdirectory: template
+    """
+)
+
+
+@dataclass(frozen=True)
+class MultiSourceCatalog:
+    """Holds the catalog path and the three template repos it references.
+
+    - ``usable_1``: tpl-alpha, reproducible, v1.0.0 — full_id "mycat/tpl-alpha"
+    - ``usable_2``: tpl-beta,  reproducible, v1.1.0 — full_id "mycat/tpl-beta"
+    - ``unusable``: tpl-broken, reproducible=False (no answers-file) — listed under unusable
+
+    All sources live under the single "mycat" pointer so both namespace variants
+    (basename-default) are exercised.  The catalog path is written under ``root``.
+    """
+
+    catalog_path: Path
+    usable_1: TemplateRepo
+    usable_2: TemplateRepo
+    unusable: TemplateRepo
+    pointer_name: str = field(default="mycat")
+
+
+@pytest.fixture
+def multi_source_catalog(tmp_path: Path) -> MultiSourceCatalog:
+    """A catalog.toml naming two usable local template repos and one unusable.
+
+    Reuses ``build_template_repo`` for all three repos.  Hermetic: all paths are
+    under ``tmp_path``, no network access.  (T003)
+    """
+    usable_1 = build_template_repo(
+        tmp_path / "tpl-alpha",
+        files={
+            "copier.yml": _SIMPLE_COPIER_YML,
+            "template/out.txt.jinja": "hello={{ project_name }}\n",
+        },
+        tag="v1.0.0",
+    )
+    usable_2 = build_template_repo(
+        tmp_path / "tpl-beta",
+        files={
+            "copier.yml": _SIMPLE_COPIER_YML,
+            "template/out.txt.jinja": "hello={{ project_name }}\n",
+        },
+        tag="v1.1.0",
+    )
+    # Unusable: no answers-file template → reproducible=False → goes to unusable list.
+    unusable = build_template_repo(
+        tmp_path / "tpl-broken",
+        files={
+            "copier.yml": _SIMPLE_COPIER_YML,
+            "template/out.txt.jinja": "hello={{ project_name }}\n",
+        },
+        tag="v1.0.0",
+        ship_answers_file=False,
+    )
+
+    import tomli_w
+
+    cat_path = tmp_path / "catalog.toml"
+    data = {
+        "catalog": [
+            {
+                "name": "mycat",
+                "sources": [usable_1.url, usable_2.url, unusable.url],
+            }
+        ]
+    }
+    cat_path.write_bytes(tomli_w.dumps(data).encode())
+
+    return MultiSourceCatalog(
+        catalog_path=cat_path,
+        usable_1=usable_1,
+        usable_2=usable_2,
+        unusable=unusable,
     )
