@@ -16,18 +16,26 @@ spec's definition-of-done, so test tasks are first-class.
 **Organization**: grouped by user story (US1–US4 from spec.md) so each is
 independently verifiable.
 
-## Design decision this task list assumes (from plan.md)
+## Design decision this task list assumes (from plan.md, per user direction)
 
 - The deterministic coordination is **one bundled script** `scripts/clerk.py`
-  (`./scripts/clerk.py` / `uv run scripts/clerk.py`), scoped to `discover` +
-  `trust` (copier-can't work). Single-template init/reproduce/check are invoked as
-  **copier directly**, documented in the SKILL — NOT wrapped by clerk.
-- `runner.py` is **retained as library substrate** for the spec-003 orchestrator
-  (plan.md "Open decision" option (a), RECOMMENDED). If you instead choose the
-  YAGNI-strict option (b), delete tasks T012, T031 and remove `runner.py` +
-  `tests/unit` runner coverage instead of retaining them.
-- The Constitution VI reproducibility gate lives at **discovery**; the trust
-  prefix suggestion moves to `clerk.py trust --from-source`.
+  (`./scripts/clerk.py` / `uv run scripts/clerk.py`) driving the **full lifecycle**
+  — `discover` / `trust` / `init [--check]` / `reproduce` — through **one uniform
+  path for 1..N templates**. A single-template project is the **N=1** case: **no
+  separate single-template code path, and no verb meaningful only for multiple
+  templates.** The script drives copier's public API once per template layer.
+- `runner.py` is **retained and ACTIVE**: the per-layer copier driver
+  (`run_copy`/`run_recopy` + error translation + reproducibility/trust pre-checks)
+  used by `clerk.py init`/`reproduce` at N=1 today and by 003's ordering for N>1.
+  No judgment call outstanding.
+- `reproduce` enumerates the committed `.copier-answers*.yml` file(s) and drives
+  one `recopy` per layer (N=1 → one file → one recopy). The N>1 dependency
+  topo-sort is spec 003, slotting into this loop.
+- The Constitution VI reproducibility gate lives at **discovery** and is re-checked
+  before `init` writes; the trust prefix suggestion moves to
+  `clerk.py trust --from-source`.
+- The **copier-only-by-hand** reproduce (plain `copier recopy`, no clerk/just) is
+  the US1 guarantee/fallback — the exact commands `clerk.py reproduce` issues.
 
 ## Format: `[ID] [P?] [Story] Description`
 
@@ -43,62 +51,65 @@ independently verifiable.
 script skeleton. This is the FR-001 / US4 core.
 
 - [ ] T001 [US4] Remove `[project.scripts] clerk = "clerk.cli:main"` from `pyproject.toml` (FR-001/SC-003). Decide + apply the lightest layout that keeps `import clerk` working for tests and `mypy --strict` green: keep `[tool.hatch.build.targets.wheel] packages = ["src/clerk"]` for editable installs, OR switch tests to a src-on-path layout. Update the `pyproject.toml` description if it still frames clerk as an installable CLI.
-- [ ] T002 [US4] Create `scripts/clerk.py` skeleton: shebang (`#!/usr/bin/env python3`), executable bit (`chmod +x`), module docstring stating it is the bundled orchestration script (discover/trust only; copier invoked directly for the rest), stdlib `argparse` with subparsers `discover` and `trust`, and a `main(argv)` that imports `clerk.discovery`/`clerk.trust`/`clerk.errors` and dispatches. Mirror 001 cli.py's error→exit mapping (0/1/2/3). Make it importable AND runnable via `uv run scripts/clerk.py`.
+- [ ] T002 [US4] Create `scripts/clerk.py` skeleton: shebang (`#!/usr/bin/env python3`), executable bit (`chmod +x`), module docstring stating it is the bundled orchestration script driving the full lifecycle through one uniform 1..N path, stdlib `argparse` with subparsers `discover`, `trust`, `init`, `reproduce`, and a `main(argv)` that imports `clerk.discovery`/`clerk.trust`/`clerk.runner`/`clerk.errors` and dispatches. Mirror 001 cli.py's error→exit mapping (0/1/2/3). Make it importable AND runnable via `uv run scripts/clerk.py`.
 - [ ] T003 [P] [US4] Verify the two run modes work: `uv run scripts/clerk.py --help` and `./scripts/clerk.py --help` both print usage. Document any `sys.path` shim `scripts/clerk.py` needs to import `clerk.*` when run directly (prefer keeping deps importable via the project env over a bespoke shim).
 
 **Checkpoint**: `pyproject.toml` declares no `clerk` console script; `uv run scripts/clerk.py --help` works; `uv sync` + `mypy` clean.
 
 ---
 
-## Phase 2: The bundled script's verbs (discover + trust)
+## Phase 2: The bundled script's verbs (discover / trust / init / reproduce)
 
-**Purpose**: move the copier-can't logic behind `scripts/clerk.py`; relocate the
-VI gate and prefix suggestion. **Blocks the story phases** (they invoke these).
+**Purpose**: wire the full lifecycle behind `scripts/clerk.py` on one uniform 1..N
+path, reusing the 001 libraries; relocate the VI gate re-check + prefix suggestion.
+**Blocks the story phases** (they invoke these).
 
 - [ ] T004 [US2] Wire `scripts/clerk.py discover <source> [--ref REF]` to `clerk.discovery.discover(...)`, printing the same JSON as 001 (`discovery-output.md` shape unchanged). No behavior change to `src/clerk/discovery.py` — this is re-exposure.
 - [ ] T005 [US2] Wire `scripts/clerk.py trust list` and `trust add <prefix>` to `clerk.trust.list_trust()`/`add_trust(...)` (idempotent; honors `COPIER_SETTINGS_PATH`). Behavior identical to 001's `clerk trust`.
 - [ ] T006 [US2] Add `scripts/clerk.py trust add --from-source <src>`: compute the owner-path prefix using the existing suggestion logic (lift `_suggest_prefix` from `src/clerk/runner.py` into `src/clerk/trust.py` so both the script and the retained runner share one implementation) and record it. This replaces 001's prefix suggestion that was embedded in the init refusal path.
-- [ ] T007 [US1] Confirm the Constitution VI reproducibility refusal is fully expressible at discovery: `discover` already emits `reproducible`; ensure the JSON + `DiscoveryError` messaging make "stop, do not init" unambiguous for the SKILL. If any refusal logic only existed inside `runner._require_reproducible`, ensure the equivalent is reachable from discover output (do not rely on init to surface it).
+- [ ] T007 [US2] Wire `scripts/clerk.py init --run-spec <file> [--check]` to `clerk.runner.init(...)` (inject `today`; reproducibility + trust pre-checks; `--check` → copier `--pretend`). Behavior identical to 001's `clerk init` MINUS the justfile write (removed in T008). Single layer today (N=1); the enumerate-and-loop wrapper is T007b.
+- [ ] T007b [US3] Add a small answers-file enumeration helper in `src/clerk/runner.py` (e.g. `enumerate_answers_files(dest)`) and make `scripts/clerk.py reproduce [DEST]` loop over it, driving `runner.reproduce(...)` per file. At N=1 it finds one `.copier-answers.yml` → one recopy (identical to 001). The multi-file **ordering** is 003 (this just establishes the uniform loop; a single-file project must behave exactly as before).
+- [ ] T007c [US1] Confirm the Constitution VI reproducibility refusal is expressed at discovery AND re-checked before `init` writes: `discover` emits `reproducible`; `runner.init` keeps its `_require_reproducible` guard. Ensure the SKILL can stop on `reproducible:false` without invoking init.
 
-**Checkpoint**: `uv run scripts/clerk.py discover <fixture>` and `trust add|list` behave exactly as 001's `clerk` verbs; VI gate surfaced by discover.
+**Checkpoint**: `uv run scripts/clerk.py discover|trust|init|reproduce` all behave as 001's `clerk` verbs (minus justfile); a single-template init+reproduce round-trips byte-identically.
 
 ---
 
-## Phase 3: Remove the generated justfile + reduce cli.py (US4)
+## Phase 3: Remove the generated justfile + delete cli.py (US4)
 
-**Purpose**: no clerk artifact in generated projects; retire the console entry
-point wiring.
+**Purpose**: no clerk artifact in generated projects; one entrypoint only.
 
-- [ ] T008 [US4] Delete the justfile writer from `src/clerk/cli.py`: remove `_REPRODUCE_JUST`, `_write_reproduce_recipe`, and the `_write_reproduce_recipe(...)` call in `_cmd_init`. `init` must write **no** clerk file into the project (FR-002).
-- [ ] T009 [US4] Remove the console-script wiring from `src/clerk/cli.py` (the `init`/`reproduce` command dispatch and `main()` as a `[project.scripts]` entry). Since `scripts/clerk.py` now owns discover/trust, either (a) delete `src/clerk/cli.py` entirely if nothing imports it, or (b) reduce it to a thin shim that `scripts/clerk.py` re-uses — a code check decides; prefer deletion to avoid two entrypoints.
+- [ ] T008 [US4] Delete the justfile writer: remove `_REPRODUCE_JUST`, `_write_reproduce_recipe`, and its call from the init path. `init` (now `runner.init` via `scripts/clerk.py`) must write **no** clerk file into the project (FR-002). If the writer lives in `cli.py`, it goes with T009.
+- [ ] T009 [US4] Delete `src/clerk/cli.py` entirely: its verbs now live in `scripts/clerk.py` (which imports the same `discovery`/`trust`/`runner` libs), so there is nothing left to keep — a lone entrypoint avoids two drifting surfaces. Update `tests/test_smoke.py` (T020) which imported `clerk.cli:main`.
 - [ ] T010 [US4] Grep the repo for stale references and fix each: `grep -rniE 'project.scripts|clerk.cli|just reproduce|justfile|_REPRODUCE_JUST|uvx clerk|console script'` across `src/ tests/ skills/ scripts/ specs/010* README.md`. (Do NOT rewrite 001's historical spec/plan/contract prose — those accurately record what 001 shipped.)
 
-**Checkpoint**: no justfile written on init; one entrypoint (`scripts/clerk.py`); no stale console/just references outside historical 001 docs.
+**Checkpoint**: no justfile written on init; one entrypoint (`scripts/clerk.py`); `cli.py` gone; no stale console/just references outside historical 001 docs.
 
 ---
 
-## Phase 4: US1 — reproduce with copier alone (no clerk, no just)
+## Phase 4: US1 — reproduce byte-identically; copier-only fallback works
 
-**Purpose**: the headline guarantee. **P1.**
+**Purpose**: the headline guarantee — `clerk.py reproduce` and the by-hand
+copier-only path produce identical output. **P1.**
 
-- [ ] T011 [P] [US1] Adapt `tests/loop/test_reproduce.py`: reproduce a fixture-generated project by invoking **`copier recopy --vcs-ref=:current: --defaults --overwrite` directly** (subprocess, in the project dir) with **no clerk import and no `just`**; assert the rendered tree is byte-identical at the recorded commit (empty exclusion set as in 001). Add an assertion that the project dir contains **no `justfile`** and no clerk-specific file (SC-002).
-- [ ] T012 [US1] (Option (a) only) Keep `src/clerk/runner.reproduce` as library substrate with its unit coverage, but ensure NO test requires clerk to be installed for the US1 path — the US1 test uses direct copier. (If option (b): delete `runner.reproduce` + its tests instead.)
+- [ ] T011 [P] [US1] Adapt `tests/loop/test_reproduce.py`: (a) reproduce a fixture-generated project via `scripts/clerk.py reproduce` (subprocess); (b) in a separate clone, reproduce by hand with **`copier recopy --vcs-ref=:current: --defaults --overwrite`** and **no clerk import, no `just`**; assert both trees are byte-identical to each other and to the recorded commit (empty exclusion set as in 001). Assert the project dir contains **no `justfile`** and no clerk file (SC-002).
+- [ ] T012 [US1] Keep `src/clerk/runner.reproduce` unit-tested as the per-layer driver; assert the copier-only-by-hand fallback (T011 part b) needs no clerk on PATH — i.e. `clerk.py` is ergonomics, not a reproduce-time dependency.
 
-**Checkpoint**: `uv run pytest tests/loop/test_reproduce.py` passes; the reproduce assertion uses copier directly and verifies zero clerk artifacts.
+**Checkpoint**: `uv run pytest tests/loop/test_reproduce.py` passes; both the `clerk.py` path and the copier-only-by-hand path reproduce byte-identically with zero clerk artifacts.
 
 ---
 
-## Phase 5: US2 — reproduce/act via the portable skill
+## Phase 5: US2 — the full loop via the portable skill
 
-**Purpose**: the SKILL drives the bundled script + direct copier with no LLM in the
-mechanical path. **P1.**
+**Purpose**: the SKILL drives the bundled script across the whole loop with no LLM
+in the mechanical path. **P1.**
 
-- [ ] T013 [US2] Rewrite `skills/clerk/SKILL.md`: update the frontmatter description (portable, auto-trigger; drop "driven by the `clerk` CLI"); replace `clerk discover|init|reproduce|trust` with `./scripts/clerk.py discover|trust` + **direct copier** for init/check/reproduce (per `contracts/invocation.md`); remove every `just reproduce` / installed-`clerk` reference; update Prerequisites (`copier` + `git` + `gh`; `scripts/clerk.py` runnable via `uv run`, no clerk on PATH). Keep the two-phase boundary + trust-consent steps intact.
-- [ ] T014 [US2] In `SKILL.md` step 5/6, document the exact init command (`copier copy --data-file … --defaults --overwrite --trust <src> <dst>`) and the copier-only reproduce fallback (`copier recopy --vcs-ref=:current: --defaults --overwrite`), stating reproduce needs neither clerk nor just (FR-003). Point references at `specs/010-delivery-reshape/contracts/invocation.md`.
-- [ ] T015 [P] [US2] Add/adapt `tests/loop/test_init.py` and `tests/loop/test_check.py` to invoke **direct copier** (`copier copy [--pretend] --data-file …`) for a fixture template; assert recorded answers correctness, that `--pretend` writes nothing, and that a real init writes no clerk file. Trust/discover steps in these tests go through `scripts/clerk.py`.
-- [ ] T016 [P] [US2] Adapt `tests/loop/test_trust_refusal.py`: an action-taking untrusted source is refused **by copier itself** on direct `copier copy` (assert copier's refusal / non-zero), then `scripts/clerk.py trust add --from-source <src>` records consent, then the direct init succeeds. Adapt `tests/loop/test_discover_static_safe.py` + `test_answersfile_refusal.py` + `test_secret_edge_exclusion.py` to the `scripts/clerk.py discover` invocation (behavior unchanged; the VI refusal now asserted via discover output, not init).
+- [ ] T013 [US2] Rewrite `skills/clerk/SKILL.md`: update the frontmatter description (portable, auto-trigger; drop "driven by the `clerk` CLI"); replace every `clerk <verb>` with `./scripts/clerk.py discover|trust|init|reproduce` (per `contracts/invocation.md`); remove every `just reproduce` / installed-`clerk` reference; update Prerequisites (`copier` + `git` + `gh`; `scripts/clerk.py` runnable via `uv run`, no clerk on PATH). Keep the two-phase boundary + trust-consent steps intact.
+- [ ] T014 [US2] In `SKILL.md` step 5/6, document `scripts/clerk.py init --run-spec … [--check]` and `scripts/clerk.py reproduce`, PLUS the copier-only-by-hand fallback (`copier recopy --vcs-ref=:current: --defaults --overwrite` per answers file) stating reproduce needs neither clerk nor just (FR-003). Point references at `specs/010-delivery-reshape/contracts/invocation.md`.
+- [ ] T015 [P] [US2] Adapt `tests/loop/test_init.py` and `tests/loop/test_check.py` to invoke `scripts/clerk.py init [--check]` for a fixture template; assert recorded answers correctness, that `--check` writes nothing, and that a real init writes no clerk file.
+- [ ] T016 [P] [US2] Adapt `tests/loop/test_trust_refusal.py`: an action-taking untrusted source is refused (clerk names the prefix / exit 3, copier authoritatively re-checks), then `scripts/clerk.py trust add --from-source <src>` records consent, then `scripts/clerk.py init` succeeds. Adapt `tests/loop/test_discover_static_safe.py` + `test_answersfile_refusal.py` + `test_secret_edge_exclusion.py` to the `scripts/clerk.py` invocation (behavior unchanged; VI refusal asserted via discover output and re-checked at init).
 
-**Checkpoint**: the full loop runs via `scripts/clerk.py` + direct copier; all adapted loop tests pass; SKILL has zero console-script/just references.
+**Checkpoint**: the full loop runs via `scripts/clerk.py`; all adapted loop tests pass; SKILL has zero console-script/just references.
 
 ---
 
@@ -128,7 +139,7 @@ ordering algorithm + orchestrator implementation are spec 003. **P1 (contract).*
 
 ## Phase 8: Live smoke + full quality gate
 
-- [ ] T022 [US2] Adapt `tests/loop/test_smoke_remote.py` (marked `network`) to the new invocation: `scripts/clerk.py discover` + trust + **direct copier** init/reproduce against `copier-clerk/clerk-template-example` @ v1.0.0; keep it `-m network` (deselected by default). Assert copier-only reproduce works against the real remote.
+- [ ] T022 [US2] Adapt `tests/loop/test_smoke_remote.py` (marked `network`) to the new invocation: `scripts/clerk.py discover|trust|init|reproduce` against `copier-clerk/clerk-template-example` @ v1.0.0; keep it `-m network` (deselected by default). Also assert the copier-only-by-hand reproduce works against the real remote.
 - [ ] T023 Run the full gate and fix to green: `uv run ruff check src/ tests/ scripts/ && uv run ruff format --check src/ tests/ scripts/ && uv run mypy && uv run pytest -q` (hermetic). Then `uv run pytest -m network -v` (live). Confirm `scripts/clerk.py` is covered by ruff/mypy (add `scripts/` to `[tool.mypy] files` / ruff targets if needed).
 
 **Checkpoint**: ruff + mypy-strict clean over `src/ tests/ scripts/`; all hermetic tests + the live smoke pass.
@@ -145,7 +156,7 @@ ordering algorithm + orchestrator implementation are spec 003. **P1 (contract).*
 
 ## Dependencies & parallelism
 
-- **Setup (T001–T003) blocks everything.** Phase 2 (T004–T007) blocks the story
+- **Setup (T001–T003) blocks everything.** Phase 2 (T004–T007c) blocks the story
   phases (they invoke `scripts/clerk.py`).
 - **Phase 3 (T008–T010)** can proceed alongside Phase 2 (different files) but T010's
   grep-sweep should run last in the phase.

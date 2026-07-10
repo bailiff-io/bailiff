@@ -2,9 +2,17 @@
 
 Supersedes [`../../001-clerk-vertical-slice/contracts/commands.md`](../../001-clerk-vertical-slice/contracts/commands.md)
 for the reshaped surface. clerk's deterministic coordination is a **single bundled
-script**, `scripts/clerk.py`, scoped to what copier cannot do itself. Everything
-copier already does in one command is invoked as **copier directly** (documented in
-the SKILL), so clerk never wraps copier's single-template surface.
+script**, `scripts/clerk.py`, that drives the **full lifecycle** —
+`discover`/`trust`/`init`/`reproduce` — through **one uniform path for 1..N
+templates**. A single-template project is simply the **N=1** case: there is no
+separate single-template code path, and no verb that is meaningful only for
+multiple templates. The script drives copier's public surface once per template
+layer; it never re-implements copier.
+
+Because `clerk.py` only ever issues plain `copier` commands, a machine with copier
+but no clerk can reproduce a project by running those commands by hand — the
+documented **copier-only fallback** (and the US1 guarantee), not a competing
+primary path.
 
 There is **no `[project.scripts] clerk` console entry** and **no PyPI package**
 (FR-001 / US4 / SC-003).
@@ -53,65 +61,64 @@ explicit human consent (Constitution V / FR-019).
 - `list` — print trusted prefixes, or `(no trusted sources)`.
 - The store path honors `COPIER_SETTINGS_PATH` (isolates tests / CI).
 
-## The direct-copier commands (documented in SKILL, NOT wrapped by clerk)
+### `scripts/clerk.py init --run-spec <file> [--check]`
 
-These are copier's own CLI, run by the agent / a human / CI. clerk contributes
-nothing to them beyond documenting them — copier authoritatively validates and
-trust-gates.
+Generate a project from a frozen run-spec (see
+[`../../001-clerk-vertical-slice/contracts/answers-doc.md`](../../001-clerk-vertical-slice/contracts/answers-doc.md)),
+driving copier once per template layer (N=1 = one layer).
 
-### init (single template)
-
-```sh
-copier copy \
-  --data-file <run-spec.yml> \
-  [--vcs-ref <ref>] \
-  --defaults --overwrite --trust \
-  <source> <dest>
-```
-
-- `--data-file` is the run-spec the skill authored (see
-  [`../../001-clerk-vertical-slice/contracts/answers-doc.md`](../../001-clerk-vertical-slice/contracts/answers-doc.md)).
-  `today` is injected as a `--data today=<ISO date>` value the skill sets (it is
-  NOT the agent's judgment — a fixed generation date, Constitution V).
-- copier refuses an untrusted action-taking source itself; the SKILL's step 3
-  (trust consent via `clerk.py trust`) is what unblocks it.
+- Injects the frozen `today`; refuses an **unreproducible** template (no
+  answers-file `.jinja`, VI) and an **untrusted action-taking** source (naming the
+  prefix to trust) before writing anything.
+- Drives copier's **public API** per layer — equivalent to
+  `copier copy --data-file <file> [--vcs-ref <ref>] --defaults --overwrite --trust
+  <source> <dest>`. copier authoritatively validates + trust-gates.
+- `--check` uses copier's own `--pretend` dry run: validates inputs, **writes
+  nothing**. Surfaces `copier.errors.*` and the bare `ValueError` (missing required
+  answer).
 - **Writes NO clerk artifact** — no `justfile`, no recipe. The committed
-  `.copier-answers.yml` is the entire reproduce state (FR-002 / SC-002).
+  `.copier-answers*.yml` is the entire reproduce state (FR-002 / SC-002).
 
-### check (dry-run validation)
+### `scripts/clerk.py reproduce [DEST]`
+
+Faithfully reproduce an existing project (default `DEST` = cwd), through the uniform
+1..N path.
+
+- Enumerates the committed `.copier-answers*.yml` file(s) and drives, per layer:
+  `run_recopy(vcs_ref=VcsRef.CURRENT, defaults=True, overwrite=True)` — equivalent
+  to `copier recopy --vcs-ref=:current: --defaults --overwrite`. Replays at the
+  **recorded commit** — never bare `recopy` (which resolves the LATEST tag and
+  silently upgrades).
+- At **N=1** this is one answers file → one `recopy`. At **N>1**, reproduce order
+  is **recomputed at runtime** (spec 003) from the committed answers + each template
+  fetched at its pinned `_commit`, topo-sorted with a stable tie-break; the loop
+  emits exactly this `recopy` per layer, in order. No frozen recipe committed
+  (FR-004 / Constitution III).
+- Agent-free (Constitution III).
+
+## The copier-only fallback (documented in SKILL; no clerk, no just)
+
+`clerk.py reproduce` only ever issues plain `copier recopy` commands, so the same
+result is reproducible by hand with **copier alone** — no clerk installed, no
+`just`, no clerk file in the project (US1 / SC-001):
 
 ```sh
-copier copy --pretend --data-file <run-spec.yml> --defaults --overwrite <source> <dest>
-```
-
-copier's own `--pretend` validates inputs and writes nothing. Surfaces
-`copier.errors.*` and the bare `ValueError` (missing required answer) directly.
-
-### reproduce (the copier-only guarantee — no clerk, no just)
-
-```sh
+# once per committed answers file, in the project dir
 cd <project> && copier recopy --vcs-ref=:current: --defaults --overwrite
+# multi-template: repeat with -a <each .copier-answers*.yml> in dependency order
 ```
 
-- Replays the committed answers at the **recorded commit** — never bare `recopy`
-  (which resolves the LATEST tag and silently upgrades).
-- Runs with **copier alone**: no clerk installed, no `just`, no clerk file in the
-  project (US1 / SC-001). This is the documented fallback and also the primary
-  reproduce path for a single-template project.
-- For a **multi-template** project, reproduce order is **recomputed at runtime** by
-  the skill-bundled orchestrator (spec 003) from the committed `.copier-answers*.yml`
-  + each template fetched at its pinned `_commit`, topo-sorted with a stable
-  tie-break — it emits exactly this `recopy` command per layer, in order. No frozen
-  recipe is committed (FR-004 / Constitution III).
+This is the reproducibility guarantee and the documented fallback — not a competing
+primary path. The primary path for everyone is `scripts/clerk.py reproduce`.
 
 ## Exit codes (bundled script)
 
 | Code | Meaning |
 |---|---|
 | 0 | success |
-| 1 | a `ClerkError` (bad input, unreproducible template surfaced by discover) |
+| 1 | a `ClerkError` (bad run-spec, copier failure, unreproducible template) |
 | 2 | argparse usage error / unknown verb |
-| 3 | `UntrustedSourceError` — surfaced when the script is asked to act on an untrusted action-taking source |
+| 3 | `UntrustedSourceError` — source takes actions and is not trusted |
 
-The direct-copier commands use **copier's own** exit codes and messages; clerk does
-not translate them on that path.
+`clerk.py` translates copier's `CopierError`/`ValueError` into legible clerk errors
+on the verbs it drives; the by-hand fallback uses copier's own exit codes/messages.
