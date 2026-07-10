@@ -80,9 +80,9 @@ uv run scripts/clerk.py catalog list --json                # machine-readable li
 uv run scripts/clerk.py catalog validate demo/my-template  # gate: exit 0 if valid, non-zero if unknown/ambiguous
 ```
 
-All verbs accept `--catalog PATH` to target a non-default file; the default
-location follows the same `platformdirs`/`CLERK_CATALOG_PATH` resolution as
-`trust.py`. Templates are identified by a **full-id** `<catalog>/<template>`
+Pass `--catalog PATH` between `catalog` and the subverb to target a non-default
+file (e.g. `catalog --catalog PATH list`); the default location follows the same
+`platformdirs`/`CLERK_CATALOG_PATH` resolution as `trust.py`. Templates are identified by a **full-id** `<catalog>/<template>`
 (where `<catalog>` is the pointer name, defaulting to a sanitized source
 basename). The listing is deterministic — same sources at the same pins produce
 identical output. A source that is unusable (no PEP 440 tag, bad `copier.yml`,
