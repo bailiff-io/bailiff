@@ -30,15 +30,24 @@ tests from 001 survive nearly intact; this is re-packaging, not a rewrite.
 The deterministic layer ships as **one bundled orchestration script**,
 `scripts/clerk.py`, run via `./scripts/clerk.py …` or `uv run scripts/clerk.py …`
 (a shebang'd, dependency-light Python script — NOT a `[project.scripts] clerk`
-console entry, NOT a PyPI package). It is scoped to **only what copier cannot do
-itself**: static discovery, trust surfacing, and multi-template dependency
-ordering. For everything copier already owns — single-template `copy` / `recopy` /
-`update` — the skill instructs the agent (or a human, or CI) to invoke **copier
-directly** with the documented command, so `clerk.py` never wraps or
-re-implements copier's single-template surface. A single cohesive orchestration
-entrypoint is preferred over a scatter of bundled one-liners: it gives one
-argparse surface, one place to translate copier's errors, and one unit-testable
-seam, without reading as an installable application.
+console entry, NOT a PyPI package). It drives the **full lifecycle** — `discover`,
+`trust`, `init`, `reproduce` — through **one uniform path for 1..N templates**.
+**A single-template project is simply the N=1 case; there is no separate
+single-template code path and no command that is meaningful only for multiple
+templates.** `reproduce` enumerates the committed `.copier-answers*.yml` file(s)
+and issues `copier recopy --vcs-ref=:current:` per layer; at N=1 that is one file
+→ one `recopy`. (The dependency topo-sort that orders N>1 layers is spec 003; this
+spec builds the uniform loop it plugs into and fixes the reproduce-time recompute
+contract.) A single cohesive entrypoint is preferred over a scatter of bundled
+one-liners: one argparse surface, one place to translate copier's errors, one
+unit-testable seam, without reading as an installable application.
+
+Because `clerk.py reproduce` only issues plain `copier recopy` commands, the
+copier-only guarantee is preserved for free: a human on a machine with copier but
+no clerk can run the exact `copier recopy --vcs-ref=:current: --defaults
+--overwrite` per answers file by hand. That direct-copier path is the documented
+**fallback** (and the reproducibility guarantee, US1), not a competing primary
+path — the primary path for everyone is `clerk.py`.
 
 It is a **cross-cutting spec**: specs 002–009 must honor the delivery shape and the
 reproduce model it establishes. See "What other specs must take into account" below.
@@ -49,16 +58,20 @@ reproduce model it establishes. See "What other specs must take into account" be
    coordination is bundled with the skill as **one script, `scripts/clerk.py`**, run
    `./scripts/clerk.py` / `uv run scripts/clerk.py` and invoked by documented
    instructions — not installed as a `[project.scripts] clerk` console script, not
-   published to PyPI. The script handles **only the copier-can't work** (discovery,
-   trust, multi-template ordering); the agent invokes copier directly for
-   single-template `copy`/`recopy`/`update`.
+   published to PyPI. The script drives the full lifecycle (`discover`, `trust`,
+   `init`, `reproduce`) through **one uniform path for 1..N templates**. A
+   single-template project is the N=1 case — **no separate single-template path,
+   and no verb that is meaningless at N=1.** The script never re-implements copier;
+   it drives copier's public surface once per template layer.
 2. **Reproduce MUST work with copier alone.** A generated project's reproducibility
    must never depend on clerk (or `just`) being installed. The committed
-   `.copier-answers*.yml` files are the *entire* reproduce state; worst case a human
-   runs the `copier recopy` command(s) by hand. `scripts/clerk.py` is **ergonomics +
-   the multi-template orchestrator**, never a hard dependency of a generated project.
-   For a single-template project there is nothing to orchestrate: the documented
-   path is `copier recopy` invoked directly, and `clerk.py` is not required at all.
+   `.copier-answers*.yml` file(s) are the *entire* reproduce state. Because
+   `clerk.py reproduce` only issues plain `copier recopy --vcs-ref=:current:`
+   commands (one per answers file), a human with copier but no clerk can run those
+   by hand — that direct-copier path is the documented **fallback and the
+   reproducibility guarantee (US1)**, while `scripts/clerk.py` is the primary path
+   for everyone. `clerk.py` is ergonomics + orchestration, never a hard dependency
+   of a generated project.
 3. **No clerk-specific artifact is committed into generated projects.** Drop the
    generated `justfile`. Nothing clerk-authored (no frozen recipe, no DAG file) is
    written into the project — only copier-native answers files.
@@ -87,26 +100,35 @@ reproduce model it establishes. See "What other specs must take into account" be
 
 ## User Scenarios & Testing
 
-### US1 — Reproduce a project with only copier installed (no clerk) (Priority: P1)
+### US1 — Reproduce with only copier installed (no clerk) — the fallback (Priority: P1)
 
 A developer clones a clerk-generated project onto a machine that has copier but not
-clerk, and reproduces it faithfully.
+clerk, and reproduces it faithfully **without clerk** — because `clerk.py reproduce`
+only ever issues plain `copier recopy` commands, the same commands run by hand
+reproduce the project identically.
 
-**Independent Test**: take a project generated by the 001 loop; on an environment
-with **no clerk installed and no `just`**, reproduce it from the committed answers
-file(s) using copier directly; assert the rendered tree is byte-identical at the
-recorded commit.
+**Independent Test**: take a project generated by the loop; on an environment with
+**no clerk installed and no `just`**, run `copier recopy --vcs-ref=:current:
+--defaults --overwrite` per committed answers file by hand; assert the rendered
+tree is byte-identical at the recorded commit — matching what `scripts/clerk.py
+reproduce` produces.
 
-**Why it matters**: proves reproduce has zero clerk/just dependency (decision 2/3).
+**Why it matters**: proves the primary path (`clerk.py`) adds no reproduce-time
+dependency — clerk is ergonomics over copier, never a hard requirement of a
+generated project (decision 2/3).
 
 ### US2 — Reproduce via the portable skill (Priority: P1)
 
 A developer (or agent) in any project invokes the reproduce skill; it runs the
-bundled deterministic script, which drives copier and reports the outcome.
+bundled deterministic script, which drives copier once per committed answers file
+and reports the outcome — the same code path whether the project has one template
+or many.
 
-**Independent Test**: with the skill available, trigger reproduce; the bundled
-script regenerates the project byte-identically with no interactive LLM step in the
-mechanical path; a single-template project needs no order computation.
+**Independent Test**: with the skill available, trigger `scripts/clerk.py
+reproduce`; the bundled script regenerates the project byte-identically with no
+interactive LLM step in the mechanical path. A single-template project exercises
+the identical path with N=1 (one answers file → one `copier recopy`), with no
+single-template-only branch.
 
 ### US3 — Multi-template reproduce recomputes order deterministically (Priority: P1)
 
@@ -132,14 +154,17 @@ application.
 
 ## Requirements (Functional)
 
-- **FR-001**: The deterministic coordination (discovery, trust, and the
-  multi-template ordering/orchestration) MUST be delivered **bundled with the skill
-  as a single script `scripts/clerk.py`**, run `./scripts/clerk.py` / `uv run
+- **FR-001**: The deterministic coordination (discover, trust, init, reproduce, and
+  the multi-template ordering/orchestration) MUST be delivered **bundled with the
+  skill as a single script `scripts/clerk.py`**, run `./scripts/clerk.py` / `uv run
   scripts/clerk.py` and invoked by documented instructions — NOT as a
   `[project.scripts] clerk` console script and NOT as a PyPI package. Remove
-  `[project.scripts] clerk`. The script MUST be scoped to what copier cannot do
-  itself; single-template `copy`/`recopy`/`update` are invoked as copier directly
-  (the skill documents the command), NOT wrapped by the script.
+  `[project.scripts] clerk`. The script MUST drive the full lifecycle through **one
+  uniform path for 1..N templates**: a single-template project is the N=1 case, with
+  **no separate single-template code path and no verb meaningful only for multiple
+  templates**. The script drives copier's public surface once per template layer; it
+  MUST NOT re-implement copier. (The N>1 dependency ordering is spec 003; the
+  uniform loop and the reproduce-recompute contract are this spec.)
 - **FR-002**: `init` MUST NOT write any clerk-specific artifact into the generated
   project. Remove justfile generation. The only reproduce state is copier's committed
   `.copier-answers*.yml`.
@@ -172,12 +197,15 @@ This spec sets contracts the rest of the roadmap depends on. Each affected spec:
   version-correct edges there (FR-008). Discovery/parsing lives in the skill-bundled
   `scripts/clerk.py` (FR-001), invoked by the skill — not an installed `clerk`
   console command.
-- **003 (multi-template + ordering):** THIS is where the runtime-recompute
-  orchestrator lands. Build the DAG at init/update **and** recompute it at reproduce
-  from committed answers + pinned fetches (FR-004); do **not** "generate the ordered
+- **003 (multi-template + ordering):** the **uniform 1..N orchestration loop** is
+  built HERE in 010 (`clerk.py` drives copier once per committed answers file, N=1
+  being the trivial case). 003 adds the **dependency ordering brain** that sorts the
+  N>1 layers: build the DAG at init/update **and** recompute it at reproduce from
+  committed answers + pinned fetches (FR-004); do **not** "generate the ordered
   reproduce recipe" as a committed file (that phrasing in the 003 entry is superseded
   — the recipe is recomputed, not frozen). Guarantee a stable tie-break so byte-output
-  is order-independent for edge-independent templates.
+  is order-independent for edge-independent templates. 003 plugs its topo-sort into
+  010's loop; it does not build a second, separate multi-template path.
 - **004 (defaults):** `user_defaults=` prefill is a skill step / bundled helper, not a
   CLI flag. No project-committed defaults artifact.
 - **005 (secrets):** secret re-fetch at reproduce is a bundled skill script step
