@@ -532,13 +532,15 @@ def _scan_conflicts(dest: str, conflict: str) -> list[str]:
     return conflicted
 
 
-def _require_trust_if_update_action_taking(source: str, ref: str | None) -> None:
+def _require_trust_if_update_action_taking(source: str, desc: discovery.Discovery) -> None:
     """Trust pre-check for update: refuse if source has migrations OR tasks and is untrusted.
 
     Migrations run code → same trust surface as _tasks (spec 006 FR-004,
     Constitution V).  Discovery is safe to call on untrusted sources (no code runs).
+
+    Takes an already-computed ``Discovery`` (the caller has discovered the source at
+    the target ref) so this pre-check does not re-clone the template.
     """
-    desc = discovery.discover(source, ref)
     if (desc.has_tasks or desc.has_migrations or desc.jinja_extensions) and not trust.is_trusted(
         source
     ):
@@ -585,8 +587,9 @@ def update(
     # Format pre-check: refuse deprecated _migrations form before any run_update call.
     discovery.check_migrations_format_at_source(str(src_path), vcs_ref)
 
-    # Trust pre-check: untrusted source with migrations or tasks → refuse (FR-004)
-    _require_trust_if_update_action_taking(str(src_path), vcs_ref)
+    # Trust pre-check: untrusted source with migrations or tasks → refuse (FR-004).
+    # Reuses the `desc` discovered above — no extra clone.
+    _require_trust_if_update_action_taking(str(src_path), desc)
 
     # Already-at-target: if the target version matches current commit, nothing to do.
     target_version = vcs_ref or (desc.versions[-1] if desc.versions else None)
@@ -706,8 +709,9 @@ def update_many(
         disc = discovery.discover(str(src_path), vcs_ref)
 
         # Format pre-check and trust pre-check before any run_update call.
+        # Trust check reuses `disc` (discovered just above) — no extra clone.
         discovery.check_migrations_format_at_source(str(src_path), vcs_ref)
-        _require_trust_if_update_action_taking(str(src_path), vcs_ref)
+        _require_trust_if_update_action_taking(str(src_path), disc)
 
         basename = str(src_path).rstrip("/").rsplit("/", 1)[-1]
         if basename.endswith(".git"):
