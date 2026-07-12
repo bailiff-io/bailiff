@@ -82,7 +82,7 @@ and pack/validate gate are part of this spec's definition-of-done.
 
 - [X] T014 Full gate on the branch: `uv run ruff check src/ tests/ scripts/ && uv run ruff format --check src/ tests/ scripts/ && uv run mypy && uv run pytest -q`. Confirm existing 001/010/002 tests still pass (the preflight addition + shim change must not regress single/multi init/reproduce or catalog). `apm pack --marketplace=claude,codex --dry-run` + `apm marketplace validate` green.
 - [X] T015 Update `.specify/memory/roadmap.md`: split the 008 entry — mark the **packaging** half `implemented` (skill installable via claude+codex marketplaces; vendored core; dep preflight; gated apm pack/publish path); record the **fan-out / authoring-lifecycle** half as a distinct deferred entry (008b or folded into 009's prerequisites) with its ADR-0006 scope intact. Confirm 009's dependency notes still read correctly.
-- [ ] T016 Open the PR (title = user-facing changelog entry, no spec IDs; `## Spec Context` body per the hook); push via `dgit push`. Do NOT merge without the user's go-ahead.
+- [X] T016 Open the PR (title = user-facing changelog entry, no spec IDs; `## Spec Context` body per the hook); push via `dgit push`. Do NOT merge without the user's go-ahead.
 
 ---
 
