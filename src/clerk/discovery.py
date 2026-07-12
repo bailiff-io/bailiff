@@ -29,7 +29,7 @@ from typing import Any
 import yaml
 from packaging.version import InvalidVersion, Version
 
-from clerk.errors import DiscoveryError
+from clerk.errors import DeprecatedMigrationFormatError, DiscoveryError
 
 # copier writes ``.copier-answers.yml`` ONLY if the template ships a file named
 # with this Jinja expression (verified). Its absence ⇒ the generated project has
@@ -70,6 +70,7 @@ class Discovery:
     questions: list[Question]
     secret_questions: list[str]
     dependency_edges: dict[str, Any] = field(default_factory=dict)
+    has_migrations: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         """The documented, JSON-serializable shape the agent reads (FR-004)."""
@@ -79,6 +80,7 @@ class Discovery:
             "versions": self.versions,
             "reproducible": self.reproducible,
             "has_tasks": self.has_tasks,
+            "has_migrations": self.has_migrations,
             "jinja_extensions": self.jinja_extensions,
             "questions": [
                 {
@@ -172,6 +174,7 @@ def _describe(source: str, ref: str, versions: list[str], clone: Path) -> Discov
     subdirectory = raw.get("_subdirectory", "")
     jinja_extensions = list(raw.get("_jinja_extensions", []) or [])
     has_tasks = bool(raw.get("_tasks"))
+    has_migrations = bool(raw.get("_migrations"))
 
     questions: list[Question] = []
     secret_questions: list[str] = []
@@ -217,11 +220,36 @@ def _describe(source: str, ref: str, versions: list[str], clone: Path) -> Discov
         versions=versions,
         reproducible=reproducible,
         has_tasks=has_tasks,
+        has_migrations=has_migrations,
         jinja_extensions=jinja_extensions,
         questions=questions,
         secret_questions=secret_questions,
         dependency_edges=dependency_edges,
     )
+
+
+def _check_migrations_format(raw: dict[str, Any], source: str) -> None:
+    """Refuse the deprecated before/after dict form in _migrations (Constitution VI).
+
+    The new format allows: bare string, bare list, or a dict with a 'command' key.
+    The deprecated form has a dict entry with 'before' or 'after' keys — that form
+    emits DeprecationWarning from copier and is refused here at discovery time.
+
+    Detection is purely static (no copier runtime call); this runs before run_update.
+    """
+    migrations = raw.get("_migrations")
+    if not migrations:
+        return
+    if not isinstance(migrations, list):
+        return
+    for entry in migrations:
+        if isinstance(entry, dict) and ("before" in entry or "after" in entry):
+            raise DeprecatedMigrationFormatError(
+                f"template {source!r} uses the deprecated _migrations format "
+                f"(entry with 'before'/'after' keys). "
+                f"Migrate to the new format: use a 'command' key instead of "
+                f"'before'/'after'. See contracts/upgrade.md for the new format."
+            )
 
 
 def _ships_answers_file(clone: Path, subdirectory: str) -> bool:
