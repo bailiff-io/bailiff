@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "generated_at": "2026-07-13T10:47:10Z",
+  "modules": [
+    {
+      "name": "clerk-mod-base",
+      "description": "",
+      "source": "https://github.com/copier-clerk/clerk-mod-base.git",
+      "latest_version": "v0.1.0",
+      "tags": [
+        "v0.1.0"
+      ]
+    },
+    {
+      "name": "clerk-mod-python",
+      "description": "",
+      "source": "https://github.com/copier-clerk/clerk-mod-python.git",
+      "latest_version": "v0.1.0",
+      "tags": [
+        "v0.1.0"
+      ]
+    }
+  ]
+}

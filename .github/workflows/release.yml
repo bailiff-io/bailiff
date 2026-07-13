@@ -162,15 +162,20 @@ jobs:
       # first so the freshly-mirrored tags are visible to the generator.
       - name: Regenerate catalog.json
         run: |
+          set -euo pipefail
           uv run scripts/generate_catalog.py
-          if git diff --quiet -- catalog.json; then
+          git config user.name "clerk-fanout[bot]"
+          git config user.email "clerk-fanout[bot]@users.noreply.github.com"
+          git add catalog.json
+          # Check the STAGED diff: `git diff --quiet catalog.json` reports "no diff"
+          # for an untracked file (which catalog.json is on its first release), so
+          # it must be `git add`-ed first and the cached diff checked — otherwise the
+          # first-ever catalog is silently never committed.
+          if git diff --cached --quiet -- catalog.json; then
             echo "catalog.json unchanged — nothing to commit"
           else
-            git config user.name "clerk-fanout[bot]"
-            git config user.email "clerk-fanout[bot]@users.noreply.github.com"
-            git add catalog.json
             git commit -m "chore(catalog): regenerate catalog.json [skip ci]"
-            git push
+            git push origin HEAD:main
           fi
 
       # Step 6: one GitHub Release per changed module, notes from the cog changelog.
