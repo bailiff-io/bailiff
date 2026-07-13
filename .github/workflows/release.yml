@@ -1,4 +1,4 @@
-# Release + fan-out pipeline for the clerk-templates authoring monorepo
+# Release + fan-out pipeline for the clerk authoring monorepo
 # (spec 008b / ADR-0006 / contracts/fanout.md).
 #
 # One job, run on push to main. Steps (contracts/fanout.md "CI release job"):
@@ -20,7 +20,7 @@
 #   2. Store the App credentials as org-level Actions secrets/vars:
 #        - secret CLERK_FANOUT_APP_ID       (the App ID)
 #        - secret CLERK_FANOUT_PRIVATE_KEY  (the App private key, PEM)
-#   3. Enable GitHub Pages on copier-clerk/clerk-templates (Settings -> Pages ->
+#   3. Enable GitHub Pages on copier-clerk/clerk (Settings -> Pages ->
 #      Source: GitHub Actions) so the catalog Pages deploy below can publish.
 #   4. Arm the workflow: set variable CLERK_FANOUT_ARMED=true (see runbook).
 # The job is guarded by `if: vars.CLERK_FANOUT_ARMED == 'true'`, so until it is
@@ -165,7 +165,7 @@ jobs:
           done
 
       # ── GitHub Pages: publish catalog.json at the stable consumer URL (T014) ──
-      # Serves https://copier-clerk.github.io/clerk-templates/catalog.json.
+      # Serves https://copier-clerk.github.io/clerk/catalog.json.
       # Requires Pages "Source: GitHub Actions" enabled on the repo (manual, once).
       - name: Assemble Pages artifact
         run: |
