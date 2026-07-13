@@ -1,7 +1,16 @@
 {
   "version": 1,
-  "generated_at": "2026-07-13T10:47:10Z",
+  "generated_at": "2026-07-13T11:10:11Z",
   "modules": [
+    {
+      "name": "clerk-mod-apm",
+      "description": "",
+      "source": "https://github.com/copier-clerk/clerk-mod-apm.git",
+      "latest_version": "v0.1.0",
+      "tags": [
+        "v0.1.0"
+      ]
+    },
     {
       "name": "clerk-mod-base",
       "description": "",
