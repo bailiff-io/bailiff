@@ -122,8 +122,27 @@ set it back to `false` or delete the variable.
 2. **Author** the module's `copier.yml` + `template/` tree. `just check-modules`
    must stay green (it also runs in pre-commit and as a cog `pre_bump_hooks`
    preflight — a contract violation aborts the bump before any tag is created).
-3. **Merge to `main`** with a conventional commit (`feat(<name>): …`).
-   `release.yml` then bumps, tags `<name>-vX.Y.Z`, fans out, and publishes.
+3. **Create the split-repo mirror — MANUAL, ONCE PER NEW MODULE (agent process).**
+   The release App CANNOT create it (an App installation token is refused on
+   `POST /orgs/{org}/repos` with `403 Resource not accessible by integration`, even
+   with org Administration granted — repo creation is not available to App tokens).
+   Create it with the `gh` CLI (a user/PAT token, which DOES have this ability):
+
+   ```
+   gh repo create copier-clerk/clerk-mod-<name> --public \
+     --description "Mirror of copier-clerk/clerk:templates/clerk-mod-<name> (generated; do not edit)"
+   ```
+
+   > **For an agent doing a release:** this is a required prerequisite step, not an
+   > optional one. If `templates/clerk-mod-<name>/` is new (no `copier-clerk/clerk-mod-<name>`
+   > repo yet), run the `gh repo create` above BEFORE merging to `main`. The fan-out
+   > pushes into an existing mirror with the App's `contents:write`; it will fail
+   > loudly (`a maintainer must pre-create it`) if the mirror is absent. Idempotent —
+   > safe to re-run; a "name already exists" is fine. Existing mirrors:
+   > `clerk-mod-base`, `clerk-mod-python`.
+4. **Merge to `main`** with a conventional commit (`feat(<name>): …`).
+   `release.yml` then bumps, tags `<name>-vX.Y.Z`, fans out (pushing into the
+   pre-created mirror), and publishes.
 
 ## The release pipeline, step by step
 
