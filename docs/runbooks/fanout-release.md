@@ -85,6 +85,21 @@ https://copier-clerk.github.io/clerk-templates/catalog.json
 That URL is what clerk consumers add as a catalog source. It is empty
 (`{"version":1,"modules":[]}`) until the first module is fanned out (see below).
 
+### 4. Arm the workflow
+
+`release.yml` is guarded by `if: vars.CLERK_FANOUT_ARMED == 'true'` so it stays
+**dormant** (no failed runs) on every push to `main` until steps 1–3 are done.
+Once they are, arm it:
+
+```
+gh variable set CLERK_FANOUT_ARMED --org copier-clerk --body true
+```
+
+(or repo/org Settings → Secrets and variables → Actions → **Variables** →
+`CLERK_FANOUT_ARMED = true`). Until this variable is `true`, the release job is
+skipped cleanly rather than failing at the token step. To pause releases later,
+set it back to `false` or delete the variable.
+
 ---
 
 ## Authoring + releasing a module

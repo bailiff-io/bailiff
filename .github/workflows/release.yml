@@ -22,7 +22,9 @@
 #        - secret CLERK_FANOUT_PRIVATE_KEY  (the App private key, PEM)
 #   3. Enable GitHub Pages on copier-clerk/clerk-templates (Settings -> Pages ->
 #      Source: GitHub Actions) so the catalog Pages deploy below can publish.
-# Until then the release job will fail at the create-github-app-token step.
+#   4. Arm the workflow: set variable CLERK_FANOUT_ARMED=true (see runbook).
+# The job is guarded by `if: vars.CLERK_FANOUT_ARMED == 'true'`, so until it is
+# armed it is SKIPPED cleanly on every push (no red failures at the token step).
 # ─────────────────────────────────────────────────────────────────────────────
 name: release
 
@@ -43,6 +45,13 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
+    # ARMING GUARD: stays dormant until a maintainer completes the one-time org
+    # setup (App + secrets + Pages, see header) and sets org/repo variable
+    # CLERK_FANOUT_ARMED=true. Without this, the job would fail on EVERY push to
+    # main at the token step. Once armed, it runs normally. (Set via:
+    # `gh variable set CLERK_FANOUT_ARMED --org copier-clerk --body true` or the
+    # repo Settings → Variables UI.)
+    if: vars.CLERK_FANOUT_ARMED == 'true'
     environment:
       name: github-pages
       url: ${{ steps.pages.outputs.page_url }}
