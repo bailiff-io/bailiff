@@ -1,0 +1,119 @@
+# Agent Assignments
+# Feature: 011-deopinionated-module-family
+# Generated: 2026-07-14T06:29:42Z
+# Command: /speckit.agent-assign.assign
+
+agents_scanned:
+  - name: "speckit-implement-task"
+    source: "project"
+    description: "Implements non-code or tightly scoped tasks from a SpecKit tasks.md, or scopes substantial code work for a parent-delegated coder"
+  - name: "speckit-research"
+    source: "project"
+    description: "Researches current primary-source library or API documentation for a SpecKit decision"
+  - name: "speckit-sync"
+    source: "project"
+    description: "Detects drift between active SpecKit artifacts and implementation, or contradictions between specs"
+  - name: "speckit-verify"
+    source: "project"
+    description: "Validates implemented code against a target SpecKit spec's FR/SC requirements; detects phantom completions"
+  - name: "coder"
+    source: "user"
+    description: "Implementation subagent for bounded code changes. Edits caller's tree directly; does not commit"
+  - name: "parallel-coder"
+    source: "user"
+    description: "Isolated implementation subagent. Self-commits to its own worktree branch for review and merge"
+  - name: "pr-reviewer"
+    source: "user"
+    description: "Reviews pull requests for code quality, security, correctness, and test coverage. Read-only"
+
+assignments:
+  T001:
+    agent: "default"
+    reason: "Two shell checks (constitution version + ADR presence); trivial, main loop runs it"
+  T002:
+    agent: "default"
+    reason: "Baseline test run + recording; main loop runs it"
+  T003:
+    agent: "speckit-implement-task"
+    reason: "Doc verification/amendment of _cross-cutting.md contract vocabulary; tightly scoped non-code task"
+  T004:
+    agent: "parallel-coder"
+    reason: "Module implementation (REVISE clerk-mod-base); worktree isolation for fleet safety"
+  T005:
+    agent: "parallel-coder"
+    reason: "Module implementation (NEW clerk-mod-precommit); owns the hook frozen-union contract"
+  T006:
+    agent: "parallel-coder"
+    reason: "Module implementation (REVISE clerk-mod-python); parallel within Slice A"
+  T007:
+    agent: "parallel-coder"
+    reason: "Module implementation (NEW clerk-mod-ts); parallel within Slice A"
+  T008:
+    agent: "parallel-coder"
+    reason: "Module implementation (NEW clerk-mod-go); parallel within Slice A"
+  T009:
+    agent: "parallel-coder"
+    reason: "Module implementation (NEW clerk-mod-rust); parallel within Slice A"
+  T010:
+    agent: "parallel-coder"
+    reason: "Module implementation (NEW clerk-mod-quality); parallel within Slice A"
+  T011:
+    agent: "parallel-coder"
+    reason: "Module implementation (NEW clerk-mod-justfile); parallel within Slice A"
+  T012:
+    agent: "parallel-coder"
+    reason: "Module implementation (NEW clerk-mod-readme); parallel within Slice B"
+  T013:
+    agent: "parallel-coder"
+    reason: "Module implementation (NEW clerk-mod-stack-adr); parallel within Slice B"
+  T014:
+    agent: "parallel-coder"
+    reason: "Module implementation (NEW clerk-mod-agentic, folds apm); parallel within Slice B"
+  T015:
+    agent: "speckit-implement-task"
+    reason: "Spec-document amendment (specs/007-agentic-module/spec.md); non-code, ships with T014"
+  T016:
+    agent: "parallel-coder"
+    reason: "Module implementation (NEW clerk-mod-ci-github); parallel within Slice B"
+  T017:
+    agent: "parallel-coder"
+    reason: "Module implementation (NEW clerk-mod-ci-gitlab); parallel within Slice B"
+  T018:
+    agent: "parallel-coder"
+    reason: "Module implementation (NEW clerk-mod-github-repo); parallel within Slice C"
+  T019:
+    agent: "parallel-coder"
+    reason: "Module implementation (NEW clerk-mod-package-add); parallel within Slice C"
+  T020:
+    agent: "parallel-coder"
+    reason: "Module implementation (NEW clerk-mod-terraform); parallel within Slice C"
+  T021:
+    agent: "parallel-coder"
+    reason: "Module implementation (NEW clerk-mod-cdk); parallel within Slice C"
+  T022:
+    agent: "parallel-coder"
+    reason: "Module implementation (NEW clerk-mod-cloudformation); parallel within Slice C"
+  T023:
+    agent: "default"
+    reason: "Whole-tree quickstart validation; main loop drives and fixes deviations"
+  T024:
+    agent: "default"
+    reason: "Full gate suite (just test/types/lint); verification run by main loop"
+  T025:
+    agent: "default"
+    reason: "Catalog/parity verification; main loop"
+  T026:
+    agent: "default"
+    reason: "RECONFIRM-GATED maintainer action (mirror creation); never delegated"
+  T027:
+    agent: "default"
+    reason: "RECONFIRM-GATED maintainer action (dgit push + PR); never delegated"
+  T028:
+    agent: "default"
+    reason: "RECONFIRM-GATED maintainer action (merge fires armed release pipeline); never delegated"
+  T029:
+    agent: "default"
+    reason: "RECONFIRM-GATED maintainer action (apm tombstone + catalog regen, R6); never delegated"
+  T030:
+    agent: "default"
+    reason: "RECONFIRM-GATED post-publish verification with maintainer; never delegated"
