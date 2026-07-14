@@ -70,6 +70,11 @@ today:
   default: ""
   help: "Generation date (YYYY-MM-DD); clerk injects this — leave blank."
 
+# --- Capability tags (spec 013 — engine enforces warn-only exclusion) --------
+_clerk_provides:
+  - iac-tool
+_clerk_exclusive: true
+
 # --- Dependency edges (when:false hidden answers — FR-004) -------------------
 run_after:
   type: yaml

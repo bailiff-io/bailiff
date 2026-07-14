@@ -227,7 +227,8 @@ _tasks:
 
   # sst init is safe (writes sst.config.ts only, no deploy/bootstrap).
   # .gitignore entries for sst (.sst/, .open-next/) are in gitignore_stack.
+  # --yes bypasses the interactive "Continue?" prompt so it runs unattended.
   - command: >-
       test -f sst.config.ts ||
-      npx sst@3 init
+      npx --yes sst@3 init
     when: "{{ framework == 'sst' }}"

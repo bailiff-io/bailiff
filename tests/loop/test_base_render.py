@@ -185,7 +185,9 @@ def test_base_github_host_true_scaffolds_github(
         ".github/workflows must not be scaffolded by base (that is clerk-mod-ci)"
     )
     assert (dest / ".github" / "CODEOWNERS").is_file(), "CODEOWNERS must be present"
-    assert (dest / ".github" / "dependabot.yml").is_file(), "dependabot.yml must be present"
+    assert not (dest / ".github" / "dependabot.yml").exists(), (
+        "dependabot.yml removed in spec 012 (pre-v1.0.0) — separate clerk-mod-dep-updates"
+    )
 
 
 def test_base_docs_subdirs_false(clerk_mod_base: TemplateRepo, tmp_path: Path) -> None:

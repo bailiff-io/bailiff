@@ -88,6 +88,11 @@ gitignore_stack:
   default: []
   help: "Frozen gitignore token union; injected by the phase-1 agent via --data."
 
+# --- Capability tags (spec 013 — engine enforces warn-only exclusion) --------
+_clerk_provides:
+  - iac-tool
+_clerk_exclusive: true
+
 # --- Dependency edges (when:false hidden answers — FR-004) -------------------
 run_after:
   type: yaml
@@ -138,12 +143,15 @@ _tasks:
     { echo "clerk-mod-terraform: 'terraform' not found; run: mise install" >&2; exit 1; }
     {%- endif %}
   # Init-only-guarded terraform/tofu init (network, provider download).
-  # The lock file is task-output; guard prevents re-init on reproduce.
+  # Uses a sentinel file (.clerk-tf-init-done) because .terraform.lock.hcl is
+  # only created when required_providers are defined — de-opinionated templates
+  # comment those out, so the lockfile never appears and init would re-run on
+  # every reproduce (network call). Sentinel pattern matches cdk module.
   - >-
     {% if tf_flavor == 'opentofu' -%}
-    test -f {{ placement_dir }}/.terraform.lock.hcl ||
-    (cd {{ placement_dir }} && tofu init)
+    test -f {{ placement_dir }}/.clerk-tf-init-done ||
+    (cd {{ placement_dir }} && tofu init && touch .clerk-tf-init-done)
     {%- else -%}
-    test -f {{ placement_dir }}/.terraform.lock.hcl ||
-    (cd {{ placement_dir }} && terraform init)
+    test -f {{ placement_dir }}/.clerk-tf-init-done ||
+    (cd {{ placement_dir }} && terraform init && touch .clerk-tf-init-done)
     {%- endif %}

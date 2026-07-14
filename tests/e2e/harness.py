@@ -68,6 +68,8 @@ def make_module_repo(name: str) -> str:
         "user.email=e2e@test",
         "-c",
         "user.name=e2e",
+        "-c",
+        "commit.gpgsign=false",
         "commit",
         "-qm",
         "module",

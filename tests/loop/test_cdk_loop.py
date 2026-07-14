@@ -52,7 +52,6 @@ def _init_cdk(
             "project_name": "mycdkapp",
             "cdk_language": cdk_language,
             "placement_dir": placement_dir,
-            "cdk_version": "2.261.0",
             "include_cdk_nag": include_cdk_nag,
             "include_synth_validate": include_synth_validate,
         },
@@ -92,7 +91,6 @@ def test_cdk_answers_file_written(clerk_mod_cdk: TemplateRepo, tmp_path: Path) -
     data = yaml.safe_load(af.read_text())
     assert data.get("cdk_language") == "python"
     assert data.get("placement_dir") == "infrastructure"
-    assert data.get("cdk_version") == "2.261.0"
 
 
 def test_cdk_reproduce_is_no_op(clerk_mod_cdk: TemplateRepo, tmp_path: Path) -> None:
@@ -201,11 +199,11 @@ def test_cdk_subdirectory_is_template() -> None:
     assert data.get("_subdirectory") == "template", "_subdirectory must be 'template' (FR-016)"
 
 
-def test_cdk_version_consumed_in_tasks() -> None:
-    """cdk_version must appear in at least one _tasks entry (contract iac.md §clerk-mod-cdk).
+def test_cdk_no_stale_version_pin() -> None:
+    """cdk_version pin was removed — cdk init determines the version.
 
-    The contract requires 'pin cdk_version' after cdk init; if the question is
-    collected but never used in tasks the pin step is missing.
+    Verify no task still references cdk_version (would be dead code referencing
+    a removed question).
     """
     module_dir = _MODULES_DIR / "clerk-mod-cdk"
     data = yaml.safe_load((module_dir / "copier.yml").read_text()) or {}
@@ -219,9 +217,8 @@ def test_cdk_version_consumed_in_tasks() -> None:
             cmds.append(task.get("command", ""))
 
     joined = "\n".join(cmds)
-    assert "cdk_version" in joined, (
-        "cdk_version must be consumed in a _tasks entry to pin the version after cdk init "
-        "(contract iac.md §clerk-mod-cdk)"
+    assert "cdk_version" not in joined, (
+        "cdk_version was removed — no task should reference it (stale code)"
     )
 
 
@@ -274,40 +271,27 @@ def test_cdk_preflight_has_language_runtime_checks() -> None:
         )
 
 
-def test_cdk_pin_tasks_are_init_only_guarded() -> None:
-    """Pin tasks must use 'test -f ... .clerk-cdk-pinned ||' (not &&) so reproduce
-    over a populated tree never hits npm install / pip install (FR-012a / §3).
+def test_cdk_no_pin_tasks_remain() -> None:
+    """Version pin tasks were removed — cdk init determines the installed version.
 
-    cdk.json exists after step 2 even on first init, so the pin sentinel is a
-    dedicated .clerk-cdk-pinned marker — not cdk.json itself.
+    Verify no .clerk-cdk-pinned sentinel or npm/pip install of aws-cdk-lib remains
+    in the task chain (would be dead code after cdk_version removal).
     """
     module_dir = _MODULES_DIR / "clerk-mod-cdk"
     data = yaml.safe_load((module_dir / "copier.yml").read_text()) or {}
     tasks = data.get("_tasks", [])
 
-    # Collect tasks that contain the version-pin commands.
-    pin_tasks = [
-        t
-        for t in tasks
-        if isinstance(t, dict)
-        and ("npm install" in t.get("command", "") or "pip install" in t.get("command", ""))
-        and "cdk_version" in t.get("command", "")
-    ]
-    assert pin_tasks, "Expected at least one pin task with npm install or pip install + cdk_version"
+    cmds = []
+    for task in tasks:
+        if isinstance(task, str):
+            cmds.append(task)
+        elif isinstance(task, dict):
+            cmds.append(task.get("command", ""))
 
-    for t in pin_tasks:
-        cmd = t.get("command", "")
-        assert ".clerk-cdk-pinned" in cmd, (
-            f"Pin task must guard on .clerk-cdk-pinned sentinel (FR-012a), got: {cmd!r}"
-        )
-        # Guard must be 'test -f <sentinel> ||' — NOT '&&' — so it skips on reproduce.
-        assert "test -f" in cmd and "||" in cmd, (
-            f"Pin task must use 'test -f .clerk-cdk-pinned ||' to be init-only, got: {cmd!r}"
-        )
-        # Sentinel must be written by the task so reproduce stays guarded after first run.
-        assert "touch .clerk-cdk-pinned" in cmd, (
-            f"Pin task must write the sentinel via 'touch .clerk-cdk-pinned', got: {cmd!r}"
-        )
+    joined = "\n".join(cmds)
+    assert ".clerk-cdk-pinned" not in joined, (
+        ".clerk-cdk-pinned sentinel is stale — cdk_version pin was removed"
+    )
 
 
 def test_cdk_synth_task_is_init_only_guarded() -> None:
