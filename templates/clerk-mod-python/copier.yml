@@ -143,12 +143,15 @@ run_before:
   when: false
 
 # ruff.toml is MANAGED (byte-identical re-render on every reproduce).
+# pytest.ini is MANAGED (byte-identical, only present when add_tests=true).
 # pyproject.toml is TASK-OUTPUT (native init) then guarded by _skip_if_exists so
 # copier never clobbers the project-owned file on reproduce.
+# tests/test_example.py is SEED-ONCE (_skip_if_exists); project owns it after init.
 _subdirectory: template
 
 _skip_if_exists:
   - pyproject.toml
+  - tests/test_example.py
 
 # --- Trust-gated tasks (FR-007 / ADR-0007) -----------------------------------
 # Tasks run post-render at BOTH init and reproduce.

@@ -347,3 +347,115 @@ def test_pdm_variant_pyproject_and_sentinel(
     assert (dest / "pyproject.toml").is_file(), "pyproject.toml missing (pdm variant)"
     assert (dest / ".clerk-python-mise-installed").is_file(), "mise sentinel missing (pdm)"
     assert (dest / "ruff.toml").is_file(), "ruff.toml missing (pdm variant)"
+
+
+# --------------------------------------------------------------------------- #
+# add_tests opt-in: tests/ + pytest.ini when true, absent when false          #
+# --------------------------------------------------------------------------- #
+
+
+def test_add_tests_true_creates_scaffold(clerk_mod_python: TemplateRepo, tmp_path: Path) -> None:
+    """add_tests=true: tests/test_example.py (seed-once) and pytest.ini (managed) created."""
+    trust.add_trust(clerk_mod_python.url)
+
+    dest = tmp_path / "proj"
+    spec = runner.RunSpec(
+        source=clerk_mod_python.url,
+        dest=str(dest),
+        answers={
+            "python_pkg_manager": "uv",
+            "python_version": "3.13",
+            "python_layout": "src",
+            "add_tests": True,
+        },
+    )
+    runner.init(spec, today="2026-07-13")
+
+    # SEED-ONCE: test_example.py scaffolded on init.
+    assert (dest / "tests" / "test_example.py").is_file(), "tests/test_example.py missing"
+    # MANAGED: pytest.ini present and contains testpaths.
+    assert (dest / "pytest.ini").is_file(), "pytest.ini missing"
+    assert "testpaths = tests" in (dest / "pytest.ini").read_text(), "pytest.ini missing testpaths"
+
+
+def test_add_tests_false_no_scaffold(clerk_mod_python: TemplateRepo, tmp_path: Path) -> None:
+    """add_tests=false (default): tests/ and pytest.ini are NOT created."""
+    trust.add_trust(clerk_mod_python.url)
+
+    dest = tmp_path / "proj"
+    spec = runner.RunSpec(
+        source=clerk_mod_python.url,
+        dest=str(dest),
+        answers={
+            "python_pkg_manager": "uv",
+            "python_version": "3.13",
+            "python_layout": "src",
+            "add_tests": False,
+        },
+    )
+    runner.init(spec, today="2026-07-13")
+
+    assert not (dest / "pytest.ini").exists(), "pytest.ini should not exist when add_tests=false"
+    # tests/ may exist from the base layer but test_example.py must not be present.
+    assert not (dest / "tests" / "test_example.py").exists(), (
+        "tests/test_example.py should not exist when add_tests=false"
+    )
+
+
+def test_add_tests_seed_once_not_clobbered(clerk_mod_python: TemplateRepo, tmp_path: Path) -> None:
+    """SEED-ONCE: tests/test_example.py is not overwritten on reproduce."""
+    trust.add_trust(clerk_mod_python.url)
+
+    dest = tmp_path / "proj"
+    spec = runner.RunSpec(
+        source=clerk_mod_python.url,
+        dest=str(dest),
+        answers={
+            "python_pkg_manager": "uv",
+            "python_version": "3.13",
+            "python_layout": "src",
+            "add_tests": True,
+        },
+    )
+    runner.init(spec, today="2026-07-13")
+
+    # Simulate project ownership: edit the example test.
+    example = dest / "tests" / "test_example.py"
+    custom_content = "# custom test\ndef test_real():\n    assert 1 + 1 == 2\n"
+    example.write_text(custom_content)
+
+    # Single-layer reproduce: the module has a run_after:clerk-mod-base edge so
+    # reproduce_many would fail on a standalone project (no base answers file).
+    # runner.reproduce drives the single answers file directly.
+    # runner.init (single-layer) writes .copier-answers.yml, not the multi-layer name.
+    runner.reproduce(str(dest))
+
+    assert example.read_text() == custom_content, (
+        "tests/test_example.py clobbered on reproduce (seed-once broken)"
+    )
+
+
+def test_add_tests_pytest_ini_managed(clerk_mod_python: TemplateRepo, tmp_path: Path) -> None:
+    """MANAGED: pytest.ini is byte-identical after reproduce."""
+    trust.add_trust(clerk_mod_python.url)
+
+    dest = tmp_path / "proj"
+    spec = runner.RunSpec(
+        source=clerk_mod_python.url,
+        dest=str(dest),
+        answers={
+            "python_pkg_manager": "uv",
+            "python_version": "3.13",
+            "python_layout": "src",
+            "add_tests": True,
+        },
+    )
+    runner.init(spec, today="2026-07-13")
+
+    ini_before = _digest(dest / "pytest.ini")
+    # Single-layer reproduce (same reason as test_add_tests_seed_once_not_clobbered).
+    # runner.init (single-layer) writes .copier-answers.yml, not the multi-layer name.
+    runner.reproduce(str(dest))
+    assert _digest(dest / "pytest.ini") == ini_before, (
+        "pytest.ini changed on reproduce (not managed)"
+    )
