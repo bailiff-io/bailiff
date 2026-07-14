@@ -28,3 +28,6 @@ path = "templates/clerk-mod-apm"
 
 [monorepo.packages.clerk-mod-precommit]
 path = "templates/clerk-mod-precommit"
+
+[monorepo.packages.clerk-mod-ts]
+path = "templates/clerk-mod-ts"

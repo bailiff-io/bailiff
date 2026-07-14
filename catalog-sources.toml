@@ -10,3 +10,6 @@ url = "https://github.com/copier-clerk/clerk-mod-apm.git"
 
 [[sources]]
 url = "https://github.com/copier-clerk/clerk-mod-precommit.git"
+
+[[sources]]
+url = "https://github.com/copier-clerk/clerk-mod-ts.git"
