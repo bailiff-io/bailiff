@@ -1016,6 +1016,27 @@ _APM_STUB_BASE_YML = dedent(
 )
 
 
+# clerk-mod-stack-adr has no native-tool tasks (pure template, no tool prerequisite).
+# The stub is a no-op marker so _copy_module_with_stub_tasks has a non-empty block
+# to append (the regex only strips if _tasks already exists in copier.yml).
+_STACK_ADR_STUB_TASKS = dedent(
+    """\
+    _tasks: []
+    """
+)
+
+
+@pytest.fixture
+def clerk_mod_stack_adr(tmp_path: Path) -> TemplateRepo:
+    """The real clerk-mod-stack-adr template as a hermetic repo (no-op tasks stub).
+
+    spec 011 T013: pure template module; no network or tool tasks to stub.
+    """
+    return _copy_module_with_stub_tasks(
+        "clerk-mod-stack-adr", tmp_path / "clerk-mod-stack-adr", _STACK_ADR_STUB_TASKS
+    )
+
+
 @pytest.fixture
 def apm_stub_base(tmp_path: Path) -> TemplateRepo:
     """A minimal stub base layer that threads project_name into clerk-mod-apm (Q5)."""
