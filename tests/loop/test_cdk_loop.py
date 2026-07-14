@@ -335,7 +335,8 @@ def test_cdk_synth_task_is_init_only_guarded() -> None:
             f"cdk synth task must guard on its OWN sentinel (.clerk-cdk-synth-done), got: {cmd!r}"
         )
         assert "test -f" in cmd and "||" in cmd, (
-            f"cdk synth task must use 'test -f .clerk-cdk-synth-done ||' to be init-only, got: {cmd!r}"
+            f"cdk synth task must use 'test -f .clerk-cdk-synth-done ||'"
+            f" to be init-only, got: {cmd!r}"
         )
         assert "touch .clerk-cdk-synth-done" in cmd, (
             f"cdk synth task must write its sentinel after success, got: {cmd!r}"

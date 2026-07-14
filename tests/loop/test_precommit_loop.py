@@ -312,7 +312,7 @@ def test_precommit_none_install_tasks_have_when_guards(
     import yaml as _yaml
 
     copier_yml = Path(clerk_mod_precommit.url) / "copier.yml"
-    cfg = _yaml.safe_load(copier_yml.read_text())
+    _yaml.safe_load(copier_yml.read_text())  # validates YAML is parseable
 
     # The _tasks block is replaced by the stub — read the ORIGINAL module copier.yml.
     # The fixture path points to the repo root of the stub, so read from templates/.
