@@ -1,0 +1,307 @@
+"""spec 011 (T009): clerk-mod-rust loop tests.
+
+Covers:
+- Init [base, rust] applies base first, threads project_name, produces managed
+  rust-toolchain.toml and rustfmt.toml (byte-identical).
+- crate_kind=lib renders the --lib flag expression in the task (verified via the
+  copier.yml task body — actual cargo is stubbed offline).
+- test_runner=cargo-test vs nextest: answers recorded correctly.
+- reproduce: managed files byte-identical; Cargo.toml (seed-once) preserved after edit.
+- Standalone render with defaults does not crash.
+- No secret: questions present.
+"""
+
+from __future__ import annotations
+
+import hashlib
+from pathlib import Path
+from textwrap import dedent
+from typing import Any
+
+import pytest
+import yaml
+
+from clerk import runner, trust
+from clerk.catalog import TemplateRecord
+from tests.conftest import TemplateRepo
+
+# Managed files whose bytes must be stable across reproduce.
+_MANAGED_PATHS = [
+    "rust-toolchain.toml",
+    "rustfmt.toml",
+    ".copier-answers.clerk-mod-rust.yml",
+]
+
+
+@pytest.fixture(autouse=True)
+def _isolated_settings(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("COPIER_SETTINGS_PATH", str(tmp_path / "settings.yml"))
+
+
+def _record(full_id: str, repo: TemplateRepo, questions: list[str]) -> TemplateRecord:
+    return TemplateRecord(
+        full_id=full_id,
+        source=repo.url,
+        ref=repo.tag,
+        versions=[repo.tag],
+        reproducible=True,
+        has_tasks=True,
+        questions=questions,
+    )
+
+
+def _digest(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _init_base_rust(
+    base: TemplateRepo,
+    rust: TemplateRepo,
+    dest: Path,
+    rust_answers: dict[str, Any] | None = None,
+) -> None:
+    trust.add_trust(base.url)
+    trust.add_trust(rust.url)
+    selection: list[tuple[TemplateRecord, dict[str, Any]]] = [
+        (
+            _record("demo/clerk-mod-base", base, ["project_name", "license", "layout"]),
+            {
+                "project_name": "mycrate",
+                "org": "acme",
+                "license": "mit",
+                "layout": "single",
+                "gitignore_stack": ["ghg:macOS", "Rust"],
+            },
+        ),
+        (
+            _record(
+                "demo/clerk-mod-rust",
+                rust,
+                ["project_name", "rust_channel", "rust_edition", "crate_kind", "test_runner"],
+            ),
+            rust_answers or {},
+        ),
+    ]
+    runner.init_many(selection, str(dest), today="2026-07-14")
+
+
+# ---------------------------------------------------------------------------
+# Init: defaults (bin, nextest, stable, 2024)
+# ---------------------------------------------------------------------------
+
+
+def test_base_rust_defaults(
+    clerk_mod_base: TemplateRepo, clerk_mod_rust: TemplateRepo, tmp_path: Path
+) -> None:
+    """Init [base, rust] with defaults: managed files present, answers recorded."""
+    dest = tmp_path / "proj"
+    _init_base_rust(clerk_mod_base, clerk_mod_rust, dest)
+
+    # base rendered.
+    assert (dest / "AGENTS.md").is_file(), "base AGENTS.md missing"
+
+    # Managed: rust-toolchain.toml pinned to stable.
+    toolchain = (dest / "rust-toolchain.toml").read_text()
+    assert 'channel = "stable"' in toolchain, "rust_channel not rendered in rust-toolchain.toml"
+
+    # Managed: rustfmt.toml present with max_width=100.
+    rustfmt = (dest / "rustfmt.toml").read_text()
+    assert "max_width = 100" in rustfmt, "max_width not in rustfmt.toml"
+    assert 'use_small_heuristics = "Max"' in rustfmt, "heuristics not rendered (default Max)"
+
+    # Preflight stub ran (offline marker).
+    assert (dest / ".clerk-rust-preflight").is_file(), "cargo preflight stub marker missing"
+
+    # Answers recorded: project_name threaded from base.
+    af = yaml.safe_load((dest / ".copier-answers.clerk-mod-rust.yml").read_text())
+    assert clerk_mod_rust.url in af["_src_path"]
+    assert af["project_name"] == "mycrate", "project_name not threaded base→rust"
+    assert af["rust_channel"] == "stable"
+    assert af["crate_kind"] == "bin"
+    assert af["test_runner"] == "nextest"
+
+
+# ---------------------------------------------------------------------------
+# crate_kind=lib (FIX: --lib flag)
+# ---------------------------------------------------------------------------
+
+
+def test_crate_kind_lib_recorded(
+    clerk_mod_base: TemplateRepo, clerk_mod_rust: TemplateRepo, tmp_path: Path
+) -> None:
+    """crate_kind=lib is recorded in the answers file; the task template carries --lib."""
+    dest = tmp_path / "proj"
+    _init_base_rust(clerk_mod_base, clerk_mod_rust, dest, rust_answers={"crate_kind": "lib"})
+
+    af = yaml.safe_load((dest / ".copier-answers.clerk-mod-rust.yml").read_text())
+    assert af["crate_kind"] == "lib", "crate_kind=lib not recorded"
+
+    # Verify the copier.yml task body contains the --lib conditional expression
+    # (the actual cargo new is stubbed, so we inspect the template source).
+
+    copier_yml_path = (
+        Path(__file__).resolve().parent.parent.parent
+        / "templates"
+        / "clerk-mod-rust"
+        / "copier.yml"
+    )
+    task_text = copier_yml_path.read_text()
+    assert "--lib" in task_text, "copier.yml task missing --lib branch (FIX not applied)"
+    assert "crate_kind == 'lib'" in task_text, "crate_kind=lib condition missing in task"
+
+
+# ---------------------------------------------------------------------------
+# test_runner=cargo-test
+# ---------------------------------------------------------------------------
+
+
+def test_test_runner_cargo_test(
+    clerk_mod_base: TemplateRepo, clerk_mod_rust: TemplateRepo, tmp_path: Path
+) -> None:
+    """test_runner=cargo-test is recorded; nextest entry omitted from answers."""
+    dest = tmp_path / "proj"
+    _init_base_rust(
+        clerk_mod_base, clerk_mod_rust, dest, rust_answers={"test_runner": "cargo-test"}
+    )
+
+    af = yaml.safe_load((dest / ".copier-answers.clerk-mod-rust.yml").read_text())
+    assert af["test_runner"] == "cargo-test"
+
+
+# ---------------------------------------------------------------------------
+# rust_channel variants
+# ---------------------------------------------------------------------------
+
+
+def test_rust_channel_nightly(
+    clerk_mod_base: TemplateRepo, clerk_mod_rust: TemplateRepo, tmp_path: Path
+) -> None:
+    """rust_channel=nightly written into rust-toolchain.toml."""
+    dest = tmp_path / "proj"
+    _init_base_rust(clerk_mod_base, clerk_mod_rust, dest, rust_answers={"rust_channel": "nightly"})
+
+    toolchain = (dest / "rust-toolchain.toml").read_text()
+    assert 'channel = "nightly"' in toolchain
+
+
+# ---------------------------------------------------------------------------
+# rustfmt_heuristics=Off → no use_small_heuristics line
+# ---------------------------------------------------------------------------
+
+
+def test_rustfmt_heuristics_off(
+    clerk_mod_base: TemplateRepo, clerk_mod_rust: TemplateRepo, tmp_path: Path
+) -> None:
+    """rustfmt_heuristics=Off omits the use_small_heuristics line."""
+    dest = tmp_path / "proj"
+    _init_base_rust(
+        clerk_mod_base, clerk_mod_rust, dest, rust_answers={"rustfmt_heuristics": "Off"}
+    )
+
+    rustfmt = (dest / "rustfmt.toml").read_text()
+    assert "max_width = 100" in rustfmt
+    assert "use_small_heuristics" not in rustfmt, "Off should suppress the heuristics line"
+
+
+# ---------------------------------------------------------------------------
+# Managed files byte-identical on reproduce
+# ---------------------------------------------------------------------------
+
+
+def test_managed_files_byte_identical_on_reproduce(
+    clerk_mod_base: TemplateRepo, clerk_mod_rust: TemplateRepo, tmp_path: Path
+) -> None:
+    """T-R5: managed files (rust-toolchain.toml, rustfmt.toml, answers) are byte-identical."""
+    dest = tmp_path / "proj"
+    _init_base_rust(clerk_mod_base, clerk_mod_rust, dest)
+
+    before = {p: _digest(dest / p) for p in _MANAGED_PATHS if (dest / p).is_file()}
+    for p in _MANAGED_PATHS:
+        assert (dest / p).is_file(), f"expected managed file {p} after init"
+
+    runner.reproduce_many(str(dest))
+
+    after = {p: _digest(dest / p) for p in _MANAGED_PATHS if (dest / p).is_file()}
+    assert before == after, (
+        "managed files changed on reproduce: "
+        f"{[p for p in before if before.get(p) != after.get(p)]}"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Seed-once: Cargo.toml preserved on reproduce (edited)
+# ---------------------------------------------------------------------------
+
+
+def test_cargo_toml_preserved_on_reproduce(
+    clerk_mod_base: TemplateRepo, clerk_mod_rust: TemplateRepo, tmp_path: Path
+) -> None:
+    """Cargo.toml (_skip_if_exists) is NOT overwritten when it already exists."""
+    dest = tmp_path / "proj"
+    _init_base_rust(clerk_mod_base, clerk_mod_rust, dest)
+
+    # Simulate cargo new having produced a Cargo.toml (the stub only writes a marker).
+    # Write a synthetic Cargo.toml that looks like project-edited content.
+    cargo_edit = dedent(
+        """\
+        [package]
+        name = "mycrate"
+        version = "0.2.0"
+        edition = "2024"
+
+        [dependencies]
+        serde = "1"
+        """
+    )
+    (dest / "Cargo.toml").write_text(cargo_edit)
+
+    runner.reproduce_many(str(dest))
+
+    # Seed-once: project edit must survive reproduce.
+    assert (dest / "Cargo.toml").read_text() == cargo_edit, (
+        "Cargo.toml was clobbered on reproduce (seed-once violated)"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Standalone render (no base layer)
+# ---------------------------------------------------------------------------
+
+
+def test_rust_standalone_renders_with_defaults(
+    clerk_mod_rust: TemplateRepo, tmp_path: Path
+) -> None:
+    """Overlay renders standalone (no base) without crashing; managed files present."""
+    trust.add_trust(clerk_mod_rust.url)
+    dest = tmp_path / "proj"
+    spec = runner.RunSpec(
+        source=clerk_mod_rust.url,
+        dest=str(dest),
+        answers={"rust_channel": "stable", "rust_edition": "2024", "crate_kind": "bin"},
+    )
+    runner.init(spec, today="2026-07-14")
+
+    assert (dest / "rust-toolchain.toml").is_file(), "rust-toolchain.toml missing"
+    assert (dest / "rustfmt.toml").is_file(), "rustfmt.toml missing"
+    assert (dest / ".clerk-rust-preflight").is_file(), "preflight stub marker missing"
+
+
+# ---------------------------------------------------------------------------
+# No secret: questions
+# ---------------------------------------------------------------------------
+
+
+def test_no_secret_questions() -> None:
+    """copier.yml must not contain any 'secret: true' questions (Constitution VI / FR-005)."""
+    import subprocess
+
+    # Match 'secret: true' specifically (not comments that mention the word "secret:").
+    result = subprocess.run(
+        ["grep", "-rE", r"^\s+secret:\s+true", "templates/clerk-mod-rust/"],
+        capture_output=True,
+        text=True,
+        cwd=Path(__file__).resolve().parent.parent.parent,
+    )
+    assert result.returncode != 0, (
+        f"secret: true question found in clerk-mod-rust:\n{result.stdout}"
+    )
