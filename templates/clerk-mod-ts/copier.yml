@@ -184,10 +184,14 @@ _tasks:
     { echo "clerk-mod-ts: required tool 'mise' not found on PATH." >&2;
     echo "  mise — https://mise.jdx.dev" >&2;
     exit 1; }
+  # Init-only-guarded (FR-012a / cross-cutting §2): sentinel prevents re-shelling
+  # on reproduce over a populated tree. The sentinel is committed so base's
+  # .gitignore does not strip it; `mise install` only runs on a genuinely fresh init.
   - >-
-    mise install 2>&1 ||
+    test -f .clerk-ts-mise-installed ||
+    { mise install 2>&1 ||
     { echo "clerk-mod-ts: 'mise install' failed — check .mise.toml entries." >&2;
-    exit 1; }
+    exit 1; }; touch .clerk-ts-mise-installed; }
 
   # --- Native manifest scaffold (init-only-guarded, task-output → seed-once) ---
   # bun init writes package.json (bun.lock text file since Bun 1.2, not bun.lockb).

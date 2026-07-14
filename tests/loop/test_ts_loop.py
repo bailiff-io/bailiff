@@ -336,6 +336,150 @@ def test_edited_package_json_preserved_on_reproduce(
     )
 
 
+# ---------------------------------------------------------------------------
+# test_runner variant tests (cross-cutting §8: byte-assert all managed renders)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "test_runner,expect_vitest,expect_playwright",
+    [
+        ("vitest-node", True, False),
+        ("vitest-browser", True, False),
+        ("vitest+playwright", True, True),
+        ("bun-test", False, False),
+        ("playwright-only", False, True),
+    ],
+)
+def test_test_runner_variants(
+    clerk_mod_base: TemplateRepo,
+    clerk_mod_ts_bun: TemplateRepo,
+    tmp_path: Path,
+    test_runner: str,
+    expect_vitest: bool,
+    expect_playwright: bool,
+) -> None:
+    """Managed vitest.config.ts / playwright.config.ts rendered correctly per test_runner."""
+    trust.add_trust(clerk_mod_base.url)
+    trust.add_trust(clerk_mod_ts_bun.url)
+
+    dest = tmp_path / f"proj-{test_runner}"
+    selection: list[tuple[TemplateRecord, dict[str, Any]]] = [
+        (
+            _record("demo/clerk-mod-base", clerk_mod_base, ["project_name", "license", "layout"]),
+            {
+                "project_name": "tstest",
+                "org": "acme",
+                "license": "mit",
+                "layout": "single",
+                "gitignore_stack": ["Node"],
+            },
+        ),
+        (
+            _record("demo/clerk-mod-ts", clerk_mod_ts_bun, ["project_name", "test_runner"]),
+            {
+                "js_pkg_manager": "bun",
+                "ts_linter": "biome",
+                "test_runner": test_runner,
+                "node_version": "22",
+                "framework": "plain",
+                "ui_kit": "none",
+                "gitignore_stack": ["Node"],
+                "mise_tools": [{"node": "22"}],
+                "hook_blocks": [],
+            },
+        ),
+    ]
+    runner.init_many(selection, str(dest), today="2026-07-14")
+
+    vitest_path = dest / "vitest.config.ts"
+    playwright_path = dest / "playwright.config.ts"
+
+    if expect_vitest:
+        assert vitest_path.is_file(), f"vitest.config.ts missing for test_runner={test_runner}"
+        content = vitest_path.read_text()
+        assert len(content) > 0, f"vitest.config.ts is empty for test_runner={test_runner}"
+        assert "defineConfig" in content, f"vitest.config.ts missing defineConfig ({test_runner})"
+        # Verify the branch-specific environment setting is rendered.
+        if test_runner == "vitest-node":
+            assert '"node"' in content, f"vitest-node: environment=node not in config"
+        elif test_runner == "vitest-browser":
+            assert "browser" in content, f"vitest-browser: browser block not in config"
+        elif test_runner == "vitest+playwright":
+            assert '"node"' in content, f"vitest+playwright: node env not in config"
+    else:
+        # For bun-test and playwright-only, vitest.config.ts must be absent or empty.
+        if vitest_path.is_file():
+            assert vitest_path.read_bytes() == b"", (
+                f"vitest.config.ts should be absent/empty for test_runner={test_runner}"
+            )
+
+    if expect_playwright:
+        assert playwright_path.is_file(), (
+            f"playwright.config.ts missing for test_runner={test_runner}"
+        )
+        content = playwright_path.read_text()
+        assert len(content) > 0, (
+            f"playwright.config.ts is empty for test_runner={test_runner}"
+        )
+        assert "defineConfig" in content, (
+            f"playwright.config.ts missing defineConfig ({test_runner})"
+        )
+    else:
+        # For vitest-node, vitest-browser, bun-test, none: playwright.config.ts absent or empty.
+        if playwright_path.is_file():
+            assert playwright_path.read_bytes() == b"", (
+                f"playwright.config.ts should be absent/empty for test_runner={test_runner}"
+            )
+
+
+def test_test_runner_variants_reproduce(
+    clerk_mod_base: TemplateRepo,
+    clerk_mod_ts_bun: TemplateRepo,
+    tmp_path: Path,
+) -> None:
+    """Managed vitest.config.ts is byte-identical after reproduce (test_runner=vitest-node)."""
+    trust.add_trust(clerk_mod_base.url)
+    trust.add_trust(clerk_mod_ts_bun.url)
+
+    dest = tmp_path / "proj-vn-reproduce"
+    selection: list[tuple[TemplateRecord, dict[str, Any]]] = [
+        (
+            _record("demo/clerk-mod-base", clerk_mod_base, ["project_name", "license", "layout"]),
+            {
+                "project_name": "tstest",
+                "org": "acme",
+                "license": "mit",
+                "layout": "single",
+                "gitignore_stack": ["Node"],
+            },
+        ),
+        (
+            _record("demo/clerk-mod-ts", clerk_mod_ts_bun, ["project_name", "test_runner"]),
+            {
+                "js_pkg_manager": "bun",
+                "ts_linter": "biome",
+                "test_runner": "vitest-node",
+                "node_version": "22",
+                "framework": "plain",
+                "ui_kit": "none",
+                "gitignore_stack": ["Node"],
+                "mise_tools": [{"node": "22"}],
+                "hook_blocks": [],
+            },
+        ),
+    ]
+    runner.init_many(selection, str(dest), today="2026-07-14")
+
+    vitest_path = dest / "vitest.config.ts"
+    assert vitest_path.is_file(), "vitest.config.ts missing after init"
+    before = _digest(vitest_path)
+
+    runner.reproduce_many(str(dest))
+
+    assert _digest(vitest_path) == before, "vitest.config.ts changed on reproduce"
+
+
 def test_no_secret_questions() -> None:
     """No secret: questions in the copier.yml (spec 011 contract / Constitution VI)."""
     from pathlib import Path
