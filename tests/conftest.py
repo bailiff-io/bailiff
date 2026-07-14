@@ -804,6 +804,119 @@ _APM_STUB_TASKS = dedent(
 )
 
 
+# Offline stub tasks for clerk-mod-python (pdm variant): the pdm preflight is a no-op marker.
+_PDM_STUB_TASKS = dedent(
+    """\
+    _tasks:
+      - "printf 'pdm-preflight-ok\\n' > .clerk-python-preflight"
+    """
+)
+
+# Offline stub tasks for clerk-mod-typescript (bun variant).
+_BUN_STUB_TASKS = dedent(
+    """\
+    _tasks:
+      - "printf 'bun-preflight-ok\\n' > .clerk-ts-preflight"
+    """
+)
+
+# Offline stub tasks for clerk-mod-typescript (pnpm variant).
+_PNPM_STUB_TASKS = dedent(
+    """\
+    _tasks:
+      - "printf 'pnpm-preflight-ok\\n' > .clerk-ts-preflight"
+    """
+)
+
+# Offline stub tasks for clerk-mod-rust: the cargo new preflight is a no-op marker.
+_CARGO_STUB_TASKS = dedent(
+    """\
+    _tasks:
+      - "printf 'cargo-preflight-ok\\n' > .clerk-rust-preflight"
+    """
+)
+
+# Offline stub tasks for clerk-mod-go: the go mod init preflight is a no-op marker.
+_GO_STUB_TASKS = dedent(
+    """\
+    _tasks:
+      - "printf 'go-preflight-ok\\n' > .clerk-go-preflight"
+    """
+)
+
+# Offline stub tasks for clerk-mod-terraform: the terraform/tofu init preflight is a no-op marker.
+_TERRAFORM_STUB_TASKS = dedent(
+    """\
+    _tasks:
+      - "printf 'terraform-preflight-ok\\n' > .clerk-terraform-preflight"
+    """
+)
+
+# Offline stub tasks for clerk-mod-terraform (opentofu variant).
+_TOFU_STUB_TASKS = dedent(
+    """\
+    _tasks:
+      - "printf 'tofu-preflight-ok\\n' > .clerk-terraform-preflight"
+    """
+)
+
+# Offline stub tasks for clerk-mod-cdk: the cdk init preflight is a no-op marker.
+_CDK_STUB_TASKS = dedent(
+    """\
+    _tasks:
+      - "printf 'cdk-preflight-ok\\n' > .clerk-cdk-preflight"
+    """
+)
+
+# Offline stub tasks for modules that call the AWS CLI.
+_AWS_STUB_TASKS = dedent(
+    """\
+    _tasks:
+      - "printf 'aws-preflight-ok\\n' > .clerk-aws-preflight"
+    """
+)
+
+# Offline stub tasks for modules that invoke gh (GitHub CLI).
+_GH_STUB_TASKS = dedent(
+    """\
+    _tasks:
+      - "printf 'gh-preflight-ok\\n' > .clerk-gh-preflight"
+    """
+)
+
+# Offline stub tasks for modules that invoke the claude CLI (agentic).
+_CLAUDE_STUB_TASKS = dedent(
+    """\
+    _tasks:
+      - "printf 'claude-preflight-ok\\n' > .clerk-claude-preflight"
+    """
+)
+
+# Offline stub tasks for modules that invoke mise (tool version manager).
+_MISE_STUB_TASKS = dedent(
+    """\
+    _tasks:
+      - "printf 'mise-preflight-ok\\n' > .clerk-mise-preflight"
+    """
+)
+
+# Offline stub tasks for modules that invoke pre-commit (hook manager).
+_PRECOMMIT_STUB_TASKS = dedent(
+    """\
+    _tasks:
+      - "printf 'pre-commit-preflight-ok\\n' > .clerk-precommit-preflight"
+    """
+)
+
+# Offline stub tasks for modules that invoke lefthook (hook manager).
+_LEFTHOOK_STUB_TASKS = dedent(
+    """\
+    _tasks:
+      - "printf 'lefthook-preflight-ok\\n' > .clerk-precommit-preflight"
+    """
+)
+
+
 def _copy_module_with_stub_tasks(
     module_name: str,
     dest_root: Path,

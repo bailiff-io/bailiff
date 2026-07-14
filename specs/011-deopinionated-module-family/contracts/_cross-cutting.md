@@ -70,7 +70,19 @@ ordering). Resolved by freezing both up front:
 - When `hook_manager=none`, no hook file is written and `hook_blocks` is inert.
 - `install_hooks` task is **init-only-guarded** (FR-012a).
 
-## 5. Agent-frozen `--data` facts (FR-010)
+## 5. quality_languages threading contract — agent-frozen union → single writer (CRITIQUE M1)
+
+Same fix as §2 and §4:
+
+- **`quality_languages`** (yaml, default `[]`) is a frozen union answer injected by the phase-1 agent via
+  `--data`. The agent assembles the set of active language identifiers (e.g. `["python", "typescript"]`)
+  from the full module selection.
+- **`clerk-mod-quality` is the single writer** of `.agents/hooks/quality-languages` — a **managed** render
+  from `quality_languages`. Language modules do NOT each write this file; they contribute their language
+  token to the frozen `quality_languages` union the agent assembles.
+- When `quality_languages` is empty (no language modules selected), the file is omitted.
+
+## 6. Agent-frozen `--data` facts (FR-010)
 
 - `clerk-mod-ci` and `clerk-mod-stack-adr` sort BEFORE language layers (alphabetical basename
   tie-break), so they CANNOT read language answers via the run-order accumulator. The phase-1 agent
@@ -83,15 +95,16 @@ ordering). Resolved by freezing both up front:
   `hook_manager`+`hook_blocks`, and `quality_languages` are ALL agent-frozen union answers injected via
   `--data` to a single designated writer — NEVER built by later layers reading earlier layers at
   runtime (basename ordering + persisted-only accumulator make that unreliable/circular). This is the
-  established `gitignore_stack` contract, applied uniformly.
+  established `gitignore_stack` contract, applied uniformly. Single writers: base → `.gitignore`,
+  base → `.mise.toml`, precommit → hook config file, quality → `.agents/hooks/quality-languages`.
 
-## 6. Determinism / trust / secrets (unchanged constitution rules)
+## 7. Determinism / trust / secrets (unchanged constitution rules)
 
 - No `jinja2_time`; `today` injected as an answer (Constitution V). No `secret:` questions; tokens
   from ambient env in tasks (Constitution VI / FR-005). Code/network steps are trust-gated `_tasks`
   with the preflight ordered first (FR-009). Tool versions pinned via `.mise.toml`.
 
-## 7. Contract-lint + test shape (every module — FR-021/FR-022)
+## 8. Contract-lint + test shape (every module — FR-021/FR-022)
 
 - Ships `template/{{ _copier_conf.answers_file }}.jinja`, README, CHANGELOG (with `- - -`),
   three-way registration parity. `_subdirectory: template`.
