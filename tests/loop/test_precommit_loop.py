@@ -160,11 +160,20 @@ def test_precommit_config_hook_blocks_injected_once(
         {"hook_manager": "pre-commit", "hook_blocks": [ruff_block]},
     )
 
-    text = (dest / ".pre-commit-config.yaml").read_text()
+    cfg_path = dest / ".pre-commit-config.yaml"
+    text = cfg_path.read_text()
+    # Validate YAML is well-formed after block injection
+    parsed = yaml.safe_load(text)
+    assert "repos" in parsed, "rendered config must be valid YAML with a repos key"
     assert "ruff-pre-commit" in text, "hook_blocks must be injected"
     # Must appear exactly once (no double-append)
     assert text.count("ruff-pre-commit") == 1, (
         f"hook_blocks injected more than once: count={text.count('ruff-pre-commit')}"
+    )
+    # Verify the injected block parsed correctly into the repos list
+    repo_urls = [r.get("repo", "") for r in parsed["repos"]]
+    assert any("ruff-pre-commit" in url for url in repo_urls), (
+        "ruff-pre-commit block must parse as a valid repos entry"
     )
 
 
