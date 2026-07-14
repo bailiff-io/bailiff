@@ -146,17 +146,18 @@ _tasks:
   # 3. Pin cdk_version in the language-appropriate manifest after init.
   #    Aligns aws-cdk-lib to the configured version so the project starts
   #    from a known-good pin (contract iac.md §clerk-mod-cdk). Init-only-guarded
-  #    via the same cdk.json sentinel: if init was skipped, the user already owns
-  #    the manifest and we must not overwrite their version.
+  #    via a committed sentinel (.clerk-cdk-pinned, §3 FR-012a): cdk.json already
+  #    exists by the time this step runs (created by step 2), so we use a
+  #    dedicated marker to distinguish first-init from reproduce.
   - command: >-
-      test -f "{{ placement_dir }}/cdk.json" &&
-      cd "{{ placement_dir }}" &&
-      npm install aws-cdk-lib@{{ cdk_version }} --save-exact --quiet 2>&1 || true
+      test -f "{{ placement_dir }}/.clerk-cdk-pinned" ||
+      (cd "{{ placement_dir }}" && npm install aws-cdk-lib@{{ cdk_version }} --save-exact --quiet 2>&1 &&
+      touch .clerk-cdk-pinned)
     when: "{{ cdk_language in ['typescript', 'go', 'java', 'csharp'] }}"
   - command: >-
-      test -f "{{ placement_dir }}/cdk.json" &&
-      cd "{{ placement_dir }}" &&
-      pip install --quiet "aws-cdk-lib=={{ cdk_version }}" 2>&1 || true
+      test -f "{{ placement_dir }}/.clerk-cdk-pinned" ||
+      (cd "{{ placement_dir }}" && pip install --quiet "aws-cdk-lib=={{ cdk_version }}" 2>&1 &&
+      touch .clerk-cdk-pinned)
     when: "{{ cdk_language == 'python' }}"
 
   # 4. Splice a cdk-nag import into the CDK app entrypoint after init.
@@ -187,8 +188,11 @@ _tasks:
     git add -f "{{ placement_dir }}/cdk.context.json" 2>/dev/null || true
 
   # 6. Optional cdk synth validation (credential-free, empty-stack sanity check).
-  #    Only runs when include_synth_validate=true (always opt-in, never on reproduce).
+  #    Init-only-guarded via the same .clerk-cdk-pinned sentinel (§3 FR-012a):
+  #    absent only on a genuinely fresh tree; committed after pin so reproduce
+  #    short-circuits before touching the network or spawning cdk.
   - command: >-
+      test -f "{{ placement_dir }}/.clerk-cdk-pinned" ||
       (cd "{{ placement_dir }}" && cdk synth --quiet 2>&1) ||
       { echo "clerk-mod-cdk: cdk synth failed — check your stack definition." >&2; exit 1; }
     when: "{{ include_synth_validate }}"

@@ -272,3 +272,68 @@ def test_cdk_preflight_has_language_runtime_checks() -> None:
             f"Missing language runtime preflight for cdk_language={lang!r}: "
             f"expected a when-gated 'command -v {binary}' task"
         )
+
+
+def test_cdk_pin_tasks_are_init_only_guarded() -> None:
+    """Pin tasks must use 'test -f ... .clerk-cdk-pinned ||' (not &&) so reproduce
+    over a populated tree never hits npm install / pip install (FR-012a / §3).
+
+    cdk.json exists after step 2 even on first init, so the pin sentinel is a
+    dedicated .clerk-cdk-pinned marker — not cdk.json itself.
+    """
+    module_dir = _MODULES_DIR / "clerk-mod-cdk"
+    data = yaml.safe_load((module_dir / "copier.yml").read_text()) or {}
+    tasks = data.get("_tasks", [])
+
+    # Collect tasks that contain the version-pin commands.
+    pin_tasks = [
+        t
+        for t in tasks
+        if isinstance(t, dict)
+        and ("npm install" in t.get("command", "") or "pip install" in t.get("command", ""))
+        and "cdk_version" in t.get("command", "")
+    ]
+    assert pin_tasks, "Expected at least one pin task with npm install or pip install + cdk_version"
+
+    for t in pin_tasks:
+        cmd = t.get("command", "")
+        assert ".clerk-cdk-pinned" in cmd, (
+            f"Pin task must guard on .clerk-cdk-pinned sentinel (FR-012a), got: {cmd!r}"
+        )
+        # Guard must be 'test -f <sentinel> ||' — NOT '&&' — so it skips on reproduce.
+        assert "test -f" in cmd and "||" in cmd, (
+            f"Pin task must use 'test -f .clerk-cdk-pinned ||' to be init-only, got: {cmd!r}"
+        )
+        # Sentinel must be written by the task so reproduce stays guarded after first run.
+        assert "touch .clerk-cdk-pinned" in cmd, (
+            f"Pin task must write the sentinel via 'touch .clerk-cdk-pinned', got: {cmd!r}"
+        )
+
+
+def test_cdk_synth_task_is_init_only_guarded() -> None:
+    """cdk synth task must be init-only-guarded so reproduce never re-shells (FR-012a / §3).
+
+    The comment 'Never runs on reproduce' is not sufficient — the guard must be
+    structural so it cannot be accidentally removed.
+    """
+    module_dir = _MODULES_DIR / "clerk-mod-cdk"
+    data = yaml.safe_load((module_dir / "copier.yml").read_text()) or {}
+    tasks = data.get("_tasks", [])
+
+    synth_tasks = [
+        t
+        for t in tasks
+        if isinstance(t, dict)
+        and "cdk synth" in t.get("command", "")
+        and "include_synth_validate" in t.get("when", "")
+    ]
+    assert synth_tasks, "Expected a cdk synth task gated on include_synth_validate"
+
+    for t in synth_tasks:
+        cmd = t.get("command", "")
+        assert ".clerk-cdk-pinned" in cmd, (
+            f"cdk synth task must guard on .clerk-cdk-pinned sentinel (FR-012a), got: {cmd!r}"
+        )
+        assert "test -f" in cmd and "||" in cmd, (
+            f"cdk synth task must use 'test -f .clerk-cdk-pinned ||' to be init-only, got: {cmd!r}"
+        )
