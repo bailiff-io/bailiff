@@ -51,3 +51,5 @@ path = "templates/clerk-mod-package-add"
 path = "templates/clerk-mod-terraform"
 [monorepo.packages.clerk-mod-cdk]
 path = "templates/clerk-mod-cdk"
+[monorepo.packages.clerk-mod-cloudformation]
+path = "templates/clerk-mod-cloudformation"
