@@ -319,6 +319,49 @@ def test_init_sentinel_created(clerk_mod_base: TemplateRepo, tmp_path: Path) -> 
 # ---------------------------------------------------------------------------
 
 
+# ---------------------------------------------------------------------------
+# extra_dirs: freeform append-only dirs (MANAGED lifecycle)
+# ---------------------------------------------------------------------------
+
+
+def test_init_extra_dirs_created(clerk_mod_base: TemplateRepo, tmp_path: Path) -> None:
+    """extra_dirs entries are created as .gitkeep dirs on init (MANAGED)."""
+    dest = tmp_path / "proj"
+    _init(
+        clerk_mod_base,
+        dest,
+        {
+            "project_name": "xdtest",
+            "license": "mit",
+            "extra_dirs": ["foo", "bar/baz"],
+        },
+    )
+    assert (dest / "foo" / ".gitkeep").is_file(), "extra_dirs 'foo' not created"
+    assert (dest / "bar" / "baz" / ".gitkeep").is_file(), "extra_dirs 'bar/baz' not created"
+
+
+def test_reproduce_extra_dirs_idempotent(clerk_mod_base: TemplateRepo, tmp_path: Path) -> None:
+    """extra_dirs .gitkeep files survive reproduce unchanged (MANAGED idempotent)."""
+    dest = tmp_path / "proj"
+    _init(
+        clerk_mod_base,
+        dest,
+        {
+            "project_name": "xdtest",
+            "license": "mit",
+            "extra_dirs": ["mydir"],
+        },
+    )
+    digest_before = _digest(dest / "mydir" / ".gitkeep")
+
+    runner.reproduce(str(dest))
+
+    assert (dest / "mydir" / ".gitkeep").is_file(), "extra_dirs dir missing after reproduce"
+    assert _digest(dest / "mydir" / ".gitkeep") == digest_before, (
+        "extra_dirs .gitkeep changed on reproduce"
+    )
+
+
 def test_reproduce_managed_dirs_byte_identical(
     clerk_mod_base: TemplateRepo, tmp_path: Path
 ) -> None:

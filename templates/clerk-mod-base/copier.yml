@@ -224,13 +224,25 @@ _tasks:
   - command: "git init --quiet"
     when: "{{ run_git_init }}"
 
-  # (5) Commit sentinel — marks this tree as init-done so reproduce tasks
+  # (5) extra_dirs — MANAGED: create each extra_dirs entry as an empty
+  #     .gitkeep directory on EVERY run (init + reproduce) so the managed
+  #     lifecycle guarantee holds (contract §Outputs). mkdir -p + touch is
+  #     idempotent: no-op on reproduce if the dir already exists.
+  - >-
+    {% if extra_dirs %}
+    for _d in {{ extra_dirs | map('string') | join(' ') }}; do
+    mkdir -p "$_d" && touch "$_d/.gitkeep"; done
+    {% else %}
+    true
+    {% endif %}
+
+  # (6) Commit sentinel — marks this tree as init-done so reproduce tasks
   #     (1) and (2) skip the heavy tool invocations (FR-012a). Written after
   #     all scaffold tasks so it only lands when they succeeded.
   - >-
     test -f .clerk-base-init-done || touch .clerk-base-init-done
 
-  # (6) Initial commit — the LAST base task, gated on initial_commit AND
+  # (7) Initial commit — the LAST base task, gated on initial_commit AND
   #     run_git_init. A fallback identity keeps the commit from failing in
   #     fresh/CI environments where user.name/email are unset.
   - command: >-

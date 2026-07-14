@@ -772,6 +772,14 @@ _BASE_STUB_TASKS = dedent(
         > LICENSE
       - command: "git init --quiet"
         when: "{{ run_git_init }}"
+      # extra_dirs MANAGED: idempotent mkdir on every run (init + reproduce).
+      - >-
+        {% if extra_dirs %}
+        for _d in {{ extra_dirs | map('string') | join(' ') }}; do
+        mkdir -p "$_d" && touch "$_d/.gitkeep"; done
+        {% else %}
+        true
+        {% endif %}
       # Sentinel: marks tree as init-done so gitnr stub skips on reproduce.
       - "test -f .clerk-base-init-done || touch .clerk-base-init-done"
       - command: >-
