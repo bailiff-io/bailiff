@@ -35,3 +35,5 @@ path = "templates/clerk-mod-ts"
 path = "templates/clerk-mod-go"
 [monorepo.packages.clerk-mod-rust]
 path = "templates/clerk-mod-rust"
+[monorepo.packages.clerk-mod-quality]
+path = "templates/clerk-mod-quality"
