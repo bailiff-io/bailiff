@@ -982,6 +982,20 @@ def clerk_mod_apm(tmp_path: Path) -> TemplateRepo:
     )
 
 
+@pytest.fixture
+def clerk_mod_rust(tmp_path: Path) -> TemplateRepo:
+    """The real clerk-mod-rust template as a hermetic repo (cargo new stubbed offline).
+
+    spec 011: renders the real rust surface; the `cargo new` task is replaced with a
+    deterministic offline stub that writes a marker so the suite stays hermetic
+    (Constitution VII). The managed rust-toolchain.toml and rustfmt.toml are copied
+    verbatim; only the task side-effects are stubbed.
+    """
+    return _copy_module_with_stub_tasks(
+        "clerk-mod-rust", tmp_path / "clerk-mod-rust", _CARGO_STUB_TASKS
+    )
+
+
 # Minimal STUB base layer (spec 007 Q5 / FR-007): provides the threaded
 # project_name for [stub_base, clerk-mod-apm] multi-layer tests WITHOUT a hard
 # dependency on clerk-mod-base. It is a plain identity template with a hermetic
