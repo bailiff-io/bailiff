@@ -203,21 +203,11 @@ Amendment specifics:
 `cli.py` imports `from clerk._preflight import ...` and third-party modules exactly as
 the script does now. The preflight-deferred dispatch pattern is preserved unchanged.
 
-**`scripts/clerk.py`**: reduced to the dual-mode shim + one delegation call:
-```python
-#!/usr/bin/env python3
-# /// script
-# requires-python = ">=3.11"
-# dependencies = ["copier>=9.16,<10", "pyyaml", "packaging", "tomli-w"]
-# ///
-# [dual-mode sys.path shim — unchanged, required for bare-checkout + APM-install cases]
-from clerk.cli import main
-import sys
-if __name__ == "__main__":
-    raise SystemExit(main())
-```
-End-state of this shim (permanent thin re-export vs deprecation once PyPI tool is the
-documented path) is **NEEDS CLARIFICATION** (FR-006) — does not block implementation.
+**`scripts/clerk.py`**: **DELETED** (decisions-ledger FR-006 resolution, 2026-07-15).
+Greenfield project with zero existing users — the PyPI CLI is the sole invocation path.
+Skill uses `uvx --from copier-clerk clerk`; repo contributors use `uv run clerk` (editable
+install). The PEP 723 header, dual-mode sys.path shim, and bare-checkout fallback are all
+eliminated.
 
 **`pyproject.toml`**:
 - Add `[project.scripts] clerk = "clerk.cli:main"`.
@@ -228,20 +218,16 @@ documented path) is **NEEDS CLARIFICATION** (FR-006) — does not block implemen
 
 **Single-source `__version__`** (`src/clerk/__init__.py`):
 ```python
-try:
-    from importlib.metadata import version, PackageNotFoundError
-    __version__ = version("copier-clerk")
-except Exception:
-    __version__ = "0.1.0"  # bare-checkout fallback
+from importlib.metadata import version as _version
+__version__: str = _version("copier-clerk")
 ```
-The literal `"0.1.0"` stays as the fallback so `scripts/clerk.py --version` works
-from a bare checkout without installed dist metadata (FR-003 requirement). The version
-drifts between releases: that is intentional and documented — the fallback is the
-developer-facing identity; the published wheel carries the real version.
+No bare-checkout fallback is needed: the script is deleted, so `__version__` is only
+accessed from an installed context (editable or wheel). If `importlib.metadata` raises
+(broken install), the ImportError surfaces cleanly — better than silently reporting a
+stale `"0.1.0"`.
 
-**Distribution name** (FR-005): `copier-clerk` (current `pyproject.toml` name) vs
-`clerk-scaffold` — **NEEDS CLARIFICATION** (maintainer decision). The console
-command is `clerk` either way. An explicit re-verification task runs immediately
+**Distribution name** (FR-005): `copier-clerk` (decisions-ledger resolution, 2026-07-15).
+The console command is `clerk`. An explicit re-verification task runs immediately
 before first publish regardless of which name is chosen.
 
 ### Work stream 3 — Capability tags
@@ -344,12 +330,15 @@ def _scan_init_collisions(
 ```
 
 Mechanism: for each layer in `plan`, render into an isolated `tempfile.mkdtemp()`
-directory using `run_copy(pretend=False)`. Collect the written file set (all files
-under the temp dir, relative paths, excluding `.copier-answers*.yml`). Raise
-`CollisionError` on the FIRST path seen in more than one layer's file set, naming the
-colliding path and both module full-ids. Temp dirs are cleaned up regardless of
-outcome. Reuses the same `run_copy` call already in `init_many`, same answers +
-trust + secrets pre-checks (the layer already passed those before reaching this scan).
+directory using `run_copy(pretend=False, skip_tasks=True)`. The `skip_tasks=True`
+parameter is a SAFETY REQUIREMENT: without it, task-bearing modules would execute their
+`_tasks` (including `gh repo create`, git init, network calls) during the scan — the
+scan must be side-effect-free. Collect the written file set (all files under the temp
+dir, relative paths, excluding `.copier-answers*.yml`). Raise `CollisionError` on the
+FIRST path seen in more than one layer's file set, naming the colliding path and both
+module full-ids. Temp dirs are cleaned up regardless of outcome. Reuses the same
+`run_copy` call shape already in `init_many`, same answers + trust + secrets pre-checks
+(the layer already passed those before reaching this scan).
 
 Rationale for full render vs. template-tree glob: a static glob of the template's
 source tree would miss Jinja conditionals in filenames (e.g.
@@ -498,29 +487,15 @@ rebuilds. This is the simplest correct behavior that ends the per-call re-clone 
 | `exclusive_capabilities: frozenset[str]` as a caller-supplied parameter to `init_many` | Group-infection requires catalog-wide view (ANY provider in the listing declares exclusive = whole capability is select-1), but `init_many` only receives the selected modules | Passing the full listing object to `init_many` would give it catalog awareness it doesn't otherwise need; a pre-computed frozenset is the minimal interface that correctly implements FR-008 semantics. |
 | Auto-build-once cache fallback | Users running `clerk catalog list` for the first time get results without needing to know about `refresh` | "Instruct user to run refresh" is the simpler behavior but creates a confusing first-run experience; auto-build-once with an stderr notice is minimal extra complexity for a materially better UX. |
 
-## NEEDS CLARIFICATION — open items (flagged, not resolved here)
+## NEEDS CLARIFICATION — RESOLVED (maintainer-ratified 2026-07-15)
 
-The following three items are explicitly open per the spec (FR-005, FR-006, FR-017).
-This plan proceeds without them; they are resolved at the maintainer-confirmation step
-before first publish. Task T018 (pre-publish confirmation) is the resolution gate.
+All three items are resolved in `decisions-ledger.md` (§ NEEDS CLARIFICATION resolutions).
+No task is blocked. Summary:
 
-1. **FR-005 — Distribution name**: `copier-clerk` (status quo, `uvx --from copier-clerk clerk`)
-   vs `clerk-scaffold` (closer to `uvx clerk-*` ergonomics). PyPI name `clerk` is taken
-   (unrelated `clerk 0.1.0`, verified 2026-07-14). The console command is `clerk` either way.
-   Impacts: the `uvx` invocation documented in SKILL.md and ADR-0008; the amended
-   Constitution I wording; the `importlib.metadata.version("copier-clerk")` call in
-   `__init__.py` (name changes if distribution name changes). Re-verify availability
-   immediately before first publish.
-
-2. **FR-006 — Bundled-script end-state**: `scripts/clerk.py` as a permanent thin re-export
-   shim (always callable as `./scripts/clerk.py` / `uv run scripts/clerk.py`) vs
-   deprecation once the PyPI tool is the documented path. Impacts: the amended Constitution
-   I wording; whether the PEP 723 inline deps in `scripts/clerk.py` stay maintained or are
-   flagged deprecated. T014 implements the thin-shim form unconditionally; the deprecation
-   annotation is the pending decision.
-
-3. **FR-017 — Stack presets**: in the first 013 release or deferred. If in scope:
-   `catalog.toml` gains an optional `[[presets]]` table per pointer; `validate_selection`
-   expands presets before the capability warning and collision scan; `clerk catalog list`
-   shows presets namespaced by pointer (`internal/python-service`). A named extension task
-   (T021, optional) captures this scope; all other tasks proceed regardless.
+1. **FR-005 — Distribution name**: `copier-clerk` (status quo). Re-verify availability
+   immediately before first publish (T018).
+2. **FR-006 — Bundled-script end-state**: DELETE `scripts/clerk.py`. The PyPI CLI is the
+   sole invocation path. Skill uses `uvx --from copier-clerk clerk`; repo contributors use
+   `uv run clerk`. T013/T014 updated accordingly.
+3. **FR-017 — Stack presets**: DEFERRED to a follow-up spec. T021 is out of scope for first
+   release. All other tasks proceed unchanged.

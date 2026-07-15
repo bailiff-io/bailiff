@@ -33,7 +33,7 @@ Unless a task explicitly states otherwise, "done" means:
 **Purpose**: Verify that the two hard gates — the decisions-ledger document and a green
 baseline — are in place. Nothing proceeds if either gate is red.
 
-- [ ] T001 Verify the FR-021 prerequisite: `test -f specs/013-engine-capabilities-pypi/decisions-ledger.md` MUST succeed. If the file is absent, STOP — author or vendor it before any other task begins. This is the documented "before the plan phase" gate.
+- [x] T001 Verify the FR-021 prerequisite: `test -f specs/013-engine-capabilities-pypi/decisions-ledger.md` MUST succeed. If the file is absent, STOP — author or vendor it before any other task begins. This is the documented "before the plan phase" gate.
 - [ ] T002 Establish a green baseline: run `pytest`, `mypy`, `ruff check`, `ruff format --check` on the unmodified tree; record the result so any regression introduced by subsequent tasks is immediately attributable. Fix pre-existing failures (if any) as a separate commit BEFORE starting Phase 2 work. Confirm `tests/loop/test_secrets_policy.py` is green.
 
 ---
@@ -106,10 +106,10 @@ but many are parallel-eligible; the dependency DAG is explicit below.
   Dependency: T005 (Discovery.provides), T006 (TemplateRecord.provides / exclusive_capabilities must be derivable from the listing).
 
 - [ ] T010 [US4] Add the init-time file-collision scan to `src/clerk/runner.py` `init_many()`:
-  (1) Implement `_scan_init_collisions(plan, dest, accumulated, answers_map, today)` per the plan's Work stream 4 design: for each layer in `plan`, render into `tempfile.mkdtemp(prefix="clerk-collision-")` using `run_copy` with the layer's answers (same trust+secrets pre-checks already done by the enclosing loop); collect all written files as relative paths (exclude `.copier-answers*.yml`); raise `CollisionError(path, [module_a, module_b])` on the first overlapping path.
+  (1) Implement `_scan_init_collisions(plan, dest, accumulated, answers_map, today)` per the plan's Work stream 4 design: for each layer in `plan`, render into `tempfile.mkdtemp(prefix="clerk-collision-")` using `run_copy` with the layer's answers and **`skip_tasks=True`** (SAFETY: prevents task execution — `gh repo create`, git init, network calls — during the side-effect-free scan); collect all written files as relative paths (exclude `.copier-answers*.yml`); raise `CollisionError(path, [module_a, module_b])` on the first overlapping path.
   (2) Call `_scan_init_collisions()` from the `check=False` branch ONLY, BEFORE the main render loop, AFTER the capability check. The check=True (preflight) branch uses pretend=True and does not invoke the scan.
   (3) FR-013 scope: collision scan is init-only; `reproduce`, `reproduce_many`, `update`, `update_many` unchanged.
-  (4) Write `tests/test_runner_collision.py`: use two in-repo fixture templates (tiny, offline-safe) that write a shared path; verify CollisionError is raised before any file appears in the real dest dir; verify dest is untouched; verify a disjoint pair passes silently.
+  (4) Write `tests/test_runner_collision.py`: use two in-repo fixture templates (tiny, offline-safe) that write a shared path; verify CollisionError is raised before any file appears in the real dest dir; verify dest is untouched; verify a disjoint pair passes silently. Additionally test that `skip_tasks=True` is being passed (monkeypatch `run_copy` and assert kwarg).
   Dependency: T004 (CollisionError), T006 (TemplateRecord has the right shape).
 
 ### Group E: Multi-catalog precedence (independent)
@@ -141,26 +141,24 @@ addition** (the gate permits publishing the console entry — the entry point it
 inert until published, so it can be code-reviewed on the branch before T003 lands, but
 must not appear in a release commit before T003 is in).
 
-- [ ] T013 [US3] Extract `src/clerk/cli.py` and wire the console entry point:
+- [ ] T013 [US3] Extract `src/clerk/cli.py`, delete the bundled script, wire the console entry point:
   (1) Create `src/clerk/cli.py`: copy `main()`, `_build_parser()`, `_run_preflight_or_exit()`, `_cmd_doctor()`, `_deferred_dispatch()`, `_real_dispatch()`, `_print_catalog_table()` from `scripts/clerk.py` verbatim, with three changes: remove the dual-mode `sys.path` shim block entirely; change `prog="clerk.py"` → `prog="clerk"`; remove `if __name__ == "__main__"` guard. All imports stay identical.
   (2) Update `_print_catalog_table` in `cli.py` to display capability tags (`provides`, `exclusive`) and shadow marks (`shadowed`) per the plan's Work stream 5 display format.
-  (3) Reduce `scripts/clerk.py` to the dual-mode shim + delegation: keep the full shim block (unchanged — required for bare-checkout + APM-install cases), replace the full `main()` body with `from clerk.cli import main`. The PEP 723 `# /// script` header and inline deps stay.
+  (3) **DELETE `scripts/clerk.py`** (decisions-ledger FR-006 resolution). Update SKILL.md to use `uvx --from copier-clerk clerk` as the invocation. Remove `scripts/clerk.py` from mypy's `files` configuration.
   (4) Add `[project.scripts] clerk = "clerk.cli:main"` to `pyproject.toml`.
-  (5) Ensure `mypy` is configured to check `src/clerk/cli.py` (add to `files` in `[tool.mypy]`); remove `scripts/clerk.py` from mypy's `files` if the shim is now too thin to type-check independently, or keep it if mypy handles the delegation cleanly.
+  (5) Ensure `mypy` is configured to check `src/clerk/cli.py` (add to `files` in `[tool.mypy]`).
   (6) Write `tests/test_cli_extraction.py`: import `from clerk.cli import main`; invoke each verb via `main(["--version"])`, `main(["doctor"])`, `main(["catalog", "--help"])` (no network required); verify exit code contract.
 
 - [ ] T014 [US3] Packaging correctness — dependency declaration and single-source version:
   (1) Add `"platformdirs"` to `[project.dependencies]` in `pyproject.toml`. Verify: `python -c "import importlib.metadata; print(importlib.metadata.requires('copier-clerk'))"` shows `platformdirs` in the declared deps (after `uv sync`).
   (2) Replace the literal `__version__ = "0.1.0"` in `src/clerk/__init__.py` with:
   ```python
-  try:
-      from importlib.metadata import version as _version, PackageNotFoundError as _PNF
-      __version__: str = _version("copier-clerk")
-  except Exception:
-      __version__ = "0.1.0"  # bare-checkout fallback
+  from importlib.metadata import version as _version
+  __version__: str = _version("copier-clerk")
   ```
-  The `"copier-clerk"` string must match `pyproject.toml`'s `name` exactly (will need
-  updating if FR-005 resolves to `clerk-scaffold` — noted, but not changed here).
+  No bare-checkout fallback needed: `scripts/clerk.py` is deleted, so `__version__` is only
+  accessed from an installed context (editable or wheel). If `importlib.metadata` raises, the
+  ImportError surfaces cleanly.
   (3) Write `tests/test_version.py`: `from clerk import __version__`; assert it is a non-empty string and does not raise; assert `clerk --version` output (via `main(["--version"])`) contains the same string.
 
 ---
@@ -202,11 +200,11 @@ triggers it. Depends on Phase 5 (verified green build).
 **Purpose**: Irreversible public actions. NOTHING in this phase runs without explicit
 maintainer confirmation at each step. These tasks are executed BY or WITH the maintainer.
 
-- [ ] T018 [RECONFIRM-GATED] Pre-publish confirmation: resolve the three NEEDS CLARIFICATION items before proceeding:
-  (1) FR-005 — Distribution name: confirm `copier-clerk` or `clerk-scaffold`. Re-verify PyPI availability at this moment (squatting window since 2026-07-14 verification). Update `pyproject.toml` `name` if needed; update the `importlib.metadata.version(...)` call in `__init__.py` to match; update SKILL.md uvx invocation documentation; update ADR-0008.
-  (2) FR-006 — Bundled-script end-state: decide permanent shim vs deprecation. Update `scripts/clerk.py` comment and amended Constitution I wording accordingly.
-  (3) FR-017 — Stack presets: decide in or deferred. If in scope, implement T021 (optional task) before this step.
-  Record all three decisions in a commit to `decisions-ledger.md`.
+- [ ] T018 [RECONFIRM-GATED] Pre-publish confirmation (NC items already resolved in decisions-ledger 2026-07-15):
+  (1) FR-005 — Re-verify `copier-clerk` PyPI availability at this moment (squatting window since 2026-07-14). Confirm `pyproject.toml` name, `importlib.metadata.version(...)` call, SKILL.md uvx invocation, and ADR-0008 all reference `copier-clerk`.
+  (2) FR-006 — Confirm `scripts/clerk.py` is deleted and SKILL.md uses `uvx --from copier-clerk clerk`.
+  (3) FR-017 — Confirm presets remain deferred (or scope-gate T021 if the decision has been reversed since 2026-07-15).
+  Record confirmation in a commit to `decisions-ledger.md`.
 
 - [ ] T019 [RECONFIRM-GATED] Version-bump commit: bump `pyproject.toml` `version` from `"0.1.0"` to the release version (e.g. `"0.2.0"` or `"1.0.0"` — maintainer picks the semantic); commit with message `chore: release v<version> (first PyPI publish)`; tag `v<version>`. Push tag — this triggers the T017 publish CI job.
 
