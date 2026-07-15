@@ -354,6 +354,69 @@ def test_monorepo_affected_reproduce_byte_identical(
 
 
 # ---------------------------------------------------------------------------
+# spec 012 T002 (FR-010a): monorepo_tool=moon branch
+# ---------------------------------------------------------------------------
+
+
+def test_monorepo_affected_moon(bailiff_mod_ci_gitlab: TemplateRepo, tmp_path: Path) -> None:
+    """monorepo-affected + moon: single moon ci job replaces the trigger fan-out."""
+    answers = {
+        **_BASE_ANSWERS,
+        "ci_model": "monorepo-affected",
+        "monorepo_tool": "moon",
+        "monorepo_packages": ["packages/api", "packages/web"],
+    }
+    parsed = _init(bailiff_mod_ci_gitlab, tmp_path / "proj", answers)
+
+    assert "workflow" in parsed
+    # moon ci job with the affected-detection invocation
+    assert "moon-ci" in parsed, "moon branch must render a moon-ci job"
+    assert "moon ci" in parsed["moon-ci"]["script"]
+    # full history + base ref for moon's diff
+    variables = parsed["moon-ci"].get("variables", {})
+    assert variables.get("GIT_DEPTH") == 0
+    assert variables.get("MOON_BASE") == "main"
+    # No parent-child trigger fan-out on the moon branch
+    trigger_jobs = [k for k in parsed if str(k).startswith("trigger:")]
+    assert not trigger_jobs, f"moon branch must not render trigger jobs: {trigger_jobs}"
+
+
+def test_moon_absent_in_other_models(bailiff_mod_ci_gitlab: TemplateRepo, tmp_path: Path) -> None:
+    """moon invocation appears ONLY on monorepo-affected + monorepo_tool=moon."""
+    for model in ["minimal", "standard", "optimized", "merge-queue"]:
+        answers = {**_BASE_ANSWERS, "ci_model": model, "monorepo_tool": "moon"}
+        _init(bailiff_mod_ci_gitlab, tmp_path / f"proj-{model}", answers)
+        text = (tmp_path / f"proj-{model}" / ".gitlab-ci.yml").read_text()
+        assert "moon ci" not in text, f"moon invocation leaked into {model} model"
+    # monorepo-affected with a different tool: trigger fan-out, no moon.
+    answers = {
+        **_BASE_ANSWERS,
+        "ci_model": "monorepo-affected",
+        "monorepo_tool": "turborepo",
+        "monorepo_packages": ["packages/api"],
+    }
+    parsed = _init(bailiff_mod_ci_gitlab, tmp_path / "proj-turbo", answers)
+    text = (tmp_path / "proj-turbo" / ".gitlab-ci.yml").read_text()
+    assert "moon ci" not in text
+    assert any(str(k).startswith("trigger:") for k in parsed)
+
+
+def test_monorepo_affected_moon_reproduce(
+    bailiff_mod_ci_gitlab: TemplateRepo, tmp_path: Path
+) -> None:
+    """moon branch MANAGED: reproduce byte-identical."""
+    dest = tmp_path / "proj"
+    answers = {**_BASE_ANSWERS, "ci_model": "monorepo-affected", "monorepo_tool": "moon"}
+    trust.add_trust(bailiff_mod_ci_gitlab.url)
+    spec = runner.RunSpec(source=bailiff_mod_ci_gitlab.url, dest=str(dest), answers=answers)
+    runner.init(spec, today="2026-07-13")
+
+    before = _digest(dest / ".gitlab-ci.yml")
+    runner.reproduce(str(dest))
+    assert _digest(dest / ".gitlab-ci.yml") == before
+
+
+# ---------------------------------------------------------------------------
 # Model: merge-queue
 # ---------------------------------------------------------------------------
 

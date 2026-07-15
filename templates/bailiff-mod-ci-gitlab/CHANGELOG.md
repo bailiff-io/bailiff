@@ -7,6 +7,11 @@ cocogitto fan-out (ADR-0006); do not hand-edit released sections.
 
 ### Added
 
+- FR-010a (spec 012): `monorepo_tool` accepts `moon`; `monorepo-affected` model
+  renders `moon ci` as the affected-detection when `monorepo_tool=moon`.
+
+### Added
+
 - Initial implementation of the GitLab CI module (spec 011 T017): renders a
   `.gitlab-ci.yml` managed file from 5 ci_models (minimal, standard, optimized,
   monorepo-affected, merge-queue) with full grill-fix compliance:

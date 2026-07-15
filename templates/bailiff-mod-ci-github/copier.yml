@@ -73,7 +73,7 @@ ci_lang_facts:
 monorepo_tool:
   type: str
   default: none
-  help: "Monorepo tool (turborepo, nx, pnpm-workspace) for monorepo-affected model. 'none' = not a monorepo."
+  help: "Monorepo tool (turborepo, nx, pnpm-workspace, moon) for monorepo-affected model. 'none' = not a monorepo."
 
 # --- Repository context (threaded from base) ---------------------------------
 

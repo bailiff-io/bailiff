@@ -15,7 +15,7 @@ render (ZERO `_tasks`), sized from agent-frozen `--data`. References [_cross-cut
 | ci_required_gate | bool | true | suppressed automatically on minimal |
 | ci_languages | yaml | [] | AGENT-FROZEN — active languages |
 | ci_lang_facts | yaml | {} | AGENT-FROZEN — per-lang manager/version/image/test cmd |
-| monorepo_tool | str | none / none | turborepo/nx/pnpm-workspace for monorepo-affected |
+| monorepo_tool | str | none / none | turborepo/nx/pnpm-workspace/moon for monorepo-affected (moon added by FR-010a, spec 012: renders `moon ci` as the affected-detection) |
 | default_branch | str | "{{ default_branch }}" | literal ref |
 | run_after | yaml when:false | [bailiff-mod-base] | sizing via --data, not run-order |
 

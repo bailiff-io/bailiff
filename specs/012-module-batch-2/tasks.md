@@ -67,7 +67,7 @@ Every module task implicitly includes ALL of the following before it is consider
 - [x] **T001-template** *(already done — commit a68295e)* Remove `dependabot.yml` from
   `templates/bailiff-mod-base/` and assert its absence in loop tests. Complete.
 
-- [ ] **T001-annotate** [US3] Annotate the 011 spec artifacts to record FR-009 as complete
+- [x] **T001-annotate** [US3] Annotate the 011 spec artifacts to record FR-009 as complete
   (spec annotations only, no template code): (a) amend
   `specs/011-deopinionated-module-family/contracts/bailiff-mod-base.md` — strike the
   `dependabot.yml` row from the `github_host` question output list and note "moved to
