@@ -1,16 +1,66 @@
 # copier.yml — bailiff-mod-mkdocs
 #
-# Answers-file key — MUST match the shipped .jinja file (FR-016).
-_answers_file: "{{ _copier_conf.answers_file }}.jinja"
+# mkdocs-material docs site over base's docs/ tree (spec 012 / FR-011).
+# Pure render — ZERO _tasks, no build/deploy at scaffold time.
+#
+# Lifecycles:
+#   MANAGED: mkdocs.yml (byte-identical on reproduce).
+#   SEED-ONCE (_skip_if_exists): docs/index.md — project-owned after init.
+#
+# Pin strategy (ledger, FR-011 resolution): mkdocs + mkdocs-material pin via
+# the `mise_tools` frozen union REGARDLESS of bailiff-mod-python co-selection —
+# every non-runtime tool pins through mise (one mental model, no conditional
+# pin behavior). This module contributes the tokens; base writes .mise.toml.
+#
+# Docs engines are per-engine sibling splits; vitepress is a later sibling,
+# NOT an axis here.
+#
+# Contract: ships template/{{ _copier_conf.answers_file }}.jinja; NO secret:
+# questions; no jinja2_time; edges are when:false hidden answers.
 
-# --- Questions ---------------------------------------------------------------
-# Replace these placeholders with real questions for this module.
+# --- Threaded identity (FR-010 pattern) ---------------------------------------
 
 project_name:
   type: str
-  help: "Name of the generated project."
+  default: "{{ project_name }}"
+  help: "The project's name (threaded from bailiff-mod-base; mkdocs site_name)."
 
 description:
   type: str
   default: ""
-  help: "One-line description of the project."
+  help: "One-line site description (mkdocs site_description; threaded from base)."
+
+# --- Frozen union consumed (declared for threading; NOT written here) ---------
+
+mise_tools:
+  type: yaml
+  default: []
+  help: "mise [tools] union (injected by phase-1 agent; base writes .mise.toml). mkdocs contributes mkdocs + mkdocs-material tokens."
+
+# --- Dependency edges (when:false hidden answers — FR-004) -------------------
+
+run_after:
+  type: yaml
+  default:
+    - bailiff-mod-base
+  when: false
+
+depends_on:
+  type: yaml
+  default: []
+  when: false
+
+run_before:
+  type: yaml
+  default: []
+  when: false
+
+# Template body lives under template/ — copier renders only that subtree.
+_subdirectory: template
+
+# docs/index.md is SEED-ONCE: scaffolded once, then project-owned. A re-run
+# never clobbers project edits.
+_skip_if_exists:
+  - docs/index.md
+
+# No _tasks: pure render; no mkdocs build / site deploy at scaffold time (FR-011).

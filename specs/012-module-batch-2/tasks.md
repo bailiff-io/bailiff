@@ -174,7 +174,7 @@ Every module task implicitly includes ALL of the following before it is consider
   confirm CI can consume `monorepo_tool=moon`; single-package behavior tested per NC.
   Acceptance: SC-004, US4 AS1-3.
 
-- [ ] **T008** [US5] NEW module `bailiff-mod-mkdocs` per FR-011; loop test
+- [x] **T008** [US5] NEW module `bailiff-mod-mkdocs` per FR-011; loop test
   `tests/loop/test_mkdocs_loop.py`.
   [NEEDS CLARIFICATION FR-011 — mkdocs-material pin strategy. Conservative default:
   mise_tools contribution.]

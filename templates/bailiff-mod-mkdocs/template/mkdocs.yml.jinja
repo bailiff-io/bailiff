@@ -1,0 +1,12 @@
+# mkdocs.yml — managed by bailiff-mod-mkdocs; do not edit by hand.
+site_name: "{{ project_name | default('Documentation', true) }}"
+{% if description %}
+site_description: "{{ description }}"
+{% endif %}
+docs_dir: docs
+
+theme:
+  name: material
+
+nav:
+  - Home: index.md
