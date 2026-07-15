@@ -114,7 +114,7 @@ Every module task implicitly includes ALL of the following before it is consider
   minimal valid file; byte-assert managed render on init AND reproduce.
   Acceptance: SC-001, US1 AS1-2.
 
-- [ ] **T004** [US9] NEW module `bailiff-mod-editorconfig` per FR-006; loop test
+- [x] **T004** [US9] NEW module `bailiff-mod-editorconfig` per FR-006; loop test
   `tests/loop/test_editorconfig_loop.py`.
   Requirements: (1) Zero `_tasks` — pure managed render. (2) Consumes frozen language facts
   via threading: `ts_linter`, `ruff_line_length` (default `"88"`), Python linter identity.
