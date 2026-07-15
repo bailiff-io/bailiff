@@ -1,4 +1,4 @@
-# Implementation Plan: clerk engine — PyPI packaging, multi-catalog, listing cache, collision check, capability tags (spec 013)
+# Implementation Plan: bailiff engine — PyPI packaging, multi-catalog, listing cache, collision check, capability tags (spec 013)
 
 **Branch**: `013-engine-capabilities-pypi` (spec dir `013-engine-capabilities-pypi`) |
 **Date**: 2026-07-14 | **Spec**: [spec.md](./spec.md)
@@ -13,31 +13,31 @@ per FR-018) and ADRs 0001–0007 + the new **ADR-0008** (PyPI packaging + reposi
 Deliver five interrelated engine work streams:
 
 1. **Constitution amendment** (v2.3.0 → v3.0.0 MAJOR): lift the current prohibition in
-   Principle I on `[project.scripts] clerk` and `uvx clerk PyPI tool`; scope C-11 in
+   Principle I on `[project.scripts] bailiff` and `uvx bailiff PyPI tool`; scope C-11 in
    the roadmap to module-authoring specs; write ADR-0008 recording the repositioning
-   (clerk = the tool; clerk-mod-* = the modules). This is a MAJOR version bump because
+   (bailiff = the tool; bailiff-mod-* = the modules). This is a MAJOR version bump because
    Principle I is being redefined, not materially expanded — the same class as v1.0.0 →
    v2.0.0. **Release gate for all PyPI publish** (FR-018).
 
-2. **CLI packaging**: extract the verb dispatch from `scripts/clerk.py` into
-   `src/clerk/cli.py` and add `[project.scripts] clerk = "clerk.cli:main"` to
+2. **CLI packaging**: extract the verb dispatch from `scripts/bailiff.py` into
+   `src/bailiff/cli.py` and add `[project.scripts] bailiff = "bailiff.cli:main"` to
    `pyproject.toml`; declare `platformdirs` as an explicit runtime dependency; single-
-   source `clerk.__version__` via `importlib.metadata` with a bare-checkout fallback.
+   source `bailiff.__version__` via `importlib.metadata` with a bare-checkout fallback.
 
 3. **Capability tags** (informational, warn-only): static YAML parsing of
-   `_clerk_provides` and `_clerk_exclusive` in `discovery._describe()`, threaded through
+   `_bailiff_provides` and `_bailiff_exclusive` in `discovery._describe()`, threaded through
    `Discovery` → `TemplateRecord` → `FullListing`; `generate_catalog.py` emits the
    fields; `check_modules.py` lints well-formedness + first-party mixed-group; the
    `init_many()` capability-conflict warning (group-infection semantics, incremental-add
    path).
 
 4. **Init-time file-collision check**: pre-render overlap scan in `init_many()` before
-   any real write; new `CollisionError` in the `ClerkError` hierarchy; renders each
+   any real write; new `CollisionError` in the `BailiffError` hierarchy; renders each
    selected layer into an isolated temp dir, compares file sets, hard-stops on overlap.
 
 5. **Multi-catalog precedence + listing cache**: first-listed-wins bare-name resolution
    in `validate_selection()` (replacing the ambiguity `CatalogError`); `shadowed` field
-   on `TemplateRecord`; persisted listing under the platformdirs cache dir; `clerk
+   on `TemplateRecord`; persisted listing under the platformdirs cache dir; `bailiff
    catalog refresh` writes the cache; `list` and `validate` read the cache.
 
 Stack presets (FR-017) are OPTIONAL SCOPE: flagged in the NEEDS CLARIFICATION section
@@ -46,8 +46,8 @@ blocking any other work stream.
 
 ## Technical Context
 
-**Language/Version**: Python 3.11+. Engine code in `src/clerk/`. No new third-party
-libraries beyond `platformdirs` (already imported in `src/clerk/`, now made explicit);
+**Language/Version**: Python 3.11+. Engine code in `src/bailiff/`. No new third-party
+libraries beyond `platformdirs` (already imported in `src/bailiff/`, now made explicit);
 the collision-check approach (isolated temp-dir renders) reuses `run_copy` which is
 already in-tree.
 
@@ -57,7 +57,7 @@ declared explicit runtime dep — was transitive via copier); `packaging>=26.2`;
 `hatchling` (unchanged).
 
 **Storage**: persisted listing cache at
-`user_cache_path("clerk", appauthor=False) / "listing.json"` (platformdirs). Nothing is
+`user_cache_path("bailiff", appauthor=False) / "listing.json"` (platformdirs). Nothing is
 written into generated project trees.
 
 **Testing**: existing `pytest` suite under `tests/`; new unit tests for each new
@@ -66,13 +66,13 @@ uses `run_copy` into isolated temp dirs — the test harness stubs the `run_copy
 (or uses an in-repo fixture template) so the suite stays hermetic and offline. SC-003
 is the regression gate: existing loop tests MUST pass unmodified.
 
-**Target Platform**: macOS/Linux/WSL; the packaged `clerk` console command works from any
+**Target Platform**: macOS/Linux/WSL; the packaged `bailiff` console command works from any
 Python environment where the wheel is installed (system Python, venv, `uvx` ephemeral env).
 
 **Constraints**:
 - `runner.py` stays copier-public-API-only and subprocess-free (FR-020 / Constitution IV).
 - Discovery never executes template code (capability parsing is static YAML reading,
-  extending the existing `_clerk_provides` pattern in `_describe()` — same safety class
+  extending the existing `_bailiff_provides` pattern in `_describe()` — same safety class
   as `_tasks` / `_migrations` reading).
 - `reproduce`, `reproduce_many`, `update`, `update_many` MUST NOT consult capability
   data or the collision scan (FR-012 / SC-008).
@@ -82,7 +82,7 @@ Python environment where the wheel is installed (system Python, venv, `uvx` ephe
 - MI-1 stays out of scope; nothing here may preclude it (FR-022).
 
 **Scale/Scope**: ~12 source files touched (errors.py, discovery.py, catalog.py,
-cli.py NEW, \_\_init\_\_.py, runner.py, scripts/clerk.py, generate\_catalog.py,
+cli.py NEW, \_\_init\_\_.py, runner.py, scripts/bailiff.py, generate\_catalog.py,
 check\_modules.py, pyproject.toml, release CI workflow); ~8 new test files; 2 governance
 documents (constitution.md, ADR-0008); 1 roadmap.md amendment.
 
@@ -93,12 +93,12 @@ documents (constitution.md, ADR-0008); 1 roadmap.md amendment.
 
 | Principle | Verdict | How spec 013 satisfies it |
 |---|---|---|
-| **I — clerk Is Skills + Templates + Minimal Glue (C-11)** | PASS (amended) | This spec IS the governed exception: FR-018 amends Principle I to permit the published CLI. C-11 scoped to module-authoring specs in the same amendment. CLI code belongs in `src/clerk/` (the glue bucket, not a new architectural layer). |
+| **I — bailiff Is Skills + Templates + Minimal Glue (C-11)** | PASS (amended) | This spec IS the governed exception: FR-018 amends Principle I to permit the published CLI. C-11 scoped to module-authoring specs in the same amendment. CLI code belongs in `src/bailiff/` (the glue bucket, not a new architectural layer). |
 | **II — Two-Phase; the Skill Conducts, Deterministic Helpers Execute** | PASS | Capability warnings, collision checks, and cache reads are all phase-2 mechanics in `init_many()` and `catalog.*`. No agent involvement. |
 | **III — Reproduce Is Faithful and Agent-Free** | PASS | `reproduce`, `reproduce_many`, `update`, `update_many` are untouched. FR-012 explicitly prohibits capability/collision logic on those paths. |
 | **IV — Prefer copier's CLI + Static Config** | PASS | Collision scan uses `run_copy` (public API). Capability parsing is static YAML reading (same safety class as `has_tasks`, `has_migrations`). No Template/Worker introduced. |
 | **V — Determinism via Pinning; Trust by Source** | PASS | Cache is user-controlled (refresh). Capability declarations are statically parsed. Trust never written in deterministic core. |
-| **VI — Template-Author Contract** | PASS | `_clerk_provides`/`_clerk_exclusive` are optional informational keys, never enforced semantically. No new required keys. |
+| **VI — Template-Author Contract** | PASS | `_bailiff_provides`/`_bailiff_exclusive` are optional informational keys, never enforced semantically. No new required keys. |
 | **VII — Hardening Is a Per-Step Mandate** | PASS | Every new function (capability parsing, CollisionError, collision scan, precedence warning, cache read/write, cli.py) ships with tests. SC-003 gate: existing loop tests pass unmodified. |
 | **VIII — Documented, Dry-Run-Validated Handoff** | PASS (unlocked) | FR-019: Constitution VIII's own unlock clause is triggered — the packaged CLI, the collision check, and the capability-tag warning are genuine non-agent consumers of the handoff. Capability fields in catalog artifacts and `catalog list --json` are sanctioned. |
 
@@ -126,18 +126,18 @@ docs/decisions/0008-pypi-packaging-repositioning.md  # NEW ADR
 
 ```text
 # Engine
-src/clerk/__init__.py            # single-source __version__ via importlib.metadata
-src/clerk/cli.py                 # NEW: extracted dispatch from scripts/clerk.py
-src/clerk/errors.py              # add CollisionError
-src/clerk/discovery.py           # _describe() reads _clerk_provides/_clerk_exclusive; Discovery gains provides + exclusive
-src/clerk/catalog.py             # TemplateRecord + listing extension; cache funcs; precedence fix
-src/clerk/runner.py              # init_many: capability warning + collision scan (pre-render); NO change to reproduce/update paths
+src/bailiff/__init__.py            # single-source __version__ via importlib.metadata
+src/bailiff/cli.py                 # NEW: extracted dispatch from scripts/bailiff.py
+src/bailiff/errors.py              # add CollisionError
+src/bailiff/discovery.py           # _describe() reads _bailiff_provides/_bailiff_exclusive; Discovery gains provides + exclusive
+src/bailiff/catalog.py             # TemplateRecord + listing extension; cache funcs; precedence fix
+src/bailiff/runner.py              # init_many: capability warning + collision scan (pre-render); NO change to reproduce/update paths
 
 # Packaging
 pyproject.toml                   # [project.scripts]; platformdirs dep; version stays 0.1.0 until publish
 
 # Bundled script
-scripts/clerk.py                 # thin shim → clerk.cli.main() (end-state: NEEDS CLARIFICATION — see below)
+scripts/bailiff.py                 # thin shim → bailiff.cli.main() (end-state: NEEDS CLARIFICATION — see below)
 
 # CI tooling
 scripts/generate_catalog.py      # emit provides + exclusive fields
@@ -165,85 +165,85 @@ tests/
 
 ### Work stream 1 — Constitution amendment (FR-018)
 
-Constitution I currently reads: "there is no `[project.scripts] clerk` console entry,
-no `uvx clerk` PyPI tool." This is the explicit prohibition spec 013 overrides.
+Constitution I currently reads: "there is no `[project.scripts] bailiff` console entry,
+no `uvx bailiff` PyPI tool." This is the explicit prohibition spec 013 overrides.
 
 Amendment specifics:
 - **Principle I rewritten**: replaces the three-item glue enumeration with one that
   names the packaged CLI as the THIRD form of glue alongside skill + templates — "the
   tool" repositioning. The "skills + templates + minimal glue" title stays; the text
   gains a paragraph permitting and scoping the published CLI. The bundled
-  `scripts/clerk.py` invocation path is retained (its end-state is NEEDS
+  `scripts/bailiff.py` invocation path is retained (its end-state is NEEDS
   CLARIFICATION — see below) with a forward reference to FR-006 / ADR-0008.
 - **C-11 scoped**: the roadmap's "New glue is justified only by a capability copier
   lacks" constraint is retained but scoped to module-authoring specs; spec 013 is the
   governed engine exception.
 - **ADR-0008**: records the repositioning decision, the tradeoff (ergonomics of `uvx
-  <dist-name> clerk` vs prior skill-only model), the distribution-name situation
-  (`clerk` taken on PyPI — NEEDS CLARIFICATION on final choice), the FR-019
+  <dist-name> bailiff` vs prior skill-only model), the distribution-name situation
+  (`bailiff` taken on PyPI — NEEDS CLARIFICATION on final choice), the FR-019
   Constitution VIII unlock scope, and the binding "11-zero decision" that capability
   declarations warn, never block.
 - **Sync-impact report** embedded in constitution.md header comments (established
   pattern from v2.1.0, v2.3.0 amendments): bumps v2.3.0 → v3.0.0, MAJOR rationale,
   reconciled files list.
-- **Retroactive 011 honor**: spec 011's FR-011 gate ("no new `src/clerk/` code") stays
+- **Retroactive 011 honor**: spec 011's FR-011 gate ("no new `src/bailiff/` code") stays
   textually intact for its own scope; ADR-0008 records that 013 is the governed
   exception not retroactively applicable to 011's deliverables.
 
 ### Work stream 2 — CLI packaging
 
-**`src/clerk/cli.py`**: extract the full `main()` function and all inner helpers
+**`src/bailiff/cli.py`**: extract the full `main()` function and all inner helpers
 (`_build_parser`, `_run_preflight_or_exit`, `_cmd_doctor`, `_deferred_dispatch`,
-`_real_dispatch`, `_print_catalog_table`) from `scripts/clerk.py` verbatim, minus:
+`_real_dispatch`, `_print_catalog_table`) from `scripts/bailiff.py` verbatim, minus:
   - The dual-mode `sys.path` shim block (PEP 723 header + `_here`/`_vendored_pkg`
     path logic) — not needed in a proper package module.
   - The `if __name__ == "__main__": raise SystemExit(main())` guard.
-  - The prog string changes from `"clerk.py"` to `"clerk"`.
+  - The prog string changes from `"bailiff.py"` to `"bailiff"`.
 
-`cli.py` imports `from clerk._preflight import ...` and third-party modules exactly as
+`cli.py` imports `from bailiff._preflight import ...` and third-party modules exactly as
 the script does now. The preflight-deferred dispatch pattern is preserved unchanged.
 
-**`scripts/clerk.py`**: **DELETED** (decisions-ledger FR-006 resolution, 2026-07-15).
+**`scripts/bailiff.py`**: **DELETED** (decisions-ledger FR-006 resolution, 2026-07-15).
 Greenfield project with zero existing users — the PyPI CLI is the sole invocation path.
-Skill uses `uvx --from copier-clerk clerk`; repo contributors use `uv run clerk` (editable
+Skill uses `uvx bailiff`; repo contributors use `uv run bailiff` (editable
 install). The PEP 723 header, dual-mode sys.path shim, and bare-checkout fallback are all
 eliminated.
 
 **`pyproject.toml`**:
-- Add `[project.scripts] clerk = "clerk.cli:main"`.
+- Add `[project.scripts] bailiff = "bailiff.cli:main"`.
 - Add `"platformdirs"` to `[project.dependencies]` (currently only transitive via
   copier; directly imported in `catalog.py:37`, `trust.py`, `defaults.py`).
 - `version` stays at `"0.1.0"` until the first publish; the pre-publish version-bump
   is a separate maintainer-gated step.
 
-**Single-source `__version__`** (`src/clerk/__init__.py`):
+**Single-source `__version__`** (`src/bailiff/__init__.py`):
 ```python
 from importlib.metadata import version as _version
-__version__: str = _version("copier-clerk")
+__version__: str = _version("bailiff")
 ```
 No bare-checkout fallback is needed: the script is deleted, so `__version__` is only
 accessed from an installed context (editable or wheel). If `importlib.metadata` raises
 (broken install), the ImportError surfaces cleanly — better than silently reporting a
 stale `"0.1.0"`.
 
-**Distribution name** (FR-005): `copier-clerk` (decisions-ledger resolution, 2026-07-15).
-The console command is `clerk`. An explicit re-verification task runs immediately
+**Distribution name** (FR-005): `bailiff` (decisions-ledger resolution, 2026-07-15).
+The console command is `bailiff`. An explicit re-verification task runs immediately
 before first publish regardless of which name is chosen.
 
 ### Work stream 3 — Capability tags
 
-**`discovery._describe()` extension** (`src/clerk/discovery.py:157`):
-Read `_clerk_provides` and `_clerk_exclusive` from the raw YAML dict before
+**`discovery._describe()` extension** (`src/bailiff/discovery.py:157`):
+Read `_bailiff_provides` and `_bailiff_exclusive` from the raw YAML dict before
 the existing key-iteration loop (same pattern as `has_tasks = bool(raw.get("_tasks"))`):
 ```python
-provides: list[str] = list(raw.get("_clerk_provides") or [])
-exclusive: bool = bool(raw.get("_clerk_exclusive", False))
+provides: list[str] = list(raw.get("_bailiff_provides") or [])
+exclusive: bool = bool(raw.get("_bailiff_exclusive", False))
 ```
 Malformed values on third-party catalogs (non-list, non-bool, non-kebab-case entries)
 are warned and treated as absent — never hard failures here. Add `provides` and
 `exclusive` fields to the `Discovery` dataclass.
 
-**`TemplateRecord` extension** (`src/clerk/catalog.py:275`):
+**`TemplateRecord` extension** (`src/bailiff/catalog.py:275`):
 ```python
 provides: list[str] = field(default_factory=list)
 exclusive: bool = False
@@ -256,20 +256,20 @@ see work stream 5 for details).
 
 `FullListing.to_dict()` extended to include `provides`, `exclusive`, `shadowed` per template.
 
-**`generate_catalog.py`**: reads `_clerk_provides` and `_clerk_exclusive` from
+**`generate_catalog.py`**: reads `_bailiff_provides` and `_bailiff_exclusive` from
 each module's `copier.yml` (static read, already done for name/description) and emits
 them in the module's `catalog.json` entry alongside the existing fields.
 
 **`check_modules.py`** — two new lint rules for first-party modules only:
-1. `_clerk_provides` must be a list of strings matching `^[a-z][a-z0-9-]*$`
-   (kebab-case); `_clerk_exclusive` must be a boolean. Any violation → exit 1, naming
+1. `_bailiff_provides` must be a list of strings matching `^[a-z][a-z0-9-]*$`
+   (kebab-case); `_bailiff_exclusive` must be a boolean. Any violation → exit 1, naming
    the module and the malformed value.
 2. Mixed exclusivity within one first-party capability group: if N≥2 first-party
-   modules share a capability and only a strict subset declares `_clerk_exclusive: true`,
+   modules share a capability and only a strict subset declares `_bailiff_exclusive: true`,
    that group is flagged as an author-time error. All siblings of a pick-one family
    must declare it consistently.
 
-**Capability conflict warning** (`src/clerk/runner.py` — `init_many`):
+**Capability conflict warning** (`src/bailiff/runner.py` — `init_many`):
 A new `_check_capability_conflicts()` function, called from `init_many()` AFTER
 `layer_plan()` and BEFORE the render loop:
 
@@ -304,9 +304,9 @@ do NOT call `_check_capability_conflicts` — these functions are not touched.
 
 ### Work stream 4 — Init-time file-collision check
 
-**`CollisionError`** added to `src/clerk/errors.py`:
+**`CollisionError`** added to `src/bailiff/errors.py`:
 ```python
-class CollisionError(ClerkError):
+class CollisionError(BailiffError):
     """Two selected modules would write the same managed destination path."""
     def __init__(self, path: str, modules: list[str]) -> None:
         self.path = path
@@ -354,7 +354,7 @@ The check branch reports answer errors; the real-run branch checks file collisio
 
 ### Work stream 5 — Multi-catalog precedence + listing cache
 
-**Bare-name precedence** (`src/clerk/catalog.py:validate_selection`):
+**Bare-name precedence** (`src/bailiff/catalog.py:validate_selection`):
 Replace the bare-name ambiguity branch (catalog.py:462-466):
 
 ```python
@@ -383,12 +383,12 @@ template, derive `bare_name = full_id.split("/", 1)[-1]`; if already seen, set
 `shadowed=True` on the record and DO NOT add it to `seen_bare_names` again (the first
 pointer wins for bare-name resolution, but all entries appear in the listing).
 
-**Listing cache** (`src/clerk/catalog.py`):
+**Listing cache** (`src/bailiff/catalog.py`):
 New functions:
 ```python
 def listing_cache_path() -> Path:
     """Return the platformdirs cache path for the persisted listing JSON."""
-    return user_cache_path("clerk", appauthor=False) / "listing.json"
+    return user_cache_path("bailiff", appauthor=False) / "listing.json"
 
 def persist_listing(listing: FullListing, cache_path: Path | None = None) -> None:
     """Serialize listing to JSON at the cache path (mkdir -p parent)."""
@@ -413,12 +413,12 @@ rebuilds. This is the simplest correct behavior that ends the per-call re-clone 
 
 **`_print_catalog_table`** extended (in `cli.py`) to show capability tags and shadow marks:
 ```
-  demo/clerk-mod-python [tasks]
+  demo/bailiff-mod-python [tasks]
     provides:  python-project [exclusive]
     source:    https://...
     ...
 
-  internal/clerk-mod-python [tasks] [shadowed by demo/clerk-mod-python]
+  internal/bailiff-mod-python [tasks] [shadowed by demo/bailiff-mod-python]
     provides:  python-project [exclusive]
     ...
 ```
@@ -427,7 +427,7 @@ rebuilds. This is the simplest correct behavior that ends the per-call re-clone 
 
 - **FR-018 — Constitution amendment (v2.3.0 → v3.0.0)**: This is a MAJOR bump. Principle I
   is redefined (the v1.0.0 → v2.0.0 MAJOR established the "no published package" nature;
-  v3.0.0 replaces it with the "clerk is the tool" positioning). The amendment, the ADR
+  v3.0.0 replaces it with the "bailiff is the tool" positioning). The amendment, the ADR
   (ADR-0008), the roadmap C-11 scope fix, and the sync-impact report ALL land in one
   change. **Gate: no `[project.scripts]` addition or PyPI publish before this change merges.**
   Engine code (capability tags, collision check, precedence, cache) may proceed on the
@@ -476,26 +476,26 @@ rebuilds. This is the simplest correct behavior that ends the per-call re-clone 
 
 7. **Phase 6 — Maintainer-confirmed publish** (T018-T020, each reconfirm-gated):
    Re-verify name availability, resolve NEEDS CLARIFICATION items (distribution name,
-   scripts/clerk.py end-state, stack-presets scope), first publish. Irreversible.
+   scripts/bailiff.py end-state, stack-presets scope), first publish. Irreversible.
 
 ## Complexity Tracking
 
 | Item | Why needed | Simpler alternative rejected because |
 |---|---|---|
-| Constitution v3.0.0 MAJOR bump | Principle I is being redefined (from "no published package" to "clerk is the tool") — same redefinition class as v1.0.0 → v2.0.0 | A MINOR bump would misrepresent a principle redefinition as a guidance expansion; the versioning policy is explicit (MAJOR for backward-incompatible principle removals or redefinitions). |
+| Constitution v3.0.0 MAJOR bump | Principle I is being redefined (from "no published package" to "bailiff is the tool") — same redefinition class as v1.0.0 → v2.0.0 | A MINOR bump would misrepresent a principle redefinition as a guidance expansion; the versioning policy is explicit (MAJOR for backward-incompatible principle removals or redefinitions). |
 | Isolated-temp-dir render for collision scan | Jinja conditionals in filenames can make static template-tree globs incorrect (a file may only be written under certain conditions) | Template-tree static glob misses conditional paths; copier `pretend=True` does not expose a file manifest; isolated renders are the correct observable output. |
 | `exclusive_capabilities: frozenset[str]` as a caller-supplied parameter to `init_many` | Group-infection requires catalog-wide view (ANY provider in the listing declares exclusive = whole capability is select-1), but `init_many` only receives the selected modules | Passing the full listing object to `init_many` would give it catalog awareness it doesn't otherwise need; a pre-computed frozenset is the minimal interface that correctly implements FR-008 semantics. |
-| Auto-build-once cache fallback | Users running `clerk catalog list` for the first time get results without needing to know about `refresh` | "Instruct user to run refresh" is the simpler behavior but creates a confusing first-run experience; auto-build-once with an stderr notice is minimal extra complexity for a materially better UX. |
+| Auto-build-once cache fallback | Users running `bailiff catalog list` for the first time get results without needing to know about `refresh` | "Instruct user to run refresh" is the simpler behavior but creates a confusing first-run experience; auto-build-once with an stderr notice is minimal extra complexity for a materially better UX. |
 
 ## NEEDS CLARIFICATION — RESOLVED (maintainer-ratified 2026-07-15)
 
 All three items are resolved in `decisions-ledger.md` (§ NEEDS CLARIFICATION resolutions).
 No task is blocked. Summary:
 
-1. **FR-005 — Distribution name**: `copier-clerk` (status quo). Re-verify availability
+1. **FR-005 — Distribution name**: `bailiff` (status quo). Re-verify availability
    immediately before first publish (T018).
-2. **FR-006 — Bundled-script end-state**: DELETE `scripts/clerk.py`. The PyPI CLI is the
-   sole invocation path. Skill uses `uvx --from copier-clerk clerk`; repo contributors use
-   `uv run clerk`. T013/T014 updated accordingly.
+2. **FR-006 — Bundled-script end-state**: DELETE `scripts/bailiff.py`. The PyPI CLI is the
+   sole invocation path. Skill uses `uvx bailiff`; repo contributors use
+   `uv run bailiff`. T013/T014 updated accordingly.
 3. **FR-017 — Stack presets**: DEFERRED to a follow-up spec. T021 is out of scope for first
    release. All other tasks proceed unchanged.

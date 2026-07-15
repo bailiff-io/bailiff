@@ -7,10 +7,10 @@ silent, this ledger governs; where this ledger is silent, the item is out of sco
 
 ## Core positioning decision (ratified 2026-07-14)
 
-**clerk is the tool; clerk-mod-\* are the modules.** The published CLI
-(`uvx --from copier-clerk clerk`) is the primary user-facing invocation path. The
-`scripts/clerk.py` bundled script is DELETED (see FR-006 resolution below) — the PyPI
-package is the sole invocation mechanism; repo contributors use `uv run clerk` via the
+**bailiff is the tool; bailiff-mod-\* are the modules.** The published CLI
+(`uvx bailiff`) is the primary user-facing invocation path. The
+`scripts/bailiff.py` bundled script is DELETED (see FR-006 resolution below) — the PyPI
+package is the sole invocation mechanism; repo contributors use `uv run bailiff` via the
 editable install. Constitution I must be amended (v3.0.0 MAJOR) to permit this.
 
 ## Capability design decisions (ratified 2026-07-14)
@@ -20,7 +20,7 @@ editable install. Constitution I must be amended (v3.0.0 MAJOR) to permit this.
 | Capabilities are informational, warn-only, never block | Rely on module authors + selecting agent; enforce facts (collisions), not claims (labels) |
 | Group-infection semantics for exclusivity | Err on the side of caution; one correct declaration catches absent-declaration mistakes in the sibling set |
 | No closed vocabulary | Any kebab-case string is a valid capability name; no vocabulary governance needed |
-| `_clerk_exclusive` is self-referential only | Module descriptions must not name siblings (goes stale); exclusivity is a property of MY slot |
+| `_bailiff_exclusive` is self-referential only | Module descriptions must not name siblings (goes stale); exclusivity is a property of MY slot |
 | Mixed exclusivity in first-party = author-time error (CI lint) | All siblings of a pick-one family should declare consistently |
 | Capabilities apply at `init_many` only | `reproduce`/`update` never consult them (SC-008); a committed tree always reproduces regardless of tag changes |
 
@@ -78,14 +78,14 @@ external resources). copier's `run_copy` API supports this parameter (verified i
 
 | Item | Decision | Rationale |
 |---|---|---|
-| FR-005 distribution name | **`copier-clerk`** (status quo; invoked `uvx --from copier-clerk clerk`) | Already pyproject.toml name; signals copier ecosystem; matches GitHub org (`copier-clerk`); zero rename cascade. Product rename is deferred — if the product name changes later, the distribution name follows as part of that coordinated effort. |
-| FR-006 bundled-script end-state | **Delete `scripts/clerk.py`** | Greenfield project with zero existing users. Skill uses `uvx --from copier-clerk clerk`; repo contributors use `uv run clerk` (editable install provides the entry point). Eliminating the script removes: the dual-mode sys.path shim, PEP 723 header maintenance, the "version must resolve without dist metadata" contortion, and Constitution I needing to bless two parallel invocation paths. |
+| FR-005 distribution name | **`bailiff`** (invoked `uvx bailiff`) | Superseded by product rename (clerk → bailiff, 2026-07-15): the original `copier-clerk` resolution no longer applies. Distribution name is `bailiff`, already claimed and published (0.1.0) on PyPI via OIDC trusted publisher; matches the GitHub org (`bailiff-io`) and the console command. |
+| FR-006 bundled-script end-state | **Delete `scripts/bailiff.py`** | Greenfield project with zero existing users. Skill uses `uvx bailiff`; repo contributors use `uv run bailiff` (editable install provides the entry point). Eliminating the script removes: the dual-mode sys.path shim, PEP 723 header maintenance, the "version must resolve without dist metadata" contortion, and Constitution I needing to bless two parallel invocation paths. |
 | FR-017 stack presets | **Deferred** to a follow-up spec (013a or 014) | 013 already has 5 work streams and 21 tasks. No multi-pointer catalog exists in the wild yet — presets serve an audience that doesn't exist until multi-catalog ships and gets adopted. Presets are pure additive (optional TOML table; absence = current behavior exactly); deferring costs nothing and breaks nothing. |
 
 ## Plan amendments from NEEDS CLARIFICATION resolutions
 
 1. **FR-006 (script deletion)**: T013 changes from "reduce script to thin shim" to "delete
-   `scripts/clerk.py`, update SKILL.md invocations to use `uvx --from copier-clerk clerk`,
+   `scripts/bailiff.py`, update SKILL.md invocations to use `uvx bailiff`,
    simplify version mechanism (remove bare-checkout fallback guard)." T014 simplifies: no
    PEP 723 inline-deps maintenance, no bare-checkout version resolution test.
 2. **`skip_tasks=True` on collision scan**: T010 implementation must pass `skip_tasks=True`
@@ -99,4 +99,5 @@ external resources). copier's `run_copy` API supports this parameter (verified i
 - Stack presets (deferred — see above)
 - warn→error upgrade for capabilities (trivial change; explicitly not first-release scope)
 - Template content (012's scope; fully decoupled from 013)
-- Product rename (deferred; distribution name `copier-clerk` ships as-is for now)
+- Product rename — RESOLVED outside this spec: clerk → bailiff landed on main (PR #37);
+  distribution name `bailiff` is live on PyPI (0.1.0, trusted publishing)
