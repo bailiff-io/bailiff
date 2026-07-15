@@ -198,16 +198,11 @@ Every module task implicitly includes ALL of the following before it is consider
   glab missing→exit 0 + complete; private+glab present(stubbed)→creation runs.
   Acceptance: SC-005, US6 AS1-3.
 
----
-
-## Phase 5: Slice C — P3 New Module
-
 - [ ] **T010** [US7] NEW module `clerk-mod-api` per FR-013; loop test
   `tests/loop/test_api_loop.py`.
-  [NEEDS CLARIFICATION FR-013 — OpenAPI path and version. Conservative default: root
-  `openapi.yaml`, OpenAPI 3.1.]
+  (OpenAPI path/version resolved: root `openapi.yaml`, OpenAPI 3.1 — see decisions-ledger.)
   Requirements: (1) Zero `_tasks` — pure render. (2) Seed-once OpenAPI skeleton
-  (`_skip_if_exists`): minimal valid OpenAPI 3.x skeleton with placeholder info, empty
+  (`_skip_if_exists`): minimal valid OpenAPI 3.1 skeleton with placeholder info, empty
   paths. (3) Managed spectral config (`.spectral.yaml`): byte-identical on reproduce.
   (4) Contributes `spectral` to `mise_tools` union. (5) Contributes spectral-lint block to
   `hook_blocks` union (inert when `hook_manager=none`). (6) Threads `hook_manager`.
@@ -218,7 +213,7 @@ Every module task implicitly includes ALL of the following before it is consider
 
 ---
 
-## Phase 6: Polish & Integration
+## Phase 5: Polish & Integration
 
 - [ ] **T011** Full local gate over all 27 modules (19 existing + 8 new):
   `just check-modules` (three-way parity); `just test` (full suite including secrets-policy
@@ -254,8 +249,7 @@ T000 (vendor decisions-ledger.md) [HARD GATE]
   └─> T_baseline (green baseline + conftest stub check)
         └─> T001-annotate + T002 [independent pair, both before Slice A]
               └─> Phase 3: {T003, T004, T005, T006} [parallel]
-                    └─> Phase 4: {T007, T008, T009} [parallel]
-                          └─> Phase 5: {T010}
-                                └─> T011 (full gate)
-                                      └─> T012 → T013 → T014 → T015 [serial, gated]
+                    └─> Phase 4: {T007, T008, T009, T010} [parallel — api included per ledger amendment]
+                          └─> T011 (full gate)
+                                └─> T012 → T013 → T014 → T015 [serial, gated]
 ```

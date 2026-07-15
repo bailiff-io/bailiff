@@ -51,25 +51,18 @@ C-11 holds unchanged. All eight modules are pure template content. The two sanct
 011-artifact amendments are pre-v1.0.0 edits that do not require a Constitution change.
 No new complexity item beyond what 011's check already covers.
 
-## NEEDS CLARIFICATION items (flagged — maintainer decisions required before affected tasks)
+## NEEDS CLARIFICATION items (RESOLVED — maintainer-ratified 2026-07-15)
 
-These are open questions from the spec. **None are resolved here**; each must be answered
-before the indicated task is executed.
+All five items are resolved in `decisions-ledger.md` (§ NEEDS CLARIFICATION resolutions).
+No task is blocked. Summary:
 
-- **FR-005 (devcontainer)**: Should the base container image be a fixed sane default or a
-  `devcontainer_image` question? Not ratified. Conservative default: fixed sane default
-  (no extra question). Blocks T003.
-- **FR-007 (cocogitto)**: Should the module also seed a `cog`-driven release CI job, or
-  leave CI wiring entirely to the CI modules? Not ratified. Conservative default: leave CI
-  untouched. Blocks T005.
-- **FR-010 (moon)**: When selected on a single-package layout, warn-and-render or preflight
-  refusal? Not ratified. Must be resolved before T007 is executed.
-- **FR-011 (mkdocs)**: When co-selected with `clerk-mod-python`, pin `mkdocs-material` via
-  `mise_tools` or via the project's Python dev dependencies? Not ratified. Conservative
-  default: `mise_tools` contribution. Blocks T008.
-- **FR-013 (api)**: OpenAPI document path (`openapi.yaml` at root vs `api/openapi.yaml`)
-  and version default (3.1 assumed)? Not ratified. Conservative default: root
-  `openapi.yaml`, OpenAPI 3.1. Blocks T010.
+- **FR-005 (devcontainer)**: fixed default image
+  `mcr.microsoft.com/devcontainers/base:ubuntu`; no `devcontainer_image` question. (T003)
+- **FR-007 (cocogitto)**: leave CI untouched — CI modules own workflow files. (T005)
+- **FR-010 (moon)**: warn-and-render on single-package layouts. (T007)
+- **FR-011 (mkdocs)**: pin via `mise_tools` contribution regardless of python
+  co-selection. (T008)
+- **FR-013 (api)**: root `openapi.yaml`, OpenAPI 3.1. (T010)
 
 ## Project Structure
 
@@ -200,10 +193,10 @@ T000  Pre-plan: vendor decisions-ledger.md              [HARD GATE — nothing e
         └─> Phase 2: Amendments (T001-annotate FR-009, T002 FR-010a + axis) [serial pair]
               └─> Phase 3 Slice A: {T003 devcontainer, T004 editorconfig,
                                     T005 cocogitto, T006 dep-updates} [P — all parallel]
-                    └─> Phase 4 Slice B: {T007 moon, T008 mkdocs, T009 gitlab-repo} [P — all parallel]
-                          └─> Phase 5 Slice C: {T010 api}
-                                └─> Phase 6 Polish: T011 whole-family gate
-                                      └─> Phase 7 Publish: T012 → T013 → T014 → T015 [serial, gated]
+                    └─> Phase 4 Slice B: {T007 moon, T008 mkdocs, T009 gitlab-repo,
+                                          T010 api} [P — all parallel]
+                          └─> Phase 6 Polish: T011 whole-family gate
+                                └─> Phase 7 Publish: T012 → T013 → T014 → T015 [serial, gated]
 ```
 
 ### Intra-phase ordering rationale
@@ -212,8 +205,9 @@ T000  Pre-plan: vendor decisions-ledger.md              [HARD GATE — nothing e
   so that `monorepo_tool=moon` is a valid CI input from the moment moon exists.
 - **Slice A before B**: moon (Slice B) contributes `monorepo_tool=moon`; the CI modules
   must already accept it (FR-010a, Phase 2). All Slice A modules are independent of moon.
-- **Slice B before C**: api (Slice C) has no inter-module dependency, but ordering is kept
-  for review hygiene and matches the spec priority ordering.
+- **api runs in Slice B** (decisions-ledger 2026-07-15 amendment): T010 has no
+  inter-module dependency — it joins the Slice B parallel set rather than occupying a
+  serial slice of its own. Its P3 priority label is unchanged.
 - **Phase 7 strictly serial**: mirror pre-creation must precede merge; each step is
   irreversible.
 
@@ -221,7 +215,8 @@ T000  Pre-plan: vendor decisions-ledger.md              [HARD GATE — nothing e
 
 - Slice A: T003–T006 — four independent workstreams (disjoint `templates/` dirs, disjoint
   loop-test files).
-- Slice B: T007–T009 — three independent workstreams.
+- Slice B: T007–T010 — four independent workstreams (api included per the ledger
+  amendment).
 
 ## Module contract summary
 
