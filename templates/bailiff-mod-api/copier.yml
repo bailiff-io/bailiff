@@ -1,16 +1,74 @@
 # copier.yml — bailiff-mod-api
 #
-# Answers-file key — MUST match the shipped .jinja file (FR-016).
-_answers_file: "{{ _copier_conf.answers_file }}.jinja"
+# API-first project skeleton (spec 012 / FR-013). Pure render — ZERO _tasks,
+# no codegen, no server scaffold (language modules own runtime code).
+#
+# Lifecycles:
+#   SEED-ONCE (_skip_if_exists): openapi.yaml at the REPO ROOT (ledger FR-013:
+#     lowest-friction default — spectral/editors find it without config; the
+#     project can move it and re-runs never clobber). OpenAPI 3.1 skeleton.
+#   MANAGED: .spectral.yaml (byte-identical on reproduce).
+#
+# Frozen-union contributions (M1 — tokens only, never a second writer):
+#   spectral            → mise_tools  (base writes .mise.toml)
+#   spectral-lint block → hook_blocks (precommit writes the hook file; inert
+#                          when hook_manager=none — §4 threading contract)
+#
+# Contract: ships template/{{ _copier_conf.answers_file }}.jinja; NO secret:
+# questions; no jinja2_time; edges are when:false hidden answers.
 
-# --- Questions ---------------------------------------------------------------
-# Replace these placeholders with real questions for this module.
+# --- Threaded identity/facts (FR-010 pattern) ---------------------------------
 
 project_name:
   type: str
-  help: "Name of the generated project."
+  default: "{{ project_name }}"
+  help: "The project's name (threaded from bailiff-mod-base; OpenAPI info.title)."
 
 description:
   type: str
   default: ""
-  help: "One-line description of the project."
+  help: "One-line description (OpenAPI info.description)."
+
+hook_manager:
+  type: str
+  default: "{{ hook_manager }}"
+  help: "Hook manager (threaded from selection; bailiff-mod-precommit is the single writer). none = hook contribution inert."
+
+# --- Frozen unions consumed (declared for threading; NOT written here) --------
+
+mise_tools:
+  type: yaml
+  default: []
+  help: "mise [tools] union (injected by phase-1 agent; base writes .mise.toml). api contributes {spectral: <version>}."
+
+hook_blocks:
+  type: yaml
+  default: []
+  help: "Hook config blocks union (injected by phase-1 agent; precommit writes the hook file). api contributes its spectral-lint block."
+
+# --- Dependency edges (when:false hidden answers — FR-004) -------------------
+
+run_after:
+  type: yaml
+  default:
+    - bailiff-mod-base
+  when: false
+
+depends_on:
+  type: yaml
+  default: []
+  when: false
+
+run_before:
+  type: yaml
+  default: []
+  when: false
+
+# Template body lives under template/ — copier renders only that subtree.
+_subdirectory: template
+
+# openapi.yaml is SEED-ONCE: scaffolded once, then project-owned.
+_skip_if_exists:
+  - openapi.yaml
+
+# No _tasks: pure render (FR-013).

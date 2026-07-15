@@ -198,7 +198,7 @@ Every module task implicitly includes ALL of the following before it is consider
   glab missing→exit 0 + complete; private+glab present(stubbed)→creation runs.
   Acceptance: SC-005, US6 AS1-3.
 
-- [ ] **T010** [US7] NEW module `bailiff-mod-api` per FR-013; loop test
+- [x] **T010** [US7] NEW module `bailiff-mod-api` per FR-013; loop test
   `tests/loop/test_api_loop.py`.
   (OpenAPI path/version resolved: root `openapi.yaml`, OpenAPI 3.1 — see decisions-ledger.)
   Requirements: (1) Zero `_tasks` — pure render. (2) Seed-once OpenAPI skeleton
