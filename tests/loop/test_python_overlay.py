@@ -68,7 +68,7 @@ def test_base_python_ordered_and_threaded(
 
     # Base rendered: its scaffold + AGENTS.md exist.
     assert (dest / "AGENTS.md").is_file(), "base did not render (AGENTS.md missing)"
-    assert (dest / ".codex" / ".gitkeep").is_file(), "base dir scaffold missing"
+    assert (dest / "tests" / ".gitkeep").is_file(), "base dir scaffold missing"
 
     # Python overlay rendered: pyproject.toml present (seed-once) with threaded name + pin.
     pyproject = (dest / "pyproject.toml").read_text()
@@ -88,9 +88,9 @@ def test_base_python_ordered_and_threaded(
     gitignore = (dest / ".gitignore").read_text()
     assert "gh:Python" in gitignore, "python token not threaded into base gitignore_stack"
 
-    # python overlay's preflight stub marker present; it wrote no .gitignore of its own
-    # (single writer — the .gitignore is base's task output).
-    assert (dest / ".clerk-python-preflight").is_file()
+    # python overlay's mise-install sentinel present (init-only guard stub ran).
+    # The module writes no .gitignore of its own (single writer — base's task output).
+    assert (dest / ".clerk-python-mise-installed").is_file()
 
 
 def test_ordering_recomputed_edge(

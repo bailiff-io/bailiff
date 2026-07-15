@@ -761,29 +761,72 @@ _BASE_STUB_TASKS = dedent(
     _tasks:
       # Stub gitnr: write a deterministic .gitignore marker recording the stack.
       - >-
+        test -f .clerk-base-init-done ||
         test -f .gitignore ||
         printf '# stub gitignore\\nstack={{ gitignore_stack | join(",") }}\\n' > .gitignore
       # Stub gh LICENSE fetch: guarded, idempotent, offline.
       - >-
         test -f LICENSE ||
-        printf '{{ license }} License\\nCopyright (c) {{ (today or "2026")[:4] }} {{ org }}\\n'
+        printf '%s License\\nCopyright (c) %s %s\\n'
+        '{{ license }}' '{{ (today or "2026")[:4] }}' '{{ copyright_name }}'
         > LICENSE
-      - "git init --quiet"
+      - command: "git init --quiet"
+        when: "{{ run_git_init }}"
+      # extra_dirs MANAGED: idempotent mkdir on every run (init + reproduce).
+      - >-
+        {% if extra_dirs %}
+        for _d in {{ extra_dirs | map('string') | join(' ') }}; do
+        mkdir -p "$_d" && touch "$_d/.gitkeep"; done
+        {% else %}
+        true
+        {% endif %}
+      # Sentinel: marks tree as init-done so gitnr stub skips on reproduce.
+      - "test -f .clerk-base-init-done || touch .clerk-base-init-done"
       - command: >-
           git -c user.name=clerk -c user.email=clerk@localhost -c commit.gpgsign=false add -A &&
           git -c user.name=clerk -c user.email=clerk@localhost -c commit.gpgsign=false commit
           -qm "Initial project scaffold (clerk-mod-base)"
-        when: "{{ initial_commit }}"
+        when: "{{ initial_commit and run_git_init }}"
     """
 )
 
-# Offline stub tasks for clerk-mod-python: the uv preflight is a no-op marker.
-_PYTHON_STUB_TASKS = dedent(
-    """\
-    _tasks:
-      - "printf 'uv-preflight-ok\\n' > .clerk-python-preflight"
+
+# Offline stub tasks for clerk-mod-python (uv variant, spec 011 / v1.0.0).
+# Stubs out the mise preflight, mise install (init-only-guarded sentinel), and
+# the native uv init (TASK-OUTPUT: writes a minimal stub pyproject.toml if not
+# already present, matching the guarded `test -f pyproject.toml ||` lifecycle).
+def _python_stub_tasks(pkg_manager: str = "uv") -> str:
+    """Generate offline stub tasks for clerk-mod-python.
+
+    Stubs mise preflight sentinel + native init (uv/pdm).  The project name is
+    threaded from the frozen ``project_name`` answer, matching the real init guard.
     """
-)
+    # Jinja filter chain for the project name — must match what the real uv/pdm
+    # init does when it normalises the name.  Kept in a separate variable to stay
+    # within the repo's 100-char line-length limit.
+    _name_expr = (
+        '{{ project_name | default("project", true)'
+        ' | lower | replace(" ", "-") | replace("_", "-") }}'
+    )
+    _pyproject_printf = (
+        "printf "
+        f'\'[project]\\\\nname = \\"{_name_expr}\\"\\\\n'
+        'version = \\"0.1.0\\"\\\\n'
+        'requires-python = \\">={{ python_version }}\\"\\\\n'
+        "dependencies = []\\\\n'"
+        " > pyproject.toml"
+    )
+    return (
+        "_tasks:\n"
+        "  - \"printf 'mise-preflight-ok\\n' > .clerk-python-mise-installed\"\n"
+        "  - >-\n"
+        f"    test -f pyproject.toml ||\n"
+        f"    {_pyproject_printf}\n"
+    )
+
+
+# Pre-built stub strings — used by fixtures so each fixture call doesn't rebuild.
+_PYTHON_STUB_TASKS = _python_stub_tasks("uv")
 
 # Offline stub tasks for clerk-mod-apm (spec 007 / T010): swap the real network
 # `uvx --from apm-cli==<ver> apm install` for a deterministic OFFLINE no-op. The
@@ -800,6 +843,135 @@ _APM_STUB_TASKS = dedent(
           printf 'lockfile_version: stub\\napm_version: {{ apm_cli_version }}\\n'
           > apm.lock.yaml
         when: "{{ apm_packages | length > 0 }}"
+    """
+)
+
+
+# PDM variant stub — same lifecycle, different pkg_manager label in sentinel content.
+_PDM_STUB_TASKS = _python_stub_tasks("pdm")
+
+# Offline stub tasks for clerk-mod-typescript (bun variant).
+_BUN_STUB_TASKS = dedent(
+    """\
+    _tasks:
+      - "printf 'bun-preflight-ok\\n' > .clerk-ts-preflight"
+    """
+)
+
+# Offline stub tasks for clerk-mod-typescript (pnpm variant).
+_PNPM_STUB_TASKS = dedent(
+    """\
+    _tasks:
+      - "printf 'pnpm-preflight-ok\\n' > .clerk-ts-preflight"
+    """
+)
+
+# Offline stub tasks for clerk-mod-rust: the cargo new preflight is a no-op marker.
+_CARGO_STUB_TASKS = dedent(
+    """\
+    _tasks:
+      - "printf 'cargo-preflight-ok\\n' > .clerk-rust-preflight"
+    """
+)
+
+# Offline stub tasks for clerk-mod-go: the go mod init preflight is a no-op marker.
+_GO_STUB_TASKS = dedent(
+    """\
+    _tasks:
+      - "printf 'go-preflight-ok\\n' > .clerk-go-preflight"
+    """
+)
+
+# Offline stub tasks for clerk-mod-terraform: the terraform/tofu init preflight is a no-op marker.
+_TERRAFORM_STUB_TASKS = dedent(
+    """\
+    _tasks:
+      - "printf 'terraform-preflight-ok\\n' > .clerk-terraform-preflight"
+    """
+)
+
+# Offline stub tasks for clerk-mod-terraform (opentofu variant).
+_TOFU_STUB_TASKS = dedent(
+    """\
+    _tasks:
+      - "printf 'tofu-preflight-ok\\n' > .clerk-terraform-preflight"
+    """
+)
+
+# Offline stub tasks for clerk-mod-cdk: the cdk init preflight is a no-op marker.
+_CDK_STUB_TASKS = dedent(
+    """\
+    _tasks:
+      - "printf 'cdk-preflight-ok\\n' > .clerk-cdk-preflight"
+    """
+)
+
+# Offline stub tasks for modules that call the AWS CLI.
+_AWS_STUB_TASKS = dedent(
+    """\
+    _tasks:
+      - "printf 'aws-preflight-ok\\n' > .clerk-aws-preflight"
+    """
+)
+
+# Offline stub tasks for clerk-mod-cloudformation: preserve the SEED-ONCE
+# parameter-seeding loop (offline, no AWS) and stub the opt-in validate task
+# with a conditional marker so aws_validate=true/false tests both work.
+_CFN_STUB_TASKS = dedent(
+    """\
+    _tasks:
+      # Seed per-env parameter files with test -f guards (identical to the real task,
+      # but no network — the loop body is purely offline JSON writes).
+      - >-
+        mkdir -p "{{ placement_dir }}/parameters" &&
+        for env in {{ environment_names | join(" ") }}; do
+        test -f "{{ placement_dir }}/parameters/${env}.json" ||
+        printf '[{\\n  "ParameterKey": "Environment",\\n  "ParameterValue": "%s"\\n}]\\n' "${env}"
+        > "{{ placement_dir }}/parameters/${env}.json";
+        done
+      # Stub aws validate-template: write marker only when aws_validate=true.
+      - command: "printf 'aws-preflight-ok\\\\n' > .clerk-aws-preflight"
+        when: "{{ aws_validate }}"
+    """
+)
+
+# Offline stub tasks for modules that invoke gh (GitHub CLI).
+_GH_STUB_TASKS = dedent(
+    """\
+    _tasks:
+      - "printf 'gh-preflight-ok\\n' > .clerk-gh-preflight"
+    """
+)
+
+# Offline stub tasks for modules that invoke the claude CLI (agentic).
+_CLAUDE_STUB_TASKS = dedent(
+    """\
+    _tasks:
+      - "printf 'claude-preflight-ok\\n' > .clerk-claude-preflight"
+    """
+)
+
+# Offline stub tasks for modules that invoke mise (tool version manager).
+_MISE_STUB_TASKS = dedent(
+    """\
+    _tasks:
+      - "printf 'mise-preflight-ok\\n' > .clerk-mise-preflight"
+    """
+)
+
+# Offline stub tasks for modules that invoke pre-commit (hook manager).
+_PRECOMMIT_STUB_TASKS = dedent(
+    """\
+    _tasks:
+      - "printf 'pre-commit-preflight-ok\\n' > .clerk-precommit-preflight"
+    """
+)
+
+# Offline stub tasks for modules that invoke lefthook (hook manager).
+_LEFTHOOK_STUB_TASKS = dedent(
+    """\
+    _tasks:
+      - "printf 'lefthook-preflight-ok\\n' > .clerk-precommit-preflight"
     """
 )
 
@@ -850,10 +1022,29 @@ def clerk_mod_base(tmp_path: Path) -> TemplateRepo:
 
 @pytest.fixture
 def clerk_mod_python(tmp_path: Path) -> TemplateRepo:
-    """The real clerk-mod-python template as a hermetic repo (uv preflight stubbed)."""
+    """The real clerk-mod-python template as a hermetic repo (uv/mise tasks stubbed)."""
     return _copy_module_with_stub_tasks(
         "clerk-mod-python", tmp_path / "clerk-mod-python", _PYTHON_STUB_TASKS
     )
+
+
+@pytest.fixture
+def clerk_mod_python_pdm(tmp_path: Path) -> TemplateRepo:
+    """The real clerk-mod-python template with python_pkg_manager=pdm tasks stubbed."""
+    return _copy_module_with_stub_tasks(
+        "clerk-mod-python", tmp_path / "clerk-mod-python-pdm", _PDM_STUB_TASKS
+    )
+
+
+@pytest.fixture
+def clerk_mod_go(tmp_path: Path) -> TemplateRepo:
+    """The real clerk-mod-go template as a hermetic repo (go preflight stubbed).
+
+    spec 011 T008: renders the real Go overlay surface; the native `go mod init`
+    task is replaced with a deterministic offline stub that writes a marker, keeping
+    the suite hermetic (no go toolchain required).
+    """
+    return _copy_module_with_stub_tasks("clerk-mod-go", tmp_path / "clerk-mod-go", _GO_STUB_TASKS)
 
 
 @pytest.fixture
@@ -866,6 +1057,20 @@ def clerk_mod_apm(tmp_path: Path) -> TemplateRepo:
     """
     return _copy_module_with_stub_tasks(
         "clerk-mod-apm", tmp_path / "clerk-mod-apm", _APM_STUB_TASKS
+    )
+
+
+@pytest.fixture
+def clerk_mod_rust(tmp_path: Path) -> TemplateRepo:
+    """The real clerk-mod-rust template as a hermetic repo (cargo new stubbed offline).
+
+    spec 011: renders the real rust surface; the `cargo new` task is replaced with a
+    deterministic offline stub that writes a marker so the suite stays hermetic
+    (Constitution VII). The managed rust-toolchain.toml and rustfmt.toml are copied
+    verbatim; only the task side-effects are stubbed.
+    """
+    return _copy_module_with_stub_tasks(
+        "clerk-mod-rust", tmp_path / "clerk-mod-rust", _CARGO_STUB_TASKS
     )
 
 
@@ -903,6 +1108,97 @@ _APM_STUB_BASE_YML = dedent(
 )
 
 
+# Offline stub tasks for clerk-mod-package-add: the path-traversal guard is
+# preserved verbatim (SEC-001 — exit 1 on bad input), the monorepo gate is
+# preserved, but native tool calls (bun/pnpm/uv/cargo/go) are replaced with a
+# deterministic marker write. This keeps the guard logic hermetically testable
+# without requiring any language toolchain on the CI host.
+_PACKAGE_ADD_STUB_TASKS = dedent(
+    """\
+    _tasks:
+      # Monorepo gate (no-op when layout != monorepo — same as real task 1).
+      - command: >-
+          if [ "{{ layout }}" != "monorepo" ]; then exit 0; fi
+        when: "{{ layout != 'monorepo' }}"
+      # Path-traversal guard (SEC-001) — preserved verbatim from the real template.
+      # Exits 1 on bad input before any mkdir; no side effects on traversal attempts.
+      - command: >-
+          if [ "{{ layout }}" != "monorepo" ]; then exit 0; fi;
+          name="{{ name }}";
+          dir="{{ dir }}";
+          err() { echo "clerk-mod-package-add: $1" >&2; exit 1; };
+          [ -z "$name" ] && err "name must not be empty";
+          [ -z "$dir" ] && err "dir must not be empty";
+          printf '%s' "$name" | grep -qE '(^$|/|\\\\|\\.\\.|^\\.$)' && err "name '${name}' contains unsafe path component";
+          printf '%s' "$dir" | grep -qE '(\\\\|/\\.\\./|/\\.\\.$|^\\.\\./|^\\.$|^\\.\\.$)' && err "dir '${dir}' contains unsafe path component";
+          true
+      # Stub scaffold + registration: mkdir + marker (no native tool invocation).
+      - command: >-
+          if [ "{{ layout }}" != "monorepo" ]; then exit 0; fi;
+          mkdir -p "{{ dir.rstrip('/') }}/{{ name }}";
+          printf 'package-add-ok lang={{ lang }} name={{ name }}\\n' > .clerk-package-add-preflight
+    """
+)
+
+# clerk-mod-stack-adr has no native-tool tasks (pure template, no tool prerequisite).
+# The stub is a no-op marker so _copy_module_with_stub_tasks has a non-empty block
+# to append (the regex only strips if _tasks already exists in copier.yml).
+_STACK_ADR_STUB_TASKS = dedent(
+    """\
+    _tasks: []
+    """
+)
+
+
+@pytest.fixture
+def clerk_mod_package_add(tmp_path: Path) -> TemplateRepo:
+    """The real clerk-mod-package-add template as a hermetic repo (native tools stubbed).
+
+    SEC-001: path-traversal guard is preserved in the stub so tests can assert
+    guard rejection with zero side effects. Native add/init calls replaced with
+    a deterministic marker write (offline-safe).
+    """
+    return _copy_module_with_stub_tasks(
+        "clerk-mod-package-add",
+        tmp_path / "clerk-mod-package-add",
+        _PACKAGE_ADD_STUB_TASKS,
+    )
+
+
+@pytest.fixture
+def clerk_mod_cdk(tmp_path: Path) -> TemplateRepo:
+    """The real clerk-mod-cdk template as a hermetic repo (cdk init stubbed offline)."""
+    return _copy_module_with_stub_tasks(
+        "clerk-mod-cdk", tmp_path / "clerk-mod-cdk", _CDK_STUB_TASKS
+    )
+
+
+@pytest.fixture
+def clerk_mod_cloudformation(tmp_path: Path) -> TemplateRepo:
+    """The real clerk-mod-cloudformation template with AWS tasks stubbed offline.
+
+    The CFN-specific stub preserves the parameter-seeding loop (SEED-ONCE, test -f
+    guarded) and replaces only the aws validate-template call with a conditional
+    marker so aws_validate=true/false tests both work without AWS credentials.
+    """
+    return _copy_module_with_stub_tasks(
+        "clerk-mod-cloudformation",
+        tmp_path / "clerk-mod-cloudformation",
+        _CFN_STUB_TASKS,
+    )
+
+
+@pytest.fixture
+def clerk_mod_stack_adr(tmp_path: Path) -> TemplateRepo:
+    """The real clerk-mod-stack-adr template as a hermetic repo (no-op tasks stub).
+
+    spec 011 T013: pure template module; no network or tool tasks to stub.
+    """
+    return _copy_module_with_stub_tasks(
+        "clerk-mod-stack-adr", tmp_path / "clerk-mod-stack-adr", _STACK_ADR_STUB_TASKS
+    )
+
+
 @pytest.fixture
 def apm_stub_base(tmp_path: Path) -> TemplateRepo:
     """A minimal stub base layer that threads project_name into clerk-mod-apm (Q5)."""
@@ -912,4 +1208,63 @@ def apm_stub_base(tmp_path: Path) -> TemplateRepo:
             "copier.yml": _APM_STUB_BASE_YML,
             "template/base_out.txt.jinja": "base={{ project_name }}\n",
         },
+    )
+
+
+@pytest.fixture
+def clerk_mod_precommit(tmp_path: Path) -> TemplateRepo:
+    """The real clerk-mod-precommit template as a hermetic repo (install task stubbed).
+
+    pre-commit install / lefthook install are replaced with a deterministic
+    offline stub that writes a marker file (.clerk-precommit-preflight) so tests
+    never require the hook manager binary on PATH. The rendered hook config
+    (.pre-commit-config.yaml or lefthook.yml) is copied verbatim — only the
+    side-effecting install task is stubbed.
+    """
+    return _copy_module_with_stub_tasks(
+        "clerk-mod-precommit", tmp_path / "clerk-mod-precommit", _PRECOMMIT_STUB_TASKS
+    )
+
+
+@pytest.fixture
+def clerk_mod_precommit_lefthook(tmp_path: Path) -> TemplateRepo:
+    """clerk-mod-precommit with the lefthook install task stubbed offline."""
+    return _copy_module_with_stub_tasks(
+        "clerk-mod-precommit", tmp_path / "clerk-mod-precommit-lh", _LEFTHOOK_STUB_TASKS
+    )
+
+
+# Offline stub tasks for clerk-mod-agentic (spec 011): swap the real network/tool
+# tasks (mise preflight, uvx/apm install, claude plugin install) for deterministic
+# OFFLINE no-ops. Stubs write markers so tests can assert task execution paths
+# without requiring live CLI tools or network access. The rendered template
+# surface (settings.json, .mcp.json, opencode.json, .codex/config.toml, etc.)
+# is copied verbatim — only the task side-effects are stubbed.
+_AGENTIC_STUB_TASKS = dedent(
+    """\
+    _tasks:
+      - "printf 'mise-preflight-ok\\n' > .clerk-agentic-preflight"
+      - command: "printf 'uvx-preflight-ok\\n' >> .clerk-agentic-preflight"
+        when: "{{ install_via_apm }}"
+      - command: "printf 'claude-plugin-install-ok\\n' > .clerk-claude-plugin-install"
+        when: "{{ native_marketplace and 'claude' in agentic_targets
+          and agentic_plugins | length > 0 }}"
+      - command: >-
+          printf 'lockfile_version: stub\\napm_version: {{ apm_cli_version }}\\n'
+          > apm.lock.yaml
+        when: "{{ install_via_apm and apm_packages | length > 0 }}"
+    """
+)
+
+
+@pytest.fixture
+def clerk_mod_agentic(tmp_path: Path) -> TemplateRepo:
+    """The real clerk-mod-agentic template as a hermetic repo (all tasks stubbed offline).
+
+    spec 011 / T014: renders the real per-target config surface; the network/tool
+    tasks (mise/uvx preflight, claude plugin install, apm install) are replaced with
+    deterministic offline stubs that write markers so tests can assert execution paths.
+    """
+    return _copy_module_with_stub_tasks(
+        "clerk-mod-agentic", tmp_path / "clerk-mod-agentic", _AGENTIC_STUB_TASKS
     )
