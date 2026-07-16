@@ -1140,7 +1140,7 @@ _APM_STUB_BASE_YML = dedent(
 # deterministic marker write. This keeps the guard logic hermetically testable
 # without requiring any language toolchain on the CI host.
 _PACKAGE_ADD_STUB_TASKS = dedent(
-    """\
+    r"""
     _tasks:
       # Monorepo gate (no-op when layout != monorepo — same as real task 1).
       - command: >-
@@ -1155,8 +1155,8 @@ _PACKAGE_ADD_STUB_TASKS = dedent(
           err() { echo "pkg-add: $1" >&2; exit 1; };
           [ -z "$name" ] && err "name must not be empty";
           [ -z "$dir" ] && err "dir must not be empty";
-          printf '%s' "$name" | grep -qE '(^$|/|\\\\|\\.\\.|^\\.$)' && err "name unsafe";
-          printf '%s' "$dir" | grep -qE '(\\\\|/\\\.\\\./|/\\\.\\\.$|^\\\.\\\./|^\\\.$|^\\\.\\\.$)' && err "dir unsafe";
+          printf '%s' "$name" | grep -qE '(^$|/|\\|\.\.|^\.$)' && err "name unsafe";
+          printf '%s' "$dir" | grep -qE '(\\|/\.\./|/\.\.$|^\.\./|^\.$|^\.\.$)' && err "dir unsafe";
           true
       # Stub scaffold + registration: mkdir + marker (no native tool invocation).
       - command: >-
