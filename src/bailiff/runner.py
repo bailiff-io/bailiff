@@ -435,21 +435,26 @@ def _check_external_data_deps(
 def _write_schema_marker(dest: str, af_name: str) -> None:
     """Append ``_bailiff_schema: '014'`` to the answers file post-render (spec 014 R10).
 
-    Mirrors how copier writes ``_commit``/``_src_path`` — a bailiff-owned metadata
-    key appended after the copier write, not a copier question.  A YAML append
-    preserves the copier-written content; we read→update→write to stay valid YAML.
+    Uses an APPEND-ONLY write: if the marker is already present (idempotent re-run),
+    do nothing.  Otherwise append a single YAML line to the end of the file.
+    This preserves copier's exact serialization of the answers content rather than
+    re-emitting through PyYAML (which can reorder keys / change quote style and would
+    perturb the committed reproduce state).
+
+    The marker line is ``_bailiff_schema: '014'`` — single-quoted to match the YAML
+    string literal form copier uses for its own metadata keys.
     """
     af_path = Path(dest) / af_name
     if not af_path.is_file():
         return
-    try:
-        raw = yaml.safe_load(af_path.read_text()) or {}
-    except Exception:  # noqa: BLE001
+    existing = af_path.read_text()
+    # Idempotent: skip if marker already present anywhere in the file.
+    if f"{_BAILIFF_SCHEMA_KEY}:" in existing:
         return
-    if not isinstance(raw, dict):
-        return
-    raw[_BAILIFF_SCHEMA_KEY] = _BAILIFF_SCHEMA_VERSION
-    af_path.write_text(yaml.dump(raw, default_flow_style=False, allow_unicode=True))
+    # Append marker as a single YAML line.  Ensure file ends with newline first.
+    if existing and not existing.endswith("\n"):
+        existing += "\n"
+    af_path.write_text(existing + f"{_BAILIFF_SCHEMA_KEY}: '{_BAILIFF_SCHEMA_VERSION}'\n")
 
 
 def _run_post_tasks(
@@ -460,9 +465,17 @@ def _run_post_tasks(
     """Run _post_tasks for all modules in plan order, after the render loop (spec 014 FR-021/R11).
 
     Collects _post_tasks across all selected modules in depends_on order and
-    executes them in the destination directory.  Trust is already enforced by
-    the per-layer _require_trust_if_action_taking guard; we use the same check
-    here (a module must be trusted to run any task).
+    executes them in the destination directory.
+
+    Trust gate: ``_require_trust_if_action_taking`` is called here for each module
+    that has post-tasks (Constitution V — post-tasks run arbitrary shell).
+    ``has_tasks=True`` is already set by discovery when ``_post_tasks`` is present,
+    so the pre-render loop's trust check would also catch untrusted sources, but we
+    re-check here as the authoritative guard for the post-task execution path.
+
+    Failure handling: a non-zero exit code raises ``BailiffError``, mirroring how
+    copier surfaces inline ``_tasks`` failures — a failing post-task must not pass
+    silently.
     """
     import subprocess
 
@@ -470,12 +483,20 @@ def _run_post_tasks(
         desc = descs.get(record.full_id)
         if not desc or not desc.post_tasks:
             continue
-        for task in desc.post_tasks:
+        # Trust gate: refuse to run post-tasks from an untrusted source (Constitution V).
+        _require_trust_if_action_taking(record.source, record.ref)
+        basename = record.full_id.rsplit("/", 1)[-1]
+        for i, task in enumerate(desc.post_tasks):
             # task may be a string or a dict with 'command' + optional 'when'
             cmd = task.get("command", "") if isinstance(task, dict) else str(task)
             if not cmd:
                 continue
-            subprocess.run(cmd, shell=True, cwd=dest, check=False)  # noqa: S602
+            result = subprocess.run(cmd, shell=True, cwd=dest, check=False)  # noqa: S602
+            if result.returncode != 0:
+                raise BailiffError(
+                    f"_post_task #{i} from {basename!r} failed with exit code "
+                    f"{result.returncode}: {cmd!r}"
+                )
 
 
 def init_many(
@@ -710,6 +731,7 @@ def reproduce_many(dest: str) -> list[RunResult]:
     records: list[TemplateRecord] = []
     edges_by_basename: dict[str, dict[str, Any]] = {}
     phases_by_basename: dict[str, str] = {}
+    ext_data_by_basename: dict[str, dict[str, str]] = {}
     file_by_basename: dict[str, Path] = {}
     descs_by_basename: dict[str, discovery.Discovery] = {}
 
@@ -759,11 +781,14 @@ def reproduce_many(dest: str) -> list[RunResult]:
         records.append(record)
         edges_by_basename[basename] = disc.dependency_edges
         phases_by_basename[basename] = disc.phase
+        ext_data_by_basename[basename] = disc.external_data_aliases
         file_by_basename[basename] = af_path
         descs_by_basename[basename] = disc
 
-    # Recompute order (same DAG build + topo-sort as init, now phase-aware).
-    plan = ordering.layer_plan_from_edges(records, edges_by_basename, phases_by_basename)
+    # Recompute order (same DAG build + topo-sort as init, now phase- and alias-aware).
+    plan = ordering.layer_plan_from_edges(
+        records, edges_by_basename, phases_by_basename, ext_data_by_basename
+    )
 
     # Map full_id → disc for _run_post_tasks
     descs_by_full_id: dict[str, discovery.Discovery] = {}

@@ -4,7 +4,8 @@ Tests:
 - _post_tasks from a module run AFTER the whole render loop (not inline per-layer)
 - _post_tasks run in depends_on order (module DAG + basename tie-break)
 - _post_tasks run on BOTH init_many AND reproduce_many
-- _post_tasks respect trust gate (only trusted sources run tasks)
+- A failing _post_task (non-zero exit) raises BailiffError (FIX 2)
+- Untrusted-source _post_tasks are blocked by the trust gate (FIX 4)
 """
 
 from __future__ import annotations
@@ -16,6 +17,7 @@ import pytest
 
 from bailiff import runner, trust
 from bailiff.catalog import TemplateRecord
+from bailiff.errors import BailiffError, UntrustedSourceError
 from tests.conftest import build_template_repo
 
 
@@ -278,4 +280,83 @@ def test_post_tasks_ordered_by_depends_on(tmp_path: Path) -> None:
     log = (dest / "order_log.txt").read_text()
     assert log.index("step_a") < log.index("step_b"), (
         f"step_a must precede step_b in order_log.txt, got:\n{log}"
+    )
+
+
+# ---------------------------------------------------------------------------
+# FIX 2: failing _post_task raises BailiffError
+# ---------------------------------------------------------------------------
+
+
+def test_failing_post_task_raises(tmp_path: Path) -> None:
+    """A _post_task that exits non-zero raises BailiffError (not silent failure).
+
+    Previously check=False swallowed failures. After FIX 2 the runner raises.
+    """
+    tpl = build_template_repo(
+        tmp_path / "mod-failing",
+        files={
+            "copier.yml": dedent(
+                """\
+                project_name:
+                  type: str
+                _post_tasks:
+                  - "exit 1"
+                _subdirectory: template
+                """
+            ),
+            "template/out.txt.jinja": "name={{ project_name }}\n",
+        },
+    )
+    trust.add_trust(tpl.url)
+
+    dest = tmp_path / "proj"
+    with pytest.raises(BailiffError) as exc_info:
+        runner.init_many(
+            [(_record("testcat/mod-failing", tpl, has_tasks=True), {"project_name": "demo"})],
+            str(dest),
+            today="2026-07-16",
+        )
+
+    msg = str(exc_info.value)
+    assert "post_task" in msg or "_post_task" in msg or "exit code" in msg, (
+        f"BailiffError must mention post_task/exit code, got: {msg!r}"
+    )
+
+
+# ---------------------------------------------------------------------------
+# FIX 4: untrusted source _post_tasks blocked by trust gate
+# ---------------------------------------------------------------------------
+
+
+def test_untrusted_source_post_task_blocked(tmp_path: Path) -> None:
+    """_post_tasks from an untrusted source are blocked by the trust gate (Constitution V/FIX 4)."""
+    tpl = build_template_repo(
+        tmp_path / "mod-untrusted",
+        files={
+            "copier.yml": dedent(
+                """\
+                project_name:
+                  type: str
+                _post_tasks:
+                  - "echo should-not-run > post_ran.txt"
+                _subdirectory: template
+                """
+            ),
+            "template/out.txt.jinja": "name={{ project_name }}\n",
+        },
+    )
+    # Deliberately do NOT add trust for tpl.url
+
+    dest = tmp_path / "proj"
+    with pytest.raises(UntrustedSourceError):
+        runner.init_many(
+            [(_record("testcat/mod-untrusted", tpl, has_tasks=True), {"project_name": "demo"})],
+            str(dest),
+            today="2026-07-16",
+        )
+
+    # post_ran.txt must NOT exist — trust gate fired before execution
+    assert not (dest / "post_ran.txt").exists(), (
+        "post_ran.txt exists — untrusted _post_task executed despite no trust"
     )

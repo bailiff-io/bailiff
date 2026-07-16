@@ -41,8 +41,9 @@ _ANSWERS_FILE_MARKER = "_copier_conf.answers_file"
 # copier.yml keys that are settings, not questions.
 _SETTINGS_PREFIX = "_"
 
-# The hidden ``when: false`` answers that carry bailiff's dependency graph.
-_EDGE_KEYS = ("depends_on", "run_after", "run_before")
+# The single ``when: false`` edge that carries bailiff's dependency graph (spec 014 FR-019/R7).
+# run_after and run_before are DROPPED — depends_on is the only ordering edge.
+_EDGE_KEYS = ("depends_on",)
 
 # The hidden ``when: false`` key that carries the post-task list.
 _POST_TASKS_KEY = "_post_tasks"
@@ -201,7 +202,9 @@ def _describe(source: str, ref: str, versions: list[str], clone: Path) -> Discov
 
     subdirectory = raw.get("_subdirectory", "")
     jinja_extensions = list(raw.get("_jinja_extensions", []) or [])
-    has_tasks = bool(raw.get("_tasks"))
+    # has_tasks covers both inline _tasks AND deferred _post_tasks: either can execute
+    # arbitrary commands, so both require the same trust gate (spec 014 FR-021/R11).
+    has_tasks = bool(raw.get("_tasks")) or bool(raw.get(_POST_TASKS_KEY))
     has_migrations = bool(raw.get("_migrations"))
     provides, exclusive = _read_capabilities(raw, source)
     external_data_aliases = _read_external_data(raw, source)

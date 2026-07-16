@@ -1,8 +1,13 @@
 """bailiff's dependency-ordering brain — the C-11-sanctioned coordination glue.
 
 Computes the topological application order for a selection of templates from
-their statically-declared ``when:false`` edges (``depends_on``, ``run_after``,
-``run_before``) and their ``_bailiff_phase`` setting (spec 014 FR-019/FR-020).
+their single ``when:false`` edge (``depends_on``) and their ``_bailiff_phase``
+setting (spec 014 FR-019/FR-020/R7).
+
+Edge vocabulary (spec 014 R7): **``depends_on`` is the only ordering edge**.
+``run_after`` and ``run_before`` are dropped; their values in copier.yml are
+inert and NOT honored by this module.  An absent ``depends_on`` target raises
+``OrderingError`` (dangling edge, hard dependency).
 
 Phase model (spec 014 FR-020/R8): modules carry a phase — ``pre`` | ``normal``
 (default) | ``post``.  Sort = (phase) → (``depends_on`` DAG) → (basename).
@@ -56,16 +61,62 @@ def answers_file_name(record: TemplateRecord) -> str:
 _PHASE_ORDER = {"pre": 0, "normal": 1, "post": 2}
 
 
+def _add_edge(
+    graph: dict[str, set[str]],
+    self_b: str,
+    target: str,
+    basename_set: set[str],
+    phases: dict[str, str],
+    edge_label: str,
+) -> None:
+    """Add a single directed edge ``self_b`` → ``target`` to ``graph``.
+
+    Raises ``OrderingError`` on a dangling edge (target not in selection) or a
+    forward cross-phase edge (spec 014 FR-020).  Extracted to avoid duplication
+    between ``depends_on`` declared edges and implicit ``_external_data`` edges.
+    """
+    if target not in basename_set:
+        raise OrderingError(
+            f"dangling edge: {self_b!r} declares {edge_label}={target!r}, "
+            f"but {target!r} is not in the selection. "
+            f"Add {target!r} to the selection or remove the edge."
+        )
+    self_phase = phases.get(self_b, "normal")
+    target_phase = phases.get(target, "normal")
+    self_idx = _PHASE_ORDER.get(self_phase, 1)
+    target_idx = _PHASE_ORDER.get(target_phase, 1)
+    if target_idx > self_idx:
+        raise OrderingError(
+            f"forward cross-phase edge: {self_b!r} (phase={self_phase!r}) "
+            f"declares {edge_label}={target!r} (phase={target_phase!r}). "
+            f"A {self_phase!r}-phase module may not depend on a later "
+            f"{target_phase!r}-phase module. "
+            f"Edge legality: pre→pre only; normal→pre+normal; post→anything. "
+            f"(spec 014 FR-020/R8)"
+        )
+    graph[self_b].add(target)
+
+
 def build_dag(
     records: list[TemplateRecord],
     edges_by_basename: dict[str, dict[str, Any]],
     phases_by_basename: dict[str, str] | None = None,
+    ext_data_by_basename: dict[str, dict[str, str]] | None = None,
 ) -> dict[str, set[str]]:
-    """Build a dependency graph from the selected records and their declared edges.
+    """Build a dependency graph from ``depends_on`` edges and ``_external_data`` aliases.
 
     ``edges_by_basename`` maps each selected template's basename to its
-    ``dependency_edges`` dict (from ``discovery.Discovery.dependency_edges``),
-    which has keys ``depends_on``, ``run_after``, ``run_before`` with list values.
+    ``dependency_edges`` dict (from ``discovery.Discovery.dependency_edges``).
+    Only the ``depends_on`` key is processed; ``run_after`` and ``run_before``
+    are inert (spec 014 FR-019/R7 — single-edge collapse).
+
+    ``ext_data_by_basename`` maps each basename to its ``external_data_aliases``
+    dict (``{alias: producer_basename}`` from ``discovery.Discovery``).  Each
+    alias injects an implicit ordering edge producer→consumer (spec 014 FR-006/R6):
+    the producer MUST be ordered before the consumer so its answers file exists when
+    copier resolves ``_external_data``.  A missing producer raises ``OrderingError``
+    (presence check also enforced by ``_check_external_data_deps`` in runner.py, but
+    ordering enforcement here is what prevents silent empty renders).
 
     ``phases_by_basename`` maps each basename to its ``_bailiff_phase`` value
     (spec 014 FR-020).  When provided, forward cross-phase edges are rejected.
@@ -75,10 +126,12 @@ def build_dag(
 
     Raises ``OrderingError`` for:
     - basename collision among selected templates (two records share a basename)
-    - dangling edge (an edge target not present in the selection)
+    - dangling depends_on edge (target not present in the selection)
+    - dangling _external_data alias (producer not present in the selection)
     - forward cross-phase edge (spec 014 FR-020)
     """
     phases = phases_by_basename or {}
+    ext_data = ext_data_by_basename or {}
 
     # 1. Check basename collision.
     basenames: list[str] = [_basename(r) for r in records]
@@ -99,57 +152,34 @@ def build_dag(
     # 2. Initialize graph — every node present, even with no edges.
     graph: dict[str, set[str]] = {b: set() for b in basenames}
 
-    # 3. Normalize edges: depends_on/run_after → (dep → self); run_before → (self → dep).
+    # 3. Process depends_on edges (spec 014 FR-019/R7).
+    # run_after and run_before are dropped; their values are silently ignored.
     for record in records:
         self_b = _basename(record)
-        self_phase = phases.get(self_b, "normal")
-        self_phase_idx = _PHASE_ORDER.get(self_phase, 1)
         edges = edges_by_basename.get(self_b, {})
+        targets = edges.get("depends_on")
+        if not targets:
+            continue
+        if isinstance(targets, str):
+            targets = [targets]
+        for target in targets:
+            _add_edge(graph, self_b, str(target), basename_set, phases, "depends_on")
 
-        # depends_on and run_after: X → self (self depends on X)
-        for key in ("depends_on", "run_after"):
-            targets = edges.get(key)
-            if not targets:
-                continue
-            if isinstance(targets, str):
-                targets = [targets]
-            for target in targets:
-                target = str(target)
-                if target not in basename_set:
-                    raise OrderingError(
-                        f"dangling edge: {self_b!r} declares {key}={target!r}, "
-                        f"but {target!r} is not in the selection. "
-                        f"Add {target!r} to the selection or remove the edge."
-                    )
-                # Validate phase legality: self may not depend on a LATER phase (FR-020).
-                target_phase = phases.get(target, "normal")
-                target_phase_idx = _PHASE_ORDER.get(target_phase, 1)
-                if target_phase_idx > self_phase_idx:
-                    raise OrderingError(
-                        f"forward cross-phase edge: {self_b!r} (phase={self_phase!r}) "
-                        f"declares {key}={target!r} (phase={target_phase!r}). "
-                        f"A {self_phase!r}-phase module may not depend on a later "
-                        f"{target_phase!r}-phase module. "
-                        f"Edge legality: pre→pre only; normal→pre+normal; post→anything. "
-                        f"(spec 014 FR-020/R8)"
-                    )
-                graph[self_b].add(target)
-
-        # run_before: self → Y (self must come before Y)
-        run_before = edges.get("run_before")
-        if run_before:
-            if isinstance(run_before, str):
-                run_before = [run_before]
-            for target in run_before:
-                target = str(target)
-                if target not in basename_set:
-                    raise OrderingError(
-                        f"dangling edge: {self_b!r} declares run_before={target!r}, "
-                        f"but {target!r} is not in the selection. "
-                        f"Add {target!r} to the selection or remove the edge."
-                    )
-                # self → Y means Y must come after self → Y has self as a predecessor
-                graph[target].add(self_b)
+    # 4. Inject implicit ordering edges from _external_data aliases (spec 014 FR-006/R6).
+    # Each alias maps consumer → producer; the producer must render before the consumer
+    # so its .copier-answers.<basename>.yml exists when copier resolves _external_data.
+    for consumer_b, aliases in ext_data.items():
+        if consumer_b not in basename_set:
+            continue
+        for alias, producer_b in aliases.items():
+            _add_edge(
+                graph,
+                consumer_b,
+                producer_b,
+                basename_set,
+                phases,
+                f"_external_data[{alias!r}]",
+            )
 
     return graph
 
@@ -202,24 +232,27 @@ def topo_sort(
 def layer_plan(records: list[TemplateRecord]) -> list[tuple[TemplateRecord, str]]:
     """Compute the ordered layer plan for ``records``.
 
-    For each record, calls ``discovery.discover`` to fetch its declared edges and
-    phase, builds the DAG, validates it (raises ``OrderingError`` on cycle, dangling
-    edge, basename collision, or forward cross-phase edge), topo-sorts with the
-    stable phase→basename tie-break, and returns ``[(record, answers_file_name)]``
-    in application order.
+    For each record, calls ``discovery.discover`` to fetch its declared edges, phase,
+    and ``_external_data`` aliases, builds the DAG (including implicit ordering edges
+    from aliases), validates it (raises ``OrderingError`` on cycle, dangling edge,
+    basename collision, or forward cross-phase edge), topo-sorts with the stable
+    phase→basename tie-break, and returns ``[(record, answers_file_name)]`` in
+    application order.
 
     This is the entry point for both ``init_many`` and ``reproduce_many`` — the
     same algorithm, same tie-break, same deterministic result.
     """
     edges_by_basename: dict[str, dict[str, Any]] = {}
     phases_by_basename: dict[str, str] = {}
+    ext_data_by_basename: dict[str, dict[str, str]] = {}
     for record in records:
         b = _basename(record)
         disc = discovery.discover(record.source, record.ref or None)
         edges_by_basename[b] = disc.dependency_edges
         phases_by_basename[b] = disc.phase
+        ext_data_by_basename[b] = disc.external_data_aliases
 
-    graph = build_dag(records, edges_by_basename, phases_by_basename)
+    graph = build_dag(records, edges_by_basename, phases_by_basename, ext_data_by_basename)
     ordered = topo_sort(records, graph, phases_by_basename)
     return [(r, answers_file_name(r)) for r in ordered]
 
@@ -228,14 +261,16 @@ def layer_plan_from_edges(
     records: list[TemplateRecord],
     edges_by_basename: dict[str, dict[str, Any]],
     phases_by_basename: dict[str, str] | None = None,
+    ext_data_by_basename: dict[str, dict[str, str]] | None = None,
 ) -> list[tuple[TemplateRecord, str]]:
     """Like ``layer_plan`` but accepts pre-fetched edges (avoids duplicate discovers).
 
     Used by ``reproduce_many`` which has already fetched edges while reading the
-    committed answers files.  ``phases_by_basename`` carries the ``_bailiff_phase``
-    values discovered at the same time as the edges.
+    committed answers files.  ``phases_by_basename`` and ``ext_data_by_basename``
+    carry the ``_bailiff_phase`` values and ``_external_data`` aliases discovered at
+    the same time as the edges.
     """
-    graph = build_dag(records, edges_by_basename, phases_by_basename)
+    graph = build_dag(records, edges_by_basename, phases_by_basename, ext_data_by_basename)
     ordered = topo_sort(records, graph, phases_by_basename)
     return [(r, answers_file_name(r)) for r in ordered]
 

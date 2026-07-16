@@ -6,6 +6,8 @@ Tests:
 - Phase ordering: pre runs before normal; normal before post (once post is used)
 - Forward cross-phase edge (normal→post) rejected at discovery
 - depends_on is the canonical edge (FR-019/FR-020/R7/R8)
+- run_after is inert (dropped, FR-019/R7): a module declaring only run_after is NOT reordered
+- _external_data alias forces producer-first ordering even when consumer basename sorts first
 """
 
 from __future__ import annotations
@@ -368,3 +370,139 @@ def test_post_phase_runs_after_normal(tmp_path: Path) -> None:
     assert basenames.index("mod-normal") < basenames.index("mod-post"), (
         f"normal should come before post, got order: {basenames}"
     )
+
+
+# ---------------------------------------------------------------------------
+# FIX 1: run_after is inert (FR-019/R7 — single-edge collapse)
+# ---------------------------------------------------------------------------
+
+
+def test_run_after_is_inert_does_not_order(tmp_path: Path) -> None:
+    """A module declaring only run_after is NOT reordered by it (FR-019/R7).
+
+    run_after is dropped from the engine; its value is ignored.  The ordering
+    falls back to the basename tie-break only.  This proves the single-edge
+    collapse: only depends_on controls ordering.
+    """
+    # mod-z declares run_after: [mod-a] — but run_after is inert, so this
+    # must NOT cause mod-z to be ordered after mod-a.
+    tpl_z = build_template_repo(
+        tmp_path / "mod-z",
+        files={
+            "copier.yml": dedent(
+                """\
+                project_name:
+                  type: str
+                run_after:
+                  type: yaml
+                  default: ["mod-a"]
+                  when: false
+                _subdirectory: template
+                """
+            ),
+            "template/z_out.txt.jinja": "z={{ project_name }}\n",
+        },
+    )
+    tpl_a = build_template_repo(
+        tmp_path / "mod-a",
+        files={
+            "copier.yml": "project_name:\n  type: str\n_subdirectory: template\n",
+            "template/a_out.txt.jinja": "a={{ project_name }}\n",
+        },
+    )
+    trust.add_trust(tpl_z.url)
+    trust.add_trust(tpl_a.url)
+
+    # Without depends_on, the sort is purely alphabetical: mod-a < mod-z.
+    # If run_after were honored, the order would be forced to mod-a THEN mod-z (same).
+    # The test checks that run_after does NOT cause a dangling-edge error (which
+    # would only happen if run_after were still processed as an ordering constraint).
+    dest = tmp_path / "proj"
+    # This must NOT raise OrderingError for a "dangling run_after" —
+    # run_after is inert, so mod-a's absence-from-selection is irrelevant.
+    tpl_a_only = build_template_repo(
+        tmp_path / "mod-a-only",
+        files={
+            "copier.yml": "project_name:\n  type: str\n_subdirectory: template\n",
+            "template/ao_out.txt.jinja": "ao={{ project_name }}\n",
+        },
+    )
+    trust.add_trust(tpl_a_only.url)
+
+    # Selection: only mod-z (mod-a not present). If run_after were honored, this
+    # would raise a dangling-edge OrderingError. Since it's inert, it must succeed.
+    runner.init_many(
+        [(_record("testcat/mod-z", tpl_z), {"project_name": "demo"})],
+        str(dest),
+        today="2026-07-16",
+    )
+    assert (dest / "z_out.txt").exists(), "mod-z did not render"
+
+
+# ---------------------------------------------------------------------------
+# FIX 3: _external_data alias forces producer-first ordering (FR-006/R6)
+# ---------------------------------------------------------------------------
+
+
+def test_external_data_alias_forces_producer_first_when_consumer_sorts_first(
+    tmp_path: Path,
+) -> None:
+    """Consumer whose basename sorts BEFORE its producer is still ordered after it.
+
+    This is the core FIX 3 requirement: the _external_data alias injects an
+    implicit depends_on edge (producer → consumer) in ordering.py so the producer
+    always renders first, regardless of alphabetical tie-break.
+
+    Setup: consumer basename 'aaa-consumer' < producer basename 'zzz-producer'
+    alphabetically. Without the alias edge, aaa-consumer would render first and
+    copier's _external_data read would return {} → empty value. With the edge,
+    zzz-producer renders first and writes its answers file.
+    """
+    producer = build_template_repo(
+        tmp_path / "zzz-producer",
+        files={
+            "copier.yml": dedent(
+                """\
+                fact_value:
+                  type: str
+                  default: from-producer
+                _subdirectory: template
+                """
+            ),
+            "template/prod_out.txt.jinja": "fact={{ fact_value }}\n",
+        },
+    )
+    # Consumer aliases zzz-producer; its basename sorts BEFORE zzz-producer.
+    consumer = build_template_repo(
+        tmp_path / "aaa-consumer",
+        files={
+            "copier.yml": dedent(
+                """\
+                _external_data:
+                  prod: .copier-answers.zzz-producer.yml
+                own:
+                  type: str
+                  default: own
+                _subdirectory: template
+                """
+            ),
+            "template/cons_out.txt.jinja": "own={{ own }}\n",
+        },
+    )
+    trust.add_trust(producer.url)
+    trust.add_trust(consumer.url)
+
+    dest = tmp_path / "proj"
+    # Both in selection; consumer sorts first alphabetically but must render second.
+    runner.init_many(
+        [
+            (_record("testcat/aaa-consumer", consumer, questions=["own"]), {}),
+            (_record("testcat/zzz-producer", producer, questions=["fact_value"]), {}),
+        ],
+        str(dest),
+        today="2026-07-16",
+    )
+
+    # Both must have rendered (no OrderingError, no crash)
+    assert (dest / ".copier-answers.zzz-producer.yml").exists(), "producer did not render"
+    assert (dest / ".copier-answers.aaa-consumer.yml").exists(), "consumer did not render"
