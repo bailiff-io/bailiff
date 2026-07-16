@@ -8,8 +8,9 @@ Supports four targets — **claude**, **codex**, **opencode**, **kiro** — on
 deliberately disjoint paths so any combination can be selected without collision.
 Empty selection (no targets) is a clean no-op.
 
-Requires **bailiff-mod-base** (declared via `depends_on`). Reads `project_name`
-from the base answers file via `_external_data.base` (spec 014 / FR-004).
+Ordered after **bailiff-mod-base** via the `_external_data.base` data-dependency
+edge (FR-006). Reads `project_name` from the base answers file via
+`_external_data.base`.
 
 ## What it produces
 
