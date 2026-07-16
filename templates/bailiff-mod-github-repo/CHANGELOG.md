@@ -19,6 +19,12 @@ cocogitto fan-out (ADR-0006); do not hand-edit released sections.
 - - -
 ## bailiff-mod-github-repo-v0.1.0 - 2026-07-15
 #### Features
+- rename project clerk → bailiff (PyPI: bailiff, org: bailiff-io) - (52ac605) - Sjors Robroek
+
+- - -
+
+## bailiff-mod-github-repo-v0.1.0 - 2026-07-15
+#### Features
 - (**011**) implement bailiff-mod-github-repo (T018) - (86c77bc) - Sjors Robroek
 #### Bug Fixes
 - (**011**) T018 address review findings - (6f25385) - Sjors Robroek

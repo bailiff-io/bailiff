@@ -23,6 +23,12 @@ cocogitto fan-out (ADR-0006); do not hand-edit released sections.
 - - -
 ## bailiff-mod-ts-v0.1.0 - 2026-07-15
 #### Features
+- rename project clerk → bailiff (PyPI: bailiff, org: bailiff-io) - (52ac605) - Sjors Robroek
+
+- - -
+
+## bailiff-mod-ts-v0.1.0 - 2026-07-15
+#### Features
 - (**011**) implement bailiff-mod-ts TypeScript language overlay - (50846b7) - Sjors Robroek
 #### Bug Fixes
 - (**011**) E2E campaign fixes -- cdk nag-splice bug, drop version pin, IaC exclusion tags - (ce28f28) - Sjors Robroek

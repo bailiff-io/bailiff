@@ -13,7 +13,14 @@ cocogitto fan-out (ADR-0006); do not hand-edit released sections.
   NO release actions at scaffold time; CI left to the CI modules.
 
 <!--
-  cocogitto inserts each released version's section ABOVE the `- - -` separator
+  cocogitto inserts each released version's section ABOVE the `- - -
+## bailiff-mod-cocogitto-v0.1.0 - 2026-07-16
+#### Features
+- (**012**) bailiff-mod-cocogitto — managed cog.toml, cog/hook tokens, init-only preflight (T005) - (9ac6a51) - Sjors Robroek
+- (**012**) bailiff-mod-devcontainer — managed devcontainer.json from frozen mise_tools (T003) - (1e999b3) - Sjors Robroek
+
+- - -
+` separator
   below (spec 008b). The separator MUST be present or `cog bump` fails with
   "cannot find default separator '- - -'". Keep it as the last content line.
 -->

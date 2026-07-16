@@ -29,6 +29,14 @@ cocogitto fan-out (ADR-0006); do not hand-edit released sections.
     by the spec-003 engine from the selected layers' edges.
 
 - - -
+## bailiff-mod-apm-v0.1.0 - 2026-07-16
+#### Features
+- rename project clerk → bailiff (PyPI: bailiff, org: bailiff-io) - (52ac605) - Sjors Robroek
+#### Documentation
+- (**013**) move template README invocations to uvx bailiff (T013 follow-up) - (d8cf603) - Sjors Robroek
+
+- - -
+
 ## bailiff-mod-apm-v0.1.0 - 2026-07-13
 #### Features
 - add APM ecosystem module template (#34) - (94b34ec) - Sjors Robroek

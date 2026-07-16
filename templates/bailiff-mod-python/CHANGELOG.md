@@ -30,6 +30,14 @@ cocogitto fan-out (ADR-0006); do not hand-edit released sections.
 - `pyproject.toml` lifecycle changed from MANAGED seed-once to TASK-OUTPUT seed-once.
 
 - - -
+## bailiff-mod-python-v0.1.0 - 2026-07-16
+#### Features
+- rename project clerk → bailiff (PyPI: bailiff, org: bailiff-io) - (52ac605) - Sjors Robroek
+#### Documentation
+- (**013**) move template README invocations to uvx bailiff (T013 follow-up) - (d8cf603) - Sjors Robroek
+
+- - -
+
 ## bailiff-mod-python-v0.2.0 - 2026-07-15
 #### Features
 - (**011**) revise bailiff-mod-python to v1.0.0 de-opinionated spec - (cc7d7ea) - Sjors Robroek

@@ -9,6 +9,12 @@ cocogitto fan-out (ADR-0006); do not hand-edit released sections.
   cocogitto inserts each released version's section ABOVE the `- - -
 ## bailiff-mod-readme-v0.1.0 - 2026-07-15
 #### Features
+- rename project clerk → bailiff (PyPI: bailiff, org: bailiff-io) - (52ac605) - Sjors Robroek
+
+- - -
+
+## bailiff-mod-readme-v0.1.0 - 2026-07-15
+#### Features
 - (**011**) implement bailiff-mod-readme (T012) - (f1c4575) - Sjors Robroek
 
 - - -

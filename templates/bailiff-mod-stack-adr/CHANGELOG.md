@@ -18,6 +18,14 @@ cocogitto fan-out (ADR-0006); do not hand-edit released sections.
   - No reproduce-time agent step (legacy staleness/CVE agent step dropped).
 
 - - -
+## bailiff-mod-stack-adr-v0.1.0 - 2026-07-16
+#### Features
+- rename project clerk → bailiff (PyPI: bailiff, org: bailiff-io) - (52ac605) - Sjors Robroek
+#### Documentation
+- (**013**) move template README invocations to uvx bailiff (T013 follow-up) - (d8cf603) - Sjors Robroek
+
+- - -
+
 ## bailiff-mod-stack-adr-v0.1.0 - 2026-07-15
 #### Features
 - (**011**) implement bailiff-mod-stack-adr (T013) - (326f611) - Sjors Robroek

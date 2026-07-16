@@ -13,7 +13,14 @@ cocogitto fan-out (ADR-0006); do not hand-edit released sections.
   ruff_line_length); zero `_tasks`.
 
 <!--
-  cocogitto inserts each released version's section ABOVE the `- - -` separator
+  cocogitto inserts each released version's section ABOVE the `- - -
+## bailiff-mod-editorconfig-v0.1.0 - 2026-07-16
+#### Features
+- (**012**) bailiff-mod-editorconfig — managed .editorconfig from frozen linter facts (T004) - (281ea81) - Sjors Robroek
+- (**012**) bailiff-mod-devcontainer — managed devcontainer.json from frozen mise_tools (T003) - (1e999b3) - Sjors Robroek
+
+- - -
+` separator
   below (spec 008b). The separator MUST be present or `cog bump` fails with
   "cannot find default separator '- - -'". Keep it as the last content line.
 -->

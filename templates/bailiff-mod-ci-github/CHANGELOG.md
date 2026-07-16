@@ -17,6 +17,15 @@ cocogitto fan-out (ADR-0006); do not hand-edit released sections.
 
 <!--
   cocogitto inserts each released version's section ABOVE the `- - -
+## bailiff-mod-ci-github-v0.1.0 - 2026-07-16
+#### Features
+- (**012**) CI modules accept monorepo_tool=moon with moon ci affected branch (T002) - (114709f) - Sjors Robroek
+- rename project clerk → bailiff (PyPI: bailiff, org: bailiff-io) - (52ac605) - Sjors Robroek
+#### Bug Fixes
+- (**012**) dedupe Unreleased Added heading in CI changelogs [skip lint] - (1b885b5) - Sjors Robroek
+
+- - -
+
 ## bailiff-mod-ci-github-v0.1.0 - 2026-07-15
 #### Features
 - (**011**) implement bailiff-mod-ci-github (T016) - (add09f2) - Sjors Robroek

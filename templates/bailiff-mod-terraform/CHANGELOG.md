@@ -7,6 +7,14 @@ cocogitto fan-out (ADR-0006); do not hand-edit released sections.
 
 <!--
   cocogitto inserts each released version's section ABOVE the `- - -
+## bailiff-mod-terraform-v0.1.0 - 2026-07-16
+#### Features
+- rename project clerk → bailiff (PyPI: bailiff, org: bailiff-io) - (52ac605) - Sjors Robroek
+#### Documentation
+- (**013**) move template README invocations to uvx bailiff (T013 follow-up) - (d8cf603) - Sjors Robroek
+
+- - -
+
 ## bailiff-mod-terraform-v0.1.0 - 2026-07-15
 #### Features
 - (**011**) implement bailiff-mod-terraform (T020) - (7b0085a) - Sjors Robroek
