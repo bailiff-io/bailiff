@@ -1,10 +1,10 @@
-"""spec 011 T006: bailiff-mod-python v1.0.0 loop tests.
+"""spec 014 (prev 011 T006): bailiff-mod-python v2.0.0 loop tests.
 
-Contract: specs/011-deopinionated-module-family/contracts/bailiff-mod-python.md
+Contract: specs/014-namespaced-question-keys/contracts/_facts.md
 
 Covers:
   - init [base, python] uv/3.13/src: ruff.toml MANAGED, pyproject present (task-output),
-    mise sentinel present, gitignore_stack threaded.
+    mise sentinel present, project_name read from base via _external_data.
   - standalone init with defaults: renders ruff.toml, pyproject present.
   - reproduce: pyproject present/structure only (TASK-OUTPUT seed-once, no
     regeneration over populated tree).
@@ -428,7 +428,7 @@ def test_add_tests_seed_once_not_clobbered(
     custom_content = "# custom test\ndef test_real():\n    assert 1 + 1 == 2\n"
     example.write_text(custom_content)
 
-    # Single-layer reproduce: the module has a run_after:bailiff-mod-base edge so
+    # Single-layer reproduce: the module has a depends_on:bailiff-mod-base edge so
     # reproduce_many would fail on a standalone project (no base answers file).
     # runner.reproduce drives the single answers file directly.
     # runner.init (single-layer) writes .copier-answers.yml, not the multi-layer name.
