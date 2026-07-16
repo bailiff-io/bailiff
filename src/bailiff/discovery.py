@@ -508,6 +508,17 @@ def git_commit_if_dirty(dest: str, message: str) -> None:
         )
 
 
+def run_post_task(cmd: str, dest: str) -> int:
+    """Execute a single post-task command in ``dest`` and return the exit code.
+
+    Lives in ``discovery`` so all subprocess calls remain here and runner.py stays
+    subprocess-free (FR-004: secret values must never appear in argv / process listings).
+    Post-tasks do not carry secret values — but the structural invariant is maintained.
+    """
+    result = subprocess.run(cmd, shell=True, cwd=dest, check=False)  # noqa: S602
+    return result.returncode
+
+
 def _ships_answers_file(clone: Path, subdirectory: str) -> bool:
     """True if the template ships a ``{{ _copier_conf.answers_file }}.jinja`` file.
 

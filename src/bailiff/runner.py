@@ -230,6 +230,11 @@ def init(spec: RunSpec, *, today: str | None = None, check: bool = False) -> Run
     except CopierError as exc:
         msg = _redact_secrets(str(exc), _secret_keys, data)
         raise BailiffError(f"copier could not complete the operation: {msg}") from exc
+    # spec 014 FR-014/R10: write schema marker to the answers file so reproduce_many
+    # can gate on it.  Single-template init writes `.copier-answers.yml` (the default
+    # copier name when no custom answers_file is supplied).
+    if not check:
+        _write_schema_marker(spec.dest, ".copier-answers.yml")
     return RunResult(dest=spec.dest, src=spec.source, ref=spec.ref, pretend=check)
 
 
@@ -476,9 +481,10 @@ def _run_post_tasks(
     Failure handling: a non-zero exit code raises ``BailiffError``, mirroring how
     copier surfaces inline ``_tasks`` failures — a failing post-task must not pass
     silently.
-    """
-    import subprocess
 
+    Execution is delegated to ``discovery.run_post_task`` so that runner.py stays
+    process-invocation-free (FR-004: secrets must never appear in argv).
+    """
     for record, _ in plan:
         desc = descs.get(record.full_id)
         if not desc or not desc.post_tasks:
@@ -491,11 +497,10 @@ def _run_post_tasks(
             cmd = task.get("command", "") if isinstance(task, dict) else str(task)
             if not cmd:
                 continue
-            result = subprocess.run(cmd, shell=True, cwd=dest, check=False)  # noqa: S602
-            if result.returncode != 0:
+            rc = discovery.run_post_task(cmd, dest)
+            if rc != 0:
                 raise BailiffError(
-                    f"_post_task #{i} from {basename!r} failed with exit code "
-                    f"{result.returncode}: {cmd!r}"
+                    f"_post_task #{i} from {basename!r} failed with exit code {rc}: {cmd!r}"
                 )
 
 
