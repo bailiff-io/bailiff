@@ -140,23 +140,31 @@ jobs:
           git push origin HEAD:main || echo "::warning::nothing new to push (rerun)"
           git push origin --tags || echo "::warning::tags already pushed (rerun)"
 
-      # Step 3: derive the changed module set from the tags on the bump commit.
-      # First tries HEAD (normal cog bump), then falls back to HEAD~1 (rerun after
-      # bump already pushed) so the fan-out is rerun-safe.
+      # Step 3: derive the changed module set from module tags.
+      # Scans all bailiff-mod-*-v* tags and includes those whose target repos
+      # are empty (not yet fanned out). This makes the step fully rerun-safe
+      # regardless of how many commits have landed since the cog bump.
       - name: Detect changed modules
         id: changed
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
-          tags="$(git tag --points-at HEAD | grep -E '^.+-v[0-9]' || true)"
-          if [ -z "$tags" ]; then
-            tags="$(git tag --points-at HEAD~1 | grep -E '^.+-v[0-9]' || true)"
-          fi
+          tags=""
+          for tag in $(git tag -l 'bailiff-mod-*-v[0-9]*'); do
+            name="${tag%-v*}"
+            # Check if the mirror repo has any commits (empty = needs fan-out)
+            if ! gh api "repos/${{ github.repository_owner }}/$name/commits" --silent 2>/dev/null; then
+              tags="${tags}${tag}"$'\n'
+            fi
+          done
+          tags="$(echo "$tags" | sed '/^$/d')"
           echo "tags<<EOF" >> "$GITHUB_OUTPUT"
           echo "$tags" >> "$GITHUB_OUTPUT"
           echo "EOF" >> "$GITHUB_OUTPUT"
           if [ -z "$tags" ]; then
-            echo "no module tags on HEAD — nothing to release"
+            echo "no unfanned module tags found — nothing to release"
           else
-            echo "changed module tags:"; echo "$tags"
+            echo "unfanned module tags:"; echo "$tags"
           fi
 
       # Step 4: fan-out each changed module to its split repo. NAME is everything
