@@ -63,14 +63,40 @@ single-file union:
 | Surface | Native drop-in? | Model under 014 |
 |---|---|---|
 | `mise_tools` → `.mise.toml` | ✅ `.mise/conf.d/*.toml` | Per-module drop-in; **mise merges natively** at `mise install`. No merge task. |
-| `hook_blocks` → `.pre-commit-config.yaml` | ❌ pre-commit has none | Per-module `.pre-commit.d/<vendor>-<module>.yaml` fragments; **one bailiff post-install merge task** folds them into `.pre-commit-config.yaml`. |
-| `gitignore_stack` → `.gitignore` | ❌ (git composes by precedence, not committed-file merge) | Per-module fragment (or gitnr per-module) + merge/append into `.gitignore`, OR keep as a frozen fact + single gitnr call. Plan-phase pick. |
+| `hook_blocks` → `.pre-commit-config.yaml` | ❌ pre-commit has none | Per-module `.pre-commit.d/<module>.yaml` fragments; **one bailiff post-install merge task** folds them into `.pre-commit-config.yaml`. |
+| `gitignore_stack` → `.gitignore` | ❌ (git composes by precedence, not committed-file merge) | Per-module `.gitignore.d/<module>` fragments — produced by gitnr OR as literal static lines — **one bailiff merge task** concatenates into `.gitignore`. Supports non-gitnr / static-list packages. |
 | `quality_languages` | n/a | NOT shared — single module declares AND consumes it. No change. |
 
 **Consequence: there are ZERO cross-module answer unions after 014.** No module contributes to
-another module's answer list; no key like `mise_tools` / `hook_blocks` is threaded across
-layers at all. What remains is (a) per-module fragments, (b) native or task merges, and (c)
-namespaced shared *facts* (single-value threading like `project_name`) via `_external_data`.
+another module's answer list; no key like `mise_tools` / `hook_blocks` / `gitignore_stack` is
+threaded across layers at all. What remains is (a) per-module fragments, (b) native or task
+merges, and (c) cross-module *facts* (single values like `project_name`) read via copier
+`_external_data` aliases — see below.
+
+### Cross-module facts via `_external_data` aliases — no prefix (ratified)
+
+A module that needs a value another module produced reads it through copier's `_external_data`,
+which maps a **local alias** to the producer's answers file. bailiff's per-layer answers-file
+name is deterministic (`.copier-answers.<module-basename>.yml`, verified in
+`ordering.py:answers_file_name`), so a consumer can point an alias at any producer:
+
+```yaml
+# consumer module copier.yml
+_external_data:
+  base: .copier-answers.bailiff-mod-base.yml
+project_name:
+  type: str
+  default: "{{ _external_data.base.project_name }}"   # falls back to own default if base absent
+```
+
+The borrowed value lives under the **alias namespace** (`_external_data.base.project_name`) —
+copier isolates it structurally; it never enters the consumer's own question namespace and
+never lands in the consumer's answers file. **No vendor prefix is needed** (an earlier
+`bailiff__<name>` scheme is REJECTED — copier's alias namespacing already isolates cross-module
+reads, works across vendors since each producer's answers file is a distinct alias, and adds no
+convention to lint). Most facts are base-produced (`project_name`, `layout`, `github_host`,
+`default_branch`); the few that aren't (e.g. `monorepo_tool` produced by moon, read by CI) use
+the same mechanism with a different alias (`_external_data.moon.monorepo_tool`).
 
 ### Config-consistency, not byte-identity (invariant relaxation)
 
@@ -112,37 +138,37 @@ B defines `q ∈ {m,n}`. Init the stack → A renders with its `q`, B renders wi
 3. **Given** a single-module stack, **When** inited, **Then** behavior is byte-identical to
    pre-014 (isolation changes nothing when there is only one layer).
 
-### User Story 2 — A module explicitly shares a fact, namespaced by vendor (Priority: P1)
+### User Story 2 — A module reads a cross-module fact via `_external_data` alias (Priority: P1)
 
-A module that needs a value produced by another module (e.g. a language overlay needing
-base's `project_name` or `layout`) reads it through copier's `_external_data` mechanism,
-under a **vendor-namespaced key** (`bailiff__project_name`), never via ambient bleed. The
-producing module publishes the fact under the same vendor-namespaced key. A third-party
-vendor's modules share their own facts under their own prefix (`acme__foo`) with zero
-collision risk against first-party or other vendors.
+A module that needs a value produced by another module (e.g. a language overlay needing base's
+`project_name` or `layout`) reads it through copier's `_external_data` mechanism: it declares a
+local alias pointing at the producer's deterministic answers file
+(`.copier-answers.<producer-basename>.yml`) and reads `{{ _external_data.<alias>.<key> }}`. No
+ambient bleed; no vendor prefix. The value is isolated under the alias namespace by copier and
+never enters the consumer's own question space.
 
-**Why this priority**: Cross-module facts are real and necessary (base sets `project_name`;
-everything reads it). The sharing must be explicit and namespaced so it survives a
-multi-vendor ecosystem — a centralized first-party allowlist cannot know a third-party
-vendor's shared keys.
+**Why this priority**: Cross-module facts are real and necessary (base produces `project_name`;
+overlays read it). Reading them through `_external_data` aliases is copier-native, needs no
+naming convention or lint, and works across vendors because each producer's answers file is a
+distinct alias.
 
-**Independent Test**: A consumer module declares `_external_data` pointing at the producer's
-answers file and reads `{{ _external_data.<ns>.bailiff__project_name }}`; the producer writes
-`bailiff__project_name` to its answers file. Rendering the consumer resolves the shared value;
-a stack without the producer falls back to the consumer's own default.
+**Independent Test**: A consumer declares `_external_data: {base: .copier-answers.bailiff-mod-base.yml}`
+and reads `{{ _external_data.base.project_name }}`; with base in the stack it resolves base's
+value; without base it falls back to the consumer's own default.
 
 **Acceptance Scenarios**:
 
-1. **Given** a producer module writing `bailiff__project_name` and a consumer declaring it as
-   external data, **When** both are in a stack, **Then** the consumer renders the producer's
-   value.
+1. **Given** base (producer) writing `project_name` to its answers file and a consumer aliasing
+   base as external data, **When** both are in a stack, **Then** the consumer renders base's
+   `project_name`.
 2. **Given** the same consumer with NO producer in the stack, **When** inited alone, **Then**
-   it falls back to its own default (no hard failure on a missing producer).
-3. **Given** a third-party module sharing `acme__toolchain` and a first-party module sharing
-   `bailiff__mise` context, **When** both are in a merged catalog, **Then** the two vendor
-   namespaces never collide.
-4. **Given** any shared key, **When** `check_modules.py` runs, **Then** it enforces the
-   `<vendor>__<name>` shape for keys declared shared (well-formedness lint).
+   it falls back to its own default (no hard failure on a missing producer/answers file).
+3. **Given** a non-base producer (e.g. moon writing `monorepo_tool`), **When** a CI module
+   aliases moon and reads `_external_data.moon.monorepo_tool`, **Then** it resolves — the
+   mechanism is not base-specific.
+4. **Given** the producer's answers-file name, **When** the consumer aliases it, **Then** the
+   name is the deterministic `.copier-answers.<module-basename>.yml` (verified in
+   `ordering.py`), so the alias path is knowable at authoring time.
 
 ### User Story 3 — mise tools compose via drop-in files, no union (Priority: P1)
 
@@ -272,25 +298,26 @@ detected and reported with a documented remediation (never a silent wrong render
   keeps private-answer bleed out of them too). A committed tree reproduces per-layer, not from
   a flattened namespace.
 
-### Functional Requirements — vendor-namespaced sharing
+### Functional Requirements — cross-module facts via `_external_data`
 
-- **FR-004** *(explicit shared keys)*: A key that must cross layers MUST be declared shared and
-  named `<vendor>__<name>` (double-underscore separator; kebab-or-snake `<name>`). Sharing is
-  explicit on BOTH ends: the producer writes the key to its answers file; the consumer reads
-  it via copier `_external_data` (the verified copier-native cross-template mechanism) under a
-  namespace. bailiff MUST route the shared value so consumers resolve it.
-- **FR-005** *(vendor prefix reserves the collision boundary)*: `<vendor>` is the collision
-  boundary. `bailiff__` is first-party-reserved. Third-party vendors use their own prefix. No
-  bare (unprefixed) key may be declared shared.
-- **FR-006** *(shared-key lint)*: `check_modules.py` MUST lint first-party shared-key
-  declarations for the `bailiff__<name>` shape and reject bare or wrong-vendor shared keys
-  (exit 1, naming module + key). Third-party malformed shared keys are at most runtime warnings
-  on ingest (mirrors 013 FR-011 first-party/third-party split).
-- **FR-007** *(the shared-fact set)*: The first-party shared facts are exactly those with a
-  genuine cross-module producer→consumer relationship, enumerated and ratified in
-  `decisions-ledger.md` (candidates: `project_name`, `layout`, `github_host`, `default_branch`,
-  `monorepo_tool`, `monorepo_packages`, and the gitnr token list). Every other question is
-  private (FR-001).
+- **FR-004** *(read via `_external_data` alias)*: A module that needs a value another module
+  produced MUST read it through copier `_external_data`: declare a local alias pointing at the
+  producer's answers file and reference `{{ _external_data.<alias>.<key> }}`. The producer
+  simply writes the key to its own answers file as a normal question. NO vendor prefix and NO
+  cross-layer threading of the key.
+- **FR-005** *(deterministic producer path)*: Consumers rely on the deterministic per-layer
+  answers-file name `.copier-answers.<module-basename>.yml` (`ordering.py:answers_file_name`).
+  This name is a stable contract; changing the naming scheme is a breaking change gated
+  separately.
+- **FR-006** *(graceful absence)*: A consumer reading `_external_data.<alias>.<key>` MUST fall
+  back to its own default when the producer (or its answers file) is absent from the stack —
+  never a hard failure. (copier evaluates the default expression; the plan phase confirms the
+  guard idiom.)
+- **FR-007** *(no vendor prefix, no shared-key lint)*: The `<vendor>__<name>` prefix scheme and
+  its lint are explicitly REJECTED — copier alias namespacing isolates cross-module reads
+  structurally and works across vendors without convention. `check_modules.py` gains no
+  shared-key naming lint. Every question key stays a normal (bare) key, private by default
+  (FR-001), shared only by being read through an alias.
 
 ### Functional Requirements — mise drop-in (union dissolution)
 
@@ -342,6 +369,18 @@ detected and reported with a documented remediation (never a silent wrong render
   restructures mise/hook/gitignore output — it introduces NO new user-facing module
   capabilities. The 011 cross-cutting contract is amended (single-writer unions → drop-in
   where possible); the amendment is recorded.
+- **FR-018** *(module-authoring documentation)*: The module structure/how-to documentation MUST
+  be updated to teach the new model, because it changes how every module author works. Scope:
+  (a) the 011 cross-cutting contract (`specs/011-.../contracts/_cross-cutting.md`) — replace the
+  frozen-union single-writer sections with the fragment/merge pattern and the `_external_data`
+  fact-read pattern; (b) `SKILL.md` (the authoring skill) — the "how to write a module" steps;
+  (c) the `_meta/module-template/` scaffold that `just new-module` copies — its `copier.yml` and
+  README must demonstrate a `.mise/conf.d/` fragment and an `_external_data` alias, not a union
+  contribution; (d) `templates/*/README.md` prose where it references the old union model; (e) a
+  concrete authoring guide covering: private-by-default questions, when/how to read a
+  cross-module fact via `_external_data`, how to contribute a fragment (mise/pre-commit/gitignore),
+  and the config-consistency (not byte-identity) reproduce guarantee. A module author reading the
+  docs MUST be able to write a correct new module without reverse-engineering an existing one.
 - **FR-016** *(decisions ledger prerequisite)*: The ratified `decisions-ledger.md` MUST exist
   and be accepted before the plan phase begins (011/013 precedent).
 - **FR-017** *(constitution check)*: Engine changes to `runner.py` are within the C-11
