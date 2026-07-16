@@ -298,6 +298,72 @@ def test_monorepo_affected_empty_languages(ci_github_repo: TemplateRepo, tmp_pat
 
 
 # ---------------------------------------------------------------------------
+# spec 012 T002 (FR-010a): monorepo_tool=moon branch
+# ---------------------------------------------------------------------------
+
+
+def test_monorepo_affected_moon(ci_github_repo: TemplateRepo, tmp_path: Path) -> None:
+    """monorepo-affected + moon: moon ci job replaces the paths-filter fan-out."""
+    dest = tmp_path / "proj"
+    _run_copier(
+        ci_github_repo.url,
+        ci_github_repo.tag,
+        dest,
+        answers=_base_answers(ci_model="monorepo-affected", monorepo_tool="moon"),
+    )
+
+    ci = (dest / _CI_FILE).read_text()
+    assert "# Model: monorepo-affected" in ci
+    # moon ci is the affected-detection invocation
+    assert "run: moon ci" in ci
+    assert "moonrepo/setup-toolchain@v0" in ci
+    # moon needs full history to diff against the base branch
+    assert "fetch-depth: 0" in ci
+    # No paths-filter fan-out on the moon branch
+    assert "dorny/paths-filter@v3" not in ci
+    assert "  python-ci:" not in ci
+    # Gate still fans in on the moon job
+    assert "  gate:" in ci
+    assert "needs: [moon-ci]" in ci
+
+
+def test_moon_absent_in_other_models(ci_github_repo: TemplateRepo, tmp_path: Path) -> None:
+    """moon invocation appears ONLY on monorepo-affected + monorepo_tool=moon."""
+    # Other models with monorepo_tool=moon set: no moon invocation.
+    for model in ["minimal", "standard", "optimized", "merge-queue"]:
+        dest = tmp_path / f"proj-{model}"
+        _run_copier(
+            ci_github_repo.url,
+            ci_github_repo.tag,
+            dest,
+            answers=_base_answers(ci_model=model, monorepo_tool="moon"),
+        )
+        ci = (dest / _CI_FILE).read_text()
+        assert "moon ci" not in ci, f"moon invocation leaked into {model} model"
+    # monorepo-affected with a different tool: turborepo path, no moon.
+    dest = tmp_path / "proj-turbo"
+    _run_copier(
+        ci_github_repo.url,
+        ci_github_repo.tag,
+        dest,
+        answers=_base_answers(ci_model="monorepo-affected", monorepo_tool="turborepo"),
+    )
+    ci = (dest / _CI_FILE).read_text()
+    assert "moon ci" not in ci
+    assert "dorny/paths-filter@v3" in ci
+
+
+def test_monorepo_affected_moon_reproduce(ci_github_repo: TemplateRepo, tmp_path: Path) -> None:
+    """moon branch is a managed render: byte-identical on reproduce."""
+    dest = tmp_path / "proj"
+    answers = _base_answers(ci_model="monorepo-affected", monorepo_tool="moon")
+    _run_copier(ci_github_repo.url, ci_github_repo.tag, dest, answers=answers)
+    first = (dest / _CI_FILE).read_bytes()
+    _run_copier(ci_github_repo.url, ci_github_repo.tag, dest, answers=answers, overwrite=True)
+    assert (dest / _CI_FILE).read_bytes() == first
+
+
+# ---------------------------------------------------------------------------
 # T016-05: merge-queue model
 # ---------------------------------------------------------------------------
 

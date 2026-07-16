@@ -77,8 +77,9 @@ monorepo_tool:
     - turborepo
     - nx
     - pnpm-workspace
+    - moon
   default: none
-  help: "Monorepo tool (turborepo/nx/pnpm-workspace); required for monorepo-affected model."
+  help: "Monorepo tool (turborepo/nx/pnpm-workspace/moon); required for monorepo-affected model."
 
 # monorepo_packages: frozen list of package paths for parent-child pipelines.
 # Empty → inline rules:changes per path detection.

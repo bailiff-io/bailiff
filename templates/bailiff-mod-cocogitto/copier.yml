@@ -1,0 +1,85 @@
+# copier.yml — bailiff-mod-cocogitto
+#
+# Conventional-commit + cog-driven release discipline (spec 012 / FR-007) — the
+# same setup bailiff itself dogfoods. Renders a MANAGED `cog.toml` sized to the
+# project shape (single vs monorepo from the threaded `layout` fact).
+#
+# NO release actions at scaffold time: no `cog bump`, no tag creation, no
+# changelog write, no network. Bad commit history cannot fail an init.
+#
+# CI is left untouched (ledger, FR-007 resolution): CI modules are the single
+# owners of workflow/pipeline files; a cog-driven release job is a CI-model
+# decision, not release-tool-module scope.
+#
+# Frozen-union contributions (M1 — tokens only, never a second writer):
+#   cog                      → mise_tools   (base writes .mise.toml)
+#   commit-msg-lint block    → hook_blocks  (precommit writes the hook file)
+#
+# Contract: ships template/{{ _copier_conf.answers_file }}.jinja; NO secret:
+# questions; no jinja2_time; edges are when:false hidden answers.
+
+# --- Threaded identity/shape facts (FR-010 pattern) ---------------------------
+
+project_name:
+  type: str
+  default: "{{ project_name }}"
+  help: "The project's name (threaded from bailiff-mod-base)."
+
+layout:
+  type: str
+  default: "{{ layout }}"
+  help: "Project layout (threaded from bailiff-mod-base): single or monorepo — sizes cog.toml."
+
+monorepo_packages:
+  type: yaml
+  default: []
+  help: "Monorepo package paths (frozen fact; sizes the cog.toml [packages] section). bailiff injects this."
+
+# --- Frozen unions consumed (declared for threading; NOT written here) --------
+
+mise_tools:
+  type: yaml
+  default: []
+  help: "mise [tools] union (injected by phase-1 agent; base writes .mise.toml). cocogitto contributes {cog: <version>}."
+
+hook_blocks:
+  type: yaml
+  default: []
+  help: "Hook config blocks union (injected by phase-1 agent; precommit writes the hook file). cocogitto contributes its commit-msg-lint block."
+
+# --- Dependency edges (when:false hidden answers — FR-004) -------------------
+
+run_after:
+  type: yaml
+  default:
+    - bailiff-mod-base
+  when: false
+
+depends_on:
+  type: yaml
+  default: []
+  when: false
+
+run_before:
+  type: yaml
+  default: []
+  when: false
+
+# Template body lives under template/ — copier renders only that subtree.
+_subdirectory: template
+
+# cog.toml is MANAGED: byte-identical on reproduce.
+
+# --- Trust-gated tasks (FR-007b / FR-012a) -----------------------------------
+# Preflight only — cog availability via mise. Init-only-guarded via committed
+# sentinel so reproduce over a populated tree never re-shells (FR-012a).
+# NO cog bump / tag / changelog at scaffold time (FR-007).
+_tasks:
+  - >-
+    test -f .bailiff-cocogitto-preflight || {
+    command -v mise >/dev/null 2>&1 ||
+    { echo "bailiff-mod-cocogitto: required tool 'mise' not found on PATH." >&2;
+    echo "  mise — https://mise.jdx.dev" >&2;
+    exit 1; };
+    mise install &&
+    printf 'cog-preflight-ok\n' > .bailiff-cocogitto-preflight; }

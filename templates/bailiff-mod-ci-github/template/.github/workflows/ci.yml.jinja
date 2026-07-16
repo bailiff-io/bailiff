@@ -200,6 +200,40 @@ jobs:
     {%- endif %}
   {%- endfor %}
 
+{%- elif _is_monorepo and monorepo_tool == "moon" %}
+{#- moon branch (FR-010a, spec 012): moon ci IS the affected-detection — it
+    computes changed files against the base revision and runs only affected
+    targets plus their dependents. No paths-filter job is needed.
+    fetch-depth: 0 is required so moon can diff against the base branch. -#}
+
+  moon-ci:
+    name: moon CI (affected)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: moonrepo/setup-toolchain@v0
+      - name: Run affected targets
+        run: moon ci
+  {%- if _has_gate %}
+
+  gate:
+    name: Required gate
+    needs: [moon-ci]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Check all jobs passed
+        run: |
+          results='${{ '{{' }} toJSON(needs) }}'
+          if echo "$results" | grep -q '"result": "failure"'; then
+            echo "One or more CI jobs failed."
+            exit 1
+          fi
+          echo "All required checks passed."
+  {%- endif %}
+
 {%- elif _is_monorepo %}
 
   changes:

@@ -44,6 +44,9 @@ stages:
 {% elif ci_model in ['standard', 'optimized', 'merge-queue'] %}
 stages:
   - test
+{% elif ci_model == 'monorepo-affected' and monorepo_tool == 'moon' %}
+stages:
+  - ci
 {% elif ci_model == 'monorepo-affected' %}
 stages:
   - trigger
@@ -333,6 +336,20 @@ ci:
 {# ======================================================================
    MONOREPO-AFFECTED: parent-child pipelines (strategy:depend).
    ====================================================================== #}
+{% elif ci_model == 'monorepo-affected' and monorepo_tool == 'moon' %}
+{# moon branch (FR-010a, spec 012): moon ci IS the affected-detection — it
+   computes changed files against the base revision (MOON_BASE) and runs only
+   affected targets plus their dependents. No parent-child trigger jobs needed.
+   GIT_DEPTH: 0 gives moon full history to diff against the base branch. #}
+
+moon-ci:
+  stage: ci
+  variables:
+    GIT_DEPTH: 0
+    MOON_BASE: "{{ default_branch | default('main') }}"
+  script:
+    - moon ci
+
 {% elif ci_model == 'monorepo-affected' %}
 {%- set _packages = monorepo_packages | default([]) %}
 {% if _packages %}

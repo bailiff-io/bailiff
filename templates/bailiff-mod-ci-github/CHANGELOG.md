@@ -7,6 +7,9 @@ cocogitto fan-out (ADR-0006); do not hand-edit released sections.
 
 ### Added
 
+- FR-010a (spec 012): `monorepo_tool` accepts `moon`; `monorepo-affected` model
+  renders `moon ci` as the affected-detection when `monorepo_tool=moon`.
+
 - Initial implementation: GitHub Actions CI workflow module (spec 011).
   Pure managed render (ZERO `_tasks`); five models (minimal, standard, optimized,
   monorepo-affected, merge-queue); all sizing facts AGENT-FROZEN via `--data`;
