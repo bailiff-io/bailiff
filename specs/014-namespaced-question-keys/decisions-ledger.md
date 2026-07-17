@@ -391,13 +391,50 @@ Design principles ratified for 015:
    class to how `bailiff-mod-dep-updates` already maps package managers into the chosen tool's vocabulary
    (dependabot ids vs renovate managers) and freezes it. Reproduce replays the frozen config → deterministic,
    agent-free (Constitution III preserved).
-4. **NORMALIZE + MAKE MACHINE-READABLE:** today "the agent fills this" exists ONLY as scattered free-text
-   `copier.yml` comments + narrative in `_cross-cutting.md`/`013 spec`/`SKILL.md` — there is NO uniform
-   marker a tool (or author, or third party) can rely on. 015 MUST define a normalized, machine-readable
-   marker for "this output is agent-projected from the selected stack" and DOCUMENT the one canonical pattern
-   (FR-018 authoring guide + cross-cutting contract) so every module — first- or third-party — follows the
-   same shape. The agent MUST check/redo the projection based on the actual module SELECTION, for ALL
-   capabilities, not just hooks.
+4. **NORMALIZE + MAKE MACHINE-READABLE — per-module `_agent_tasks` / `_post_agent_tasks` (maintainer,
+   2026-07-17):** today "the agent fills this" exists ONLY as scattered free-text `copier.yml` comments +
+   narrative in `_cross-cutting.md`/`013 spec`/`SKILL.md` — no uniform, tool-readable marker. 015 adds TWO
+   normalized per-module fields to `copier.yml` (the module manifest bailiff already discovers), siblings to
+   `_tasks`/`_post_tasks`:
+   - **`_agent_tasks`** — agent-projected work run DURING the module's own render stage (inline, at the
+     module's position in the sort), as a SEPARATE set of instructions that applies during the normal
+     template application for that module — for projection that only needs that module's own context.
+   - **`_post_agent_tasks`** — agent-projected work run AROUND the post-loop mechanical merges, for
+     projection that needs the full selected stack visible (e.g. "project every `.hooks.d/` fragment into
+     the selected hook manager's format").
+   PER-MODULE, not per-capability: a per-capability registry is a CLOSED list bailiff must maintain and can't
+   cover unknown third-party capabilities; a per-module self-declaration is OPEN — any module (first- or
+   third-party) declares its own agent projection. Declarations are STRUCTURED (lintable/reviewable/freezable),
+   NOT free-text prose.
+
+5. **EXECUTION MODEL — init-only, frozen, deterministic replay (Constitution III):** `_agent_tasks` and
+   `_post_agent_tasks` run the phase-1 AGENT at INIT ONLY and FREEZE their output as recorded answers (the
+   dep-updates precedent). On REPRODUCE the agent does NOT run — frozen answers replay; mechanical
+   `_tasks`/`_post_tasks` re-run and consume the frozen output. Agent-free + deterministic reproduce preserved.
+
+6. **ORDERING — the agent decides its relation to `_post_tasks`; bailiff does NOT hardcode a tier
+   (maintainer, 2026-07-17):** the earlier "`_post_agent_tasks` always runs before `_post_tasks`" ruling is
+   REJECTED as too rigid — some projections must happen before the mechanical merge (produce input for it),
+   others after (post-process the merged output). So a `_post_agent_tasks` declaration carries EXPLICIT
+   before/after instructions relative to the mechanical merge, e.g. *"before `_post_tasks`: project the
+   `.hooks.d/` fragments into `<manager>.d/`; after `_post_tasks`: fix up the merged config."* bailiff
+   exposes both slots; the author/agent places the work.
+   - **INIT timeline:** (a) RENDER LOOP in sort order (phase → `depends_on` DAG → basename): each module
+     renders → its inline `_tasks` → its **`_agent_tasks`** (agent, during that module's stage, frozen). (b)
+     POST-LOOP: the **before-`_post_tasks`** portion of every `_post_agent_tasks` runs (agent, frozen) →
+     then the mechanical **`_post_tasks`** merges run → then the **after-`_post_tasks`** portion of every
+     `_post_agent_tasks` runs (agent, frozen). Within each slot, order by the module sort (same tie-break as
+     `_post_tasks`).
+   - **REPRODUCE timeline:** render loop replays frozen answers (no agent); `_post_tasks` re-run on the frozen
+     state. All agent slots are SKIPPED (their output is already frozen).
+   - `_agent_tasks` is SEPARATE from this before/after machinery — it is purely inline during normal template
+     application for its own module; it has no relationship to `_post_tasks`.
+   - Open detail for the 015 spec/plan phase: exact declaration schema for the before/after slots; whether a
+     module may both project (before) and consume via `_post_tasks` and post-fix (after) in one declaration;
+     and how `update` (re-init semantics) re-runs the agent projection.
+   The agent MUST re-check/redo the projection based on the actual module SELECTION, for ALL capabilities, and
+   the one canonical pattern MUST be DOCUMENTED (FR-018 authoring guide + cross-cutting contract) so every
+   module — first- or third-party — follows the same shape.
 
 ## Out of scope for 014
 
