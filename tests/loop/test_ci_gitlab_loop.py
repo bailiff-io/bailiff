@@ -577,7 +577,7 @@ def test_no_moon_external_data_non_monorepo(
 
 
 def test_external_data_alias_declared() -> None:
-    """copier.yml declares _external_data with base alias; moon alias is absent (R13 GENERALIZED)."""
+    """copier.yml declares _external_data with base alias; moon alias absent (R13 GENERALIZED)."""
     copier_yml = (
         Path(__file__).resolve().parent.parent.parent
         / "templates"
