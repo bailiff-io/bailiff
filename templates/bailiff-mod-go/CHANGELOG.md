@@ -20,6 +20,16 @@ cocogitto fan-out (ADR-0006); do not hand-edit released sections.
 
 <!--
   cocogitto inserts each released version's section ABOVE the `- - -
+## bailiff-mod-go-v0.2.0 - 2026-07-17
+#### Features
+- (**go**) migrate bailiff-mod-go to 014 fragment/fact model (T022/T035/T039/T045/T049) - (4f814d4) - Sjors Robroek
+#### Bug Fixes
+- (**go**) drop hook_manager coupling; pre-commit fragment unconditional (R13) - (6748a85) - Sjors Robroek
+#### Documentation
+- (**go**) fix README intro + pre-commit.d lifecycle note (R13) - (411b9a4) - Sjors Robroek
+
+- - -
+
 ## bailiff-mod-go-v0.1.0 - 2026-07-16
 #### Features
 - rename project clerk → bailiff (PyPI: bailiff, org: bailiff-io) - (52ac605) - Sjors Robroek

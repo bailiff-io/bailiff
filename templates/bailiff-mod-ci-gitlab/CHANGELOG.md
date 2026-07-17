@@ -23,6 +23,15 @@ cocogitto fan-out (ADR-0006); do not hand-edit released sections.
   - fail-loud guard: empty `ci_languages` + `monorepo_tool=none` → warning no-op job.
 
 - - -
+## bailiff-mod-ci-gitlab-v0.1.1 - 2026-07-17
+#### Bug Fixes
+- (**ci-gitlab**) revert moon to agent-fed --data (R13 GENERALIZED) - (bef5eab) - Sjors Robroek
+#### Documentation
+- reframe reproduce invariant from byte-identical to config-consistent - (498315f) - Sjors Robroek
+- reframe reproduce invariant from byte-identical to config-consistent - (c1d7faf) - Sjors Robroek
+
+- - -
+
 ## bailiff-mod-ci-gitlab-v0.1.0 - 2026-07-16
 #### Features
 - (**012**) CI modules accept monorepo_tool=moon with moon ci affected branch (T002) - (114709f) - Sjors Robroek

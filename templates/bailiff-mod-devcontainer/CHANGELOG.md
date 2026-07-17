@@ -14,6 +14,15 @@ cocogitto fan-out (ADR-0006); do not hand-edit released sections.
 
 <!--
   cocogitto inserts each released version's section ABOVE the `- - -
+## bailiff-mod-devcontainer-v0.2.0 - 2026-07-17
+#### Features
+- (**devcontainer**) migrate to bare mise install, _external_data facts, depends_on edge (spec 014 T029/T035) - (6f66925) - Sjors Robroek
+#### Documentation
+- reframe reproduce invariant from byte-identical to config-consistent - (498315f) - Sjors Robroek
+- reframe reproduce invariant from byte-identical to config-consistent - (c1d7faf) - Sjors Robroek
+
+- - -
+
 ## bailiff-mod-devcontainer-v0.1.0 - 2026-07-16
 #### Features
 - (**012**) bailiff-mod-devcontainer — managed devcontainer.json from frozen mise_tools (T003) - (1e999b3) - Sjors Robroek

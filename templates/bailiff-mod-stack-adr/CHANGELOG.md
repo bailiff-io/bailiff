@@ -26,6 +26,12 @@ cocogitto fan-out (ADR-0006); do not hand-edit released sections.
   `stack_framework`.
 
 - - -
+## bailiff-mod-stack-adr-v0.2.0 - 2026-07-17
+#### Features
+- (**stack-adr**) migrate to _external_data + depends_on (spec 014) - (12debff) - Sjors Robroek
+
+- - -
+
 ## bailiff-mod-stack-adr-v0.1.2 - 2026-07-16
 #### Bug Fixes
 - namespace colliding 'framework' question across three modules - (1f996ad) - Sjors Robroek

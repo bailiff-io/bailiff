@@ -35,6 +35,16 @@ cocogitto fan-out (ADR-0006); do not hand-edit released sections.
   `python_framework`.
 
 - - -
+## bailiff-mod-python-v0.2.0 - 2026-07-17
+#### Features
+- (**python**) migrate to private-by-default threading (spec 014) - (f81e8e3) - Sjors Robroek
+#### Bug Fixes
+- (**python**) wrap pre-commit fragment under top-level repos: key - (385ac4b) - Sjors Robroek
+#### Documentation
+- (**python**) fix table contradiction — fragment renders unconditionally - (b7aa174) - Sjors Robroek
+
+- - -
+
 ## bailiff-mod-python-v0.1.2 - 2026-07-16
 #### Bug Fixes
 - namespace colliding 'framework' question across three modules - (1f996ad) - Sjors Robroek

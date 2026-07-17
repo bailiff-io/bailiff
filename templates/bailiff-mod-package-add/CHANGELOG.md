@@ -7,6 +7,14 @@ cocogitto fan-out (ADR-0006); do not hand-edit released sections.
 
 <!--
   cocogitto inserts each released version's section ABOVE the `- - -
+## bailiff-mod-package-add-v0.2.0 - 2026-07-17
+#### Features
+- (**package-add**) migrate to _external_data for layout + js_pkg_manager (spec 014) - (1cd20e1) - Sjors Robroek
+#### Bug Fixes
+- (**package-add**) make js_pkg_manager agent-fed, remove ts hard dep - (ca420d9) - Sjors Robroek
+
+- - -
+
 ## bailiff-mod-package-add-v0.1.0 - 2026-07-16
 #### Features
 - rename project clerk → bailiff (PyPI: bailiff, org: bailiff-io) - (52ac605) - Sjors Robroek

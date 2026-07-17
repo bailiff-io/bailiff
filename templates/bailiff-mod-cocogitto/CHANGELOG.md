@@ -14,6 +14,17 @@ cocogitto fan-out (ADR-0006); do not hand-edit released sections.
 
 <!--
   cocogitto inserts each released version's section ABOVE the `- - -
+## bailiff-mod-cocogitto-v0.2.0 - 2026-07-17
+#### Features
+- (**cocogitto**) migrate to spec-014 fragment/facts model (T024/T035/T036/T041/T045/T049) - (f381738) - Sjors Robroek
+#### Bug Fixes
+- (**cocogitto**) revert moon to agent-fed --data per R13 GENERALIZED - (eb919e7) - Sjors Robroek
+#### Documentation
+- reframe reproduce invariant from byte-identical to config-consistent - (498315f) - Sjors Robroek
+- reframe reproduce invariant from byte-identical to config-consistent - (c1d7faf) - Sjors Robroek
+
+- - -
+
 ## bailiff-mod-cocogitto-v0.1.0 - 2026-07-16
 #### Features
 - (**012**) bailiff-mod-cocogitto — managed cog.toml, cog/hook tokens, init-only preflight (T005) - (9ac6a51) - Sjors Robroek

@@ -16,6 +16,14 @@ cocogitto fan-out (ADR-0006); do not hand-edit released sections.
 
 <!--
   cocogitto inserts each released version's section ABOVE the `- - -
+## bailiff-mod-cdk-v0.2.0 - 2026-07-17
+#### Features
+- (**014/cdk**) migrate to _external_data alias + depends_on/phase model - (59cd582) - Sjors Robroek
+#### Documentation
+- (**cdk**) drop stale cdk_version row from README questions table - (fc89420) - Sjors Robroek
+
+- - -
+
 ## bailiff-mod-cdk-v0.1.0 - 2026-07-16
 #### Features
 - rename project clerk → bailiff (PyPI: bailiff, org: bailiff-io) - (52ac605) - Sjors Robroek

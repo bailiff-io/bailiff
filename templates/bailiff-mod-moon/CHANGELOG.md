@@ -14,6 +14,15 @@ cocogitto fan-out (ADR-0006); do not hand-edit released sections.
 
 <!--
   cocogitto inserts each released version's section ABOVE the `- - -
+## bailiff-mod-moon-v0.2.0 - 2026-07-17
+#### Features
+- (**moon**) migrate to _external_data facts + conf.d mise fragment (spec 014) - (f1d3ebe) - Sjors Robroek
+#### Documentation
+- reframe reproduce invariant from byte-identical to config-consistent - (498315f) - Sjors Robroek
+- reframe reproduce invariant from byte-identical to config-consistent - (c1d7faf) - Sjors Robroek
+
+- - -
+
 ## bailiff-mod-moon-v0.1.0 - 2026-07-16
 #### Features
 - (**012**) bailiff-mod-moon — managed workspace.yml, monorepo_tool supplier, warn-and-render (T007) - (10bbb5f) - Sjors Robroek

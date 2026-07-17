@@ -29,6 +29,15 @@ cocogitto fan-out (ADR-0006); do not hand-edit released sections.
     by the spec-003 engine from the selected layers' edges.
 
 - - -
+## bailiff-mod-apm-v0.2.0 - 2026-07-17
+#### Features
+- (**014/apm**) _external_data.base facts, depends_on, .gitignore.d fragment - (84f747f) - Sjors Robroek
+#### Documentation
+- reframe reproduce invariant from byte-identical to config-consistent - (498315f) - Sjors Robroek
+- reframe reproduce invariant from byte-identical to config-consistent - (c1d7faf) - Sjors Robroek
+
+- - -
+
 ## bailiff-mod-apm-v0.1.0 - 2026-07-16
 #### Features
 - rename project clerk → bailiff (PyPI: bailiff, org: bailiff-io) - (52ac605) - Sjors Robroek

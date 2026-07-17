@@ -29,6 +29,14 @@ cocogitto fan-out (ADR-0006); do not hand-edit released sections.
   `framework` via --data must pass `ts_framework`.
 
 - - -
+## bailiff-mod-ts-v0.2.0 - 2026-07-17
+#### Features
+- (**014/n-ts**) migrate bailiff-mod-ts to private-by-default + fragment model - (d16eb47) - Sjors Robroek
+#### Bug Fixes
+- (**bailiff-mod-ts**) wrap pre-commit fragment in top-level repos: mapping - (a991e2e) - Sjors Robroek
+
+- - -
+
 ## bailiff-mod-ts-v0.1.2 - 2026-07-16
 #### Bug Fixes
 - namespace colliding 'framework' question across three modules - (1f996ad) - Sjors Robroek

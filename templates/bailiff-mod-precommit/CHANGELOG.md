@@ -13,6 +13,15 @@ cocogitto fan-out (ADR-0006); do not hand-edit released sections.
 
 <!--
   cocogitto inserts each released version's section ABOVE the `- - -
+## bailiff-mod-precommit-v0.2.0 - 2026-07-17
+#### Features
+- (**014**) T032/T044/T043 — precommit fragment/merge model - (e1f75cb) - Sjors Robroek
+- (**014/n-precommit-lefthook**) strip lefthook from bailiff-mod-precommit - (d86267e) - Sjors Robroek
+#### Bug Fixes
+- (**bundler**) reject non-dict fragments with a clear error - (6d3665d) - Sjors Robroek
+
+- - -
+
 ## bailiff-mod-precommit-v0.1.0 - 2026-07-15
 #### Features
 - rename project clerk → bailiff (PyPI: bailiff, org: bailiff-io) - (52ac605) - Sjors Robroek

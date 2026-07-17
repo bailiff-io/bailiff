@@ -17,6 +17,15 @@ cocogitto fan-out (ADR-0006); do not hand-edit released sections.
 
 <!--
   cocogitto inserts each released version's section ABOVE the `- - -
+## bailiff-mod-ci-github-v0.1.1 - 2026-07-17
+#### Bug Fixes
+- (**ci-github**) drop moon from _external_data, make monorepo_tool agent-fed - (a864b7e) - Sjors Robroek
+#### Documentation
+- reframe reproduce invariant from byte-identical to config-consistent - (498315f) - Sjors Robroek
+- reframe reproduce invariant from byte-identical to config-consistent - (c1d7faf) - Sjors Robroek
+
+- - -
+
 ## bailiff-mod-ci-github-v0.1.0 - 2026-07-16
 #### Features
 - (**012**) CI modules accept monorepo_tool=moon with moon ci affected branch (T002) - (114709f) - Sjors Robroek

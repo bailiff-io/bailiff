@@ -7,6 +7,18 @@ cocogitto fan-out (ADR-0006); do not hand-edit released sections.
 
 <!--
   cocogitto inserts each released version's section ABOVE the `- - -
+## bailiff-mod-terraform-v0.2.0 - 2026-07-17
+#### Features
+- (**014/terraform**) migrate to fragment/merge model + _external_data facts - (7cb3bf6) - Sjors Robroek
+#### Bug Fixes
+- (**014/terraform**) drop precommit alias + render fragment unconditionally (R13) - (d189f79) - Sjors Robroek
+- (**terraform**) default pre_commit_terraform_rev to v1.108.0 - (9e6b07f) - Sjors Robroek
+- (**terraform**) precommit fragment must be repos-mapping, not bare list - (1eaa342) - Sjors Robroek
+#### Documentation
+- (**014/terraform**) sync README with R13 ruling (drop hook_manager, fix depends_on) - (ceac20f) - Sjors Robroek
+
+- - -
+
 ## bailiff-mod-terraform-v0.1.0 - 2026-07-16
 #### Features
 - rename project clerk → bailiff (PyPI: bailiff, org: bailiff-io) - (52ac605) - Sjors Robroek
