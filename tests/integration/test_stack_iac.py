@@ -35,12 +35,10 @@ _LAYERS = [
     ("bailiff-mod-python", {"python_version": "3.13", "hook_manager": "pre-commit"}),
     (
         "bailiff-mod-terraform",
-        {
-            "tf_flavor": "terraform",
-            "placement_dir": "infrastructure",
-            # Pin so the bundled .pre-commit-config.yaml is schema-valid (rev required).
-            "pre_commit_terraform_rev": "v1.99.0",
-        },
+        # No pre_commit_terraform_rev override: the module's DEFAULT pin must make
+        # the bundled .pre-commit-config.yaml schema-valid (pre-commit requires a
+        # rev per repo) out of the box.
+        {"tf_flavor": "terraform", "placement_dir": "infrastructure"},
     ),
     ("bailiff-mod-precommit", {"install_hooks": False}),
     (
@@ -118,12 +116,16 @@ def test_precommit_bundler_merged_terraform_fragment(stack: Path) -> None:
     cfg_path = stack / ".pre-commit-config.yaml"
     assert cfg_path.is_file(), "bundler did not emit .pre-commit-config.yaml"
     cfg = yaml.safe_load(cfg_path.read_text())
-    repos = {r["repo"] for r in cfg["repos"]}
-    assert any(u.endswith("pre-commit-terraform") for u in repos), (
-        "terraform hooks were not merged into the bundled config"
+    by_repo = {r["repo"]: r for r in cfg["repos"]}
+    tf_entry = next(
+        (r for u, r in by_repo.items() if u.endswith("pre-commit-terraform")), None
     )
+    assert tf_entry is not None, "terraform hooks were not merged into the bundled config"
+    # pre-commit requires a `rev` per repo: the module's default pin must satisfy it
+    # even when the agent supplies no pre_commit_terraform_rev override.
+    assert tf_entry.get("rev"), "terraform repo entry has no rev — config is schema-invalid"
     # ruff (python) and terraform coexist in one merged config.
-    assert any("ruff-pre-commit" in u for u in repos)
+    assert any("ruff-pre-commit" in u for u in by_repo)
 
 
 # (reproduce byte-identity test removed — invariant is now config-consistency, spec 014)

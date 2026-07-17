@@ -57,10 +57,12 @@ tflint_version:
   help: "tflint version to pin."
 
 # Injectable rev for antonbabenko/pre-commit-terraform hook repo.
-# Agent or --data resolves the concrete tag; empty string = fragment has no rev pin.
+# Agent or --data may override; the default is a real pin so a terraform+precommit
+# stack yields a schema-valid .pre-commit-config.yaml out of the box (pre-commit
+# requires a `rev` per repo). Empty string opts out of pinning (fragment omits rev).
 pre_commit_terraform_rev:
   type: str
-  default: ""
+  default: "v1.108.0"
   help: "Rev (tag) for antonbabenko/pre-commit-terraform in the pre-commit fragment."
 
 # placement_dir controls the subdirectory inside the repo where IaC files land.
