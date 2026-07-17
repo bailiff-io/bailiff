@@ -511,12 +511,11 @@ def test_answers_file_written(ci_github_repo: TemplateRepo, tmp_path: Path) -> N
 # ---------------------------------------------------------------------------
 
 
-def test_external_data_resolves_base_and_moon(ci_github_repo: TemplateRepo, tmp_path: Path) -> None:
-    """default_branch and monorepo_tool resolve from pre-seeded _external_data files.
+def test_external_data_resolves_base(ci_github_repo: TemplateRepo, tmp_path: Path) -> None:
+    """default_branch resolves from pre-seeded .copier-answers.bailiff-mod-base.yml.
 
-    Omits both facts from the answers dict so copier evaluates the
-    _external_data defaults; pre-seeds .copier-answers.bailiff-mod-base.yml
-    and .copier-answers.bailiff-mod-moon.yml so the aliases resolve.
+    moon is NOT in _external_data (R13 GENERALIZED — sometimes-absent producer);
+    monorepo_tool is agent-fed via --data. No moon answers file is seeded.
     """
     dest = tmp_path / "proj"
     dest.mkdir(parents=True, exist_ok=True)
@@ -524,9 +523,7 @@ def test_external_data_resolves_base_and_moon(ci_github_repo: TemplateRepo, tmp_
     (dest / ".copier-answers.bailiff-mod-base.yml").write_text(
         yaml.dump({"_src_path": "bailiff-mod-base", "default_branch": "develop"})
     )
-    (dest / ".copier-answers.bailiff-mod-moon.yml").write_text(
-        yaml.dump({"_src_path": "bailiff-mod-moon", "monorepo_tool": "turborepo"})
-    )
+    # No .copier-answers.bailiff-mod-moon.yml — must NOT be required
 
     answers = {
         "ci_model": "monorepo-affected",
@@ -538,7 +535,8 @@ def test_external_data_resolves_base_and_moon(ci_github_repo: TemplateRepo, tmp_
         "ci_concurrency_cancel": False,
         "ci_required_gate": False,
         "merge_queue_org_confirmed": False,
-        # default_branch and monorepo_tool intentionally omitted — resolved via _external_data
+        "monorepo_tool": "turborepo",  # agent-fed --data, NOT from moon _external_data
+        # default_branch intentionally omitted — resolved via _external_data.base
     }
 
     _run_copier(ci_github_repo.url, ci_github_repo.tag, dest, answers=answers, overwrite=True)
@@ -546,9 +544,46 @@ def test_external_data_resolves_base_and_moon(ci_github_repo: TemplateRepo, tmp_
     ci = (dest / _CI_FILE).read_text()
     # default_branch from _external_data.base
     assert '"develop"' in ci or "develop" in ci
-    # monorepo_tool=turborepo (not moon) → paths-filter branch, not moon ci
+    # monorepo_tool=turborepo (agent-fed) → paths-filter branch, not moon ci
     assert "dorny/paths-filter@v3" in ci
     assert "moon ci" not in ci
+
+
+def test_non_monorepo_no_moon_answers_file(ci_github_repo: TemplateRepo, tmp_path: Path) -> None:
+    """base+ci-github without moon: initialises cleanly, no OrderingError.
+
+    Reproduces the TS-app stack failure (test_stack_ts_app.py): moon not selected
+    → no moon answers file on disk → ci-github must not require it.
+    """
+    dest = tmp_path / "proj"
+    dest.mkdir(parents=True, exist_ok=True)
+
+    (dest / ".copier-answers.bailiff-mod-base.yml").write_text(
+        yaml.dump({"_src_path": "bailiff-mod-base", "default_branch": "main"})
+    )
+    # No .copier-answers.bailiff-mod-moon.yml — simulates non-monorepo stack
+
+    answers = {
+        "ci_model": "standard",
+        "ci_languages": ["typescript"],
+        "ci_lang_facts": {
+            "typescript": {"manager": "bun", "version": "22", "test_runner": "vitest", "image": ""}
+        },
+        "monorepo_tool": "none",
+        "default_branch": "main",
+        "ci_cache": True,
+        "ci_concurrency_cancel": True,
+        "ci_required_gate": True,
+        "merge_queue_org_confirmed": False,
+    }
+
+    # Must not raise OrderingError / dangling-edge error
+    _run_copier(ci_github_repo.url, ci_github_repo.tag, dest, answers=answers, overwrite=True)
+
+    ci = (dest / _CI_FILE).read_text()
+    assert "typescript-ci:" in ci
+    assert "python-ci:" not in ci
+    assert "gate:" in ci
 
 
 # ---------------------------------------------------------------------------
