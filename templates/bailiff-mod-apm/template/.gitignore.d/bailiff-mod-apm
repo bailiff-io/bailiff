@@ -1,0 +1,5 @@
+# APM — managed by bailiff-mod-apm (DO NOT EDIT BY HAND)
+# Fragment: bailiff-mod-base's post-task folds all .gitignore.d/* into .gitignore
+# using delimited blocks (spec 014 FR-013).
+
+.bailiff-apm-preflight
