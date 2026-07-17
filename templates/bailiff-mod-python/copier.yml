@@ -1,31 +1,37 @@
 # copier.yml — bailiff-mod-python
 #
-# Python language overlay (spec 011 / v1.0.0). Clean break from v0.x:
+# Python language overlay (spec 014 / v2.0.0). Private-by-default threading:
 # drops poetry/pip/pipenv, adds structured choice axes (FR-002), native-command
-# scaffold (FR-007 / ADR-0007), and the agent-frozen M1 threading contract.
+# scaffold (FR-007 / ADR-0007), and _external_data fact reads (spec 014 FR-004).
 #
 # Lifecycle summary:
-#   MANAGED (byte-identical): ruff.toml, answers file.
+#   MANAGED (byte-identical): ruff.toml, answers file,
+#     .mise/conf.d/bailiff-mod-python.toml, .pre-commit.d/bailiff-mod-python.yaml,
+#     .gitignore.d/bailiff-mod-python.
 #   TASK-OUTPUT (process-deterministic): pyproject.toml — written by native init,
 #     then seed-once (_skip_if_exists); reproduce uses the committed file verbatim.
-#   CONTRIBUTES tokens only (M1): python version + uv token → mise_tools (base
-#     writes .mise.toml); Python (gitnr short-code) → gitignore_stack (base writes .gitignore);
-#     ruff hook block → hook_blocks (precommit writes hook config).
 #
 # Contract (Constitution VI): ships template/{{ _copier_conf.answers_file }}.jinja;
 # NO secret: questions; edges are when:false hidden answers.
 
-# --- Threaded identity -------------------------------------------------------
+# --- External data aliases (spec 014 FR-004) ----------------------------------
+# base: supplies project_name + description (hard dependency — base must be in
+# the selection; the engine enforces this via FR-006/R6).
+
+_external_data:
+  base: .copier-answers.bailiff-mod-base.yml
+
+# --- Identity (read from base via _external_data) ----------------------------
 
 project_name:
   type: str
-  default: "{{ project_name }}"
-  help: "Project name (threaded from bailiff-mod-base via data=; standalone: empty)."
+  default: "{{ _external_data.base.project_name | default('', true) }}"
+  help: "Project name (read from bailiff-mod-base via _external_data; standalone: empty)."
 
 description:
   type: str
-  default: ""
-  help: "One-line project description (written into pyproject [project].description)."
+  default: "{{ _external_data.base.description | default('', true) }}"
+  help: "One-line project description (read from bailiff-mod-base via _external_data)."
 
 # --- Python toolchain axes (FR-002) ------------------------------------------
 # Choices are FROZEN per C-06: do not reorder or remove after publishing a tag.
@@ -102,20 +108,12 @@ add_tests:
   default: false
   help: "Add a tests/ scaffold with a pytest example (opt-in; pytest is the sole runner)."
 
-# --- Threading contracts (M1 / cross-cutting §2–§4) --------------------------
-# These are not written by this module; the phase-1 agent injects the frozen
-# union values via --data. They are declared here so copier records them and
-# downstream layers can thread them. See _cross-cutting.md.
-
-hook_manager:
-  type: str
-  default: "{{ hook_manager }}"
-  help: "Hook manager (threaded from selection; bailiff-mod-precommit is the single writer)."
+# --- Pinned version for the pre-commit fragment (agent-resolved) --------------
 
 ruff_version:
   type: str
   default: ""
-  help: "Pinned ruff version for the pre-commit hook block (agent-resolved)."
+  help: "Pinned ruff version for the pre-commit hook fragment (agent-resolved)."
 
 # `today` is injected by bailiff and frozen into answers (never jinja2_time — Constitution V).
 today:
@@ -123,24 +121,17 @@ today:
   default: ""
   help: "Generation date (YYYY-MM-DD); bailiff injects this — leave blank."
 
-# --- Dependency edges (when:false hidden answers — FR-004) -------------------
+# --- Dependency edges (when:false hidden answers — FR-004/R7) ----------------
+# spec 014: depends_on is the sole ordering edge; run_after/run_before are dropped.
+# The _external_data.base alias also creates an implicit base→python ordering edge.
 
-# run_after: bailiff-mod-precommit added here when bailiff-mod-precommit lands (hook_blocks ordering).
-run_after:
+depends_on:
   type: yaml
   default:
     - bailiff-mod-base
   when: false
 
-depends_on:
-  type: yaml
-  default: []
-  when: false
-
-run_before:
-  type: yaml
-  default: []
-  when: false
+_bailiff_phase: normal
 
 # ruff.toml is MANAGED (byte-identical re-render on every reproduce).
 # pytest.ini is MANAGED (byte-identical, only present when add_tests=true).

@@ -1,10 +1,10 @@
-"""spec 009 US2 #1 / SC-002 (T024): the Python overlay applies after base.
+"""spec 014 (prev 009 US2 #1 / SC-002 T024): the Python overlay applies after base.
 
 Init [bailiff-mod-base, bailiff-mod-python] (mis-ordered on input) and assert:
-- base renders before python (the run_after edge is honoured);
-- project_name is threaded from base into the overlay;
-- pyproject.toml is present with the threaded name + pinned requires-python;
-- the .gitignore stack (base's single writer) included the python token.
+- base renders before python (the depends_on edge is honoured);
+- project_name is read from base via _external_data;
+- pyproject.toml is present with the resolved name + pinned requires-python;
+- base's stub gitignore includes a token passed directly to it.
 """
 
 from __future__ import annotations
@@ -40,13 +40,13 @@ def _record(full_id: str, repo: TemplateRepo, questions: list[str]) -> TemplateR
 def test_base_python_ordered_and_threaded(
     bailiff_mod_base: TemplateRepo, bailiff_mod_python: TemplateRepo, tmp_path: Path
 ) -> None:
-    """SC-002: [base, python] applies base first, threads project_name, seeds pyproject."""
+    """SC-002: [base, python] applies base first, resolves project_name via _external_data."""
     trust.add_trust(bailiff_mod_base.url)
     trust.add_trust(bailiff_mod_python.url)
 
     dest = tmp_path / "proj"
-    # Mis-order the selection (python first) — the run_after edge must reorder it.
-    # Only base carries project_name; python must inherit it via threading (FR-010).
+    # Mis-order the selection (python first) — the depends_on edge must reorder it.
+    # base carries project_name; python reads it via _external_data.base (spec 014 FR-004).
     selection: list[tuple[TemplateRecord, dict[str, Any]]] = [
         (
             _record(
@@ -63,7 +63,6 @@ def test_base_python_ordered_and_threaded(
                 "org": "acme",
                 "license": "mit",
                 "layout": "single",
-                # base owns the single .gitignore writer; python's token is threaded in.
                 "gitignore_stack": ["ghg:macOS", "gh:Python"],
             },
         ),
@@ -74,9 +73,9 @@ def test_base_python_ordered_and_threaded(
     assert (dest / "AGENTS.md").is_file(), "base did not render (AGENTS.md missing)"
     assert (dest / "tests" / ".gitkeep").is_file(), "base dir scaffold missing"
 
-    # Python overlay rendered: pyproject.toml present (seed-once) with threaded name + pin.
+    # Python overlay rendered: pyproject.toml present (seed-once) with resolved name + pin.
     pyproject = (dest / "pyproject.toml").read_text()
-    assert 'name = "myapp"' in pyproject, "project_name not threaded base→python"
+    assert 'name = "myapp"' in pyproject, "project_name not resolved from base via _external_data"
     assert 'requires-python = ">=3.12"' in pyproject, "python_version not pinned"
 
     # Each layer committed its own answers file.
@@ -84,23 +83,22 @@ def test_base_python_ordered_and_threaded(
     af_py = yaml.safe_load((dest / ".copier-answers.bailiff-mod-python.yml").read_text())
     assert bailiff_mod_base.url in af_base["_src_path"]
     assert bailiff_mod_python.url in af_py["_src_path"]
-    # Threaded value landed in the python layer's recorded answers.
+    # _external_data read: python recorded the resolved project_name in its own answers.
     assert af_py["project_name"] == "myapp"
     assert af_py["python_version"] == "3.12"
 
-    # base's single .gitignore writer consumed the stack (python token included).
+    # base's stub gitignore includes a token passed directly to it.
     gitignore = (dest / ".gitignore").read_text()
-    assert "gh:Python" in gitignore, "python token not threaded into base gitignore_stack"
+    assert "gh:Python" in gitignore, "stub gitignore missing token passed to base"
 
     # python overlay's mise-install sentinel present (init-only guard stub ran).
-    # The module writes no .gitignore of its own (single writer — base's task output).
     assert (dest / ".bailiff-python-mise-installed").is_file()
 
 
 def test_ordering_recomputed_edge(
     bailiff_mod_base: TemplateRepo, bailiff_mod_python: TemplateRepo, tmp_path: Path
 ) -> None:
-    """The run_after edge sequences base before python regardless of input order.
+    """The depends_on edge sequences base before python regardless of input order.
 
     Verified via the layer plan (same DAG init and reproduce use).
     """

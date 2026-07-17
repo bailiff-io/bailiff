@@ -1,0 +1,7 @@
+# .mise/conf.d/bailiff-mod-python.toml — managed by bailiff-mod-python.
+# mise merges all .mise/conf.d/*.toml at runtime (spec 014 FR-008/009/010).
+# Re-rendered byte-identically at reproduce (MANAGED lifecycle).
+[tools]
+python = "{{ python_version }}"
+{% if python_pkg_manager == 'uv' %}uv = "latest"
+{% endif %}
