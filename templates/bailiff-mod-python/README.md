@@ -11,7 +11,7 @@ init, and a managed `ruff.toml`. Ordered after `bailiff-mod-base` via `depends_o
 | `pyproject.toml` | **task-output** → **seed-once** | Written by `uv init` / `pdm init` (init-only-guarded). Never clobbered on reproduce. |
 | `ruff.toml` | **managed** (byte-identical) | Re-rendered on every reproduce from the frozen answers. |
 | `.mise/conf.d/bailiff-mod-python.toml` | **managed** (byte-identical) | Drop-in tool file; mise merges all `.mise/conf.d/*.toml` at runtime. |
-| `.pre-commit.d/bailiff-mod-python.yaml` | **managed** (byte-identical) | ruff hook fragment; consumed by `bailiff-mod-precommit`'s bundler `_post_task`. Only written when `hook_manager=pre-commit`. |
+| `.pre-commit.d/bailiff-mod-python.yaml` | **managed** (byte-identical) | ruff hook fragment; renders unconditionally; consumed by `bailiff-mod-precommit`'s bundler `_post_task` only when `hook_manager=pre-commit`. |
 | `.gitignore.d/bailiff-mod-python` | **managed** (byte-identical) | Python gitignore fragment; folded into `.gitignore` by `bailiff-mod-base`'s `_post_task`. |
 
 ## Questions
