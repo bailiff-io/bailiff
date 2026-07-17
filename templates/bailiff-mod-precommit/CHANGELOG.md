@@ -5,6 +5,12 @@ cocogitto fan-out (ADR-0006); do not hand-edit released sections.
 
 ## [Unreleased]
 
+#### Breaking Changes
+- Remove `hook_manager` question entirely (spec 014 R13). Selecting `bailiff-mod-precommit` IS choosing pre-commit; the question was redundant with module selection. Lefthook is a separate module (`bailiff-mod-lefthook`, spec 015).
+
+#### Changes
+- Drop `lefthook` from `hook_manager` choices; module now owns only `.pre-commit-config.yaml`. Lefthook support is deferred to `bailiff-mod-lefthook` (spec 015).
+
 <!--
   cocogitto inserts each released version's section ABOVE the `- - -
 ## bailiff-mod-precommit-v0.1.0 - 2026-07-15

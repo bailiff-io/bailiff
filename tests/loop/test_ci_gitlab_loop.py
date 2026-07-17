@@ -8,7 +8,9 @@ Covers:
 - all 5 models with a 2-language ci_lang_facts fixture (python + typescript);
 - optional:true needs on change-gated jobs (optimized model);
 - merge-queue + free tier → fallback + header warning;
-- empty ci_languages + monorepo_tool=none → loud warning job (R4 guard).
+- empty ci_languages + monorepo_tool=none → loud warning job (R4 guard);
+- base+ci-gitlab without moon inits cleanly (R13 GENERALIZED: monorepo facts are
+  agent-fed --data, not a hard moon _external_data edge).
 """
 
 from __future__ import annotations
@@ -461,7 +463,7 @@ def test_no_secret_questions(bailiff_mod_ci_gitlab: TemplateRepo, tmp_path: Path
 def test_answers_file_written_no_hidden_edges(
     bailiff_mod_ci_gitlab: TemplateRepo, tmp_path: Path
 ) -> None:
-    """Answers file is written; hidden edges (run_after, depends_on) are not persisted."""
+    """Answers file is written; hidden edges (depends_on, phase) are not persisted."""
     answers = {**_BASE_ANSWERS, "ci_model": "standard"}
     dest = tmp_path / "proj"
     trust.add_trust(bailiff_mod_ci_gitlab.url)
@@ -472,7 +474,119 @@ def test_answers_file_written_no_hidden_edges(
     assert af_path.is_file(), "answers file must be written"
     af = yaml.safe_load(af_path.read_text())
 
-    assert "run_after" not in af, "run_after (hidden edge) must not be persisted"
+    assert "run_after" not in af, "run_after (removed edge) must not be persisted"
     assert "depends_on" not in af, "depends_on (hidden edge) must not be persisted"
+    assert "phase" not in af, "phase (hidden edge) must not be persisted"
     assert af.get("ci_model") == "standard"
     assert af.get("ci_languages") == _TWO_LANG_LANGUAGES
+
+
+# ---------------------------------------------------------------------------
+# spec 014: _external_data aliases (FR-004 / FR-006a)
+# ---------------------------------------------------------------------------
+
+
+_BASE_ANSWERS_FILE = ".copier-answers.bailiff-mod-base.yml"
+
+
+def _seed_base_answers(dest: Path) -> None:
+    """Pre-seed base answers file so _external_data.base alias resolves.
+
+    In a real stack base runs first; in standalone tests we write the file
+    copier would otherwise warn-and-skip (returning {}).
+    """
+    dest.mkdir(parents=True, exist_ok=True)
+    (dest / _BASE_ANSWERS_FILE).write_text(
+        yaml.dump(
+            {
+                "_src_path": "bailiff-mod-base",
+                "project_name": "alias-proj",
+                "default_branch": "develop",
+            }
+        )
+    )
+
+
+def test_external_data_base_alias_resolves(
+    bailiff_mod_ci_gitlab: TemplateRepo, tmp_path: Path
+) -> None:
+    """_external_data.base resolves from pre-seeded answers file (FR-004 / FR-006a).
+
+    project_name and default_branch are NOT in answers — must come from the alias.
+    monorepo facts are agent-fed via answers (R13 GENERALIZED: no moon _external_data edge).
+    """
+    dest = tmp_path / "proj"
+    _seed_base_answers(dest)
+
+    trust.add_trust(bailiff_mod_ci_gitlab.url)
+    # Omit project_name, default_branch — must resolve from _external_data.base.
+    # monorepo facts are agent-fed, not aliased from moon.
+    spec = runner.RunSpec(
+        source=bailiff_mod_ci_gitlab.url,
+        dest=str(dest),
+        answers={
+            "ci_model": "monorepo-affected",
+            "ci_languages": _TWO_LANG_LANGUAGES,
+            "ci_lang_facts": _TWO_LANG_FACTS,
+            "monorepo_tool": "moon",
+            "monorepo_packages": ["packages/api", "packages/web"],
+        },
+    )
+    runner.init(spec, today="2026-07-17")
+
+    # default_branch resolved from base — compare_to should reference 'develop'
+    text = (dest / ".gitlab-ci.yml").read_text()
+    assert "develop" in text, (
+        "default_branch from _external_data.base must appear in rendered output"
+    )
+
+    # monorepo_tool=moon (agent-fed) → moon-ci job, not trigger fan-out
+    parsed = yaml.safe_load(text)
+    assert "moon-ci" in parsed, "monorepo_tool=moon (agent-fed) must render moon-ci job"
+    trigger_jobs = [k for k in parsed if str(k).startswith("trigger:")]
+    assert not trigger_jobs, "moon branch must not render trigger jobs when tool=moon"
+
+
+def test_no_moon_external_data_non_monorepo(
+    bailiff_mod_ci_gitlab: TemplateRepo, tmp_path: Path
+) -> None:
+    """ci-gitlab inits cleanly without any moon answers file (R13 GENERALIZED).
+
+    Verifies the dangling-edge OrderingError is gone: moon _external_data removed,
+    so a plain base+ci-gitlab stack (no moon) must render without error.
+    """
+    dest = tmp_path / "proj"
+    _seed_base_answers(dest)
+
+    trust.add_trust(bailiff_mod_ci_gitlab.url)
+    spec = runner.RunSpec(
+        source=bailiff_mod_ci_gitlab.url,
+        dest=str(dest),
+        answers={
+            "ci_model": "standard",
+            "ci_languages": _TWO_LANG_LANGUAGES,
+            "ci_lang_facts": _TWO_LANG_FACTS,
+            # monorepo_tool and monorepo_packages absent → must default to none/[]
+        },
+    )
+    runner.init(spec, today="2026-07-17")
+
+    assert (dest / ".gitlab-ci.yml").is_file(), ".gitlab-ci.yml must render without moon"
+    # No moon answers file present — confirm it was not required
+    assert not (dest / ".copier-answers.bailiff-mod-moon.yml").is_file()
+
+
+def test_external_data_alias_declared() -> None:
+    """copier.yml declares _external_data with base alias; moon alias absent (R13 GENERALIZED)."""
+    copier_yml = (
+        Path(__file__).resolve().parent.parent.parent
+        / "templates"
+        / "bailiff-mod-ci-gitlab"
+        / "copier.yml"
+    )
+    text = copier_yml.read_text()
+    assert "_external_data:" in text, "copier.yml must declare _external_data block"
+    assert ".copier-answers.bailiff-mod-base.yml" in text, "base alias must use literal path"
+    assert ".copier-answers.bailiff-mod-moon.yml" not in text, (
+        "moon alias must be absent (monorepo facts are agent-fed, not a hard _external_data edge)"
+    )

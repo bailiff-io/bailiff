@@ -1,25 +1,22 @@
 # copier.yml — bailiff-mod-precommit
 #
-# SINGLE WRITER of the hook config file: .pre-commit-config.yaml (pre-commit),
-# lefthook.yml (lefthook), or nothing (none). Implements the hook_manager +
-# hook_blocks frozen-union contract (_cross-cutting §4, M1): the phase-1 agent
-# freezes both answers via --data; this module just renders them.
+# Selecting this module IS choosing pre-commit as the hook manager.
+# Language modules that contribute hooks write .pre-commit.d/<vendor>-<module>.yaml
+# fragments; this module ships _merge_precommit.py (template content) as a _post_task
+# that reads all fragments after the full render loop and emits .pre-commit-config.yaml.
+#
+# Fragment/merge model (spec 014 _fragment-merge.md Surface 2):
+# - Each hook-contributing module writes .pre-commit.d/<vendor>-<module>.yaml
+# - This module ships _merge_precommit.py (template content) as a _post_task
+#   that reads all fragments after the full render loop and emits .pre-commit-config.yaml
+# - hook_blocks union REMOVED
 #
 # Contract: ships template/{{ _copier_conf.answers_file }}.jinja; NO secret:
 # questions; ordering edges are when:false hidden answers (Constitution VI).
 
-# --- Threading: hook_manager (choice-axis key FR-002) ------------------------
-# Threaded from the phase-1 agent's frozen answer via --data, OR answered
-# interactively when used standalone. husky/simple-git-hooks are dead options
-# (_cross-cutting §1) — NOT offered.
-hook_manager:
-  type: str
-  choices:
-    - pre-commit
-    - lefthook
-    - none
-  default: pre-commit
-  help: "Hook manager. pre-commit = .pre-commit-config.yaml; lefthook = lefthook.yml; none = no file written."
+# --- Dependency ordering (spec 014 R7/R8) ------------------------------------
+# phase: normal (base=pre, family=normal)
+_bailiff_phase: normal
 
 # --- Optional feature flags --------------------------------------------------
 
@@ -31,7 +28,7 @@ enforce_conventional_commits:
 enable_typo_check:
   type: bool
   default: true
-  help: "Add a typo-check hook (pre-commit: crate-ci/typos; lefthook: typos CLI)."
+  help: "Add a typo-check hook (crate-ci/typos via pre-commit)."
 
 # De-hardwires the old SpecKit exclude patterns: previously locked to a fixed
 # list; now caller-supplied so no single set is baked in.
@@ -44,18 +41,7 @@ precommit_exclude_patterns:
 install_hooks:
   type: bool
   default: true
-  help: "Run 'pre-commit install' / 'lefthook install' after rendering (init-only-guarded)."
-
-# --- Agent-frozen union (M1 — _cross-cutting §4) -----------------------------
-# The phase-1 agent assembles the full union of language hook blocks and injects
-# it here via --data BEFORE any module runs. This module renders them verbatim.
-# NOT built by runtime accumulation (circular dependency: precommit needs
-# languages' hook_blocks, languages need precommit's hook_manager). Default []
-# so standalone renders produce a valid, empty-blocks hook file.
-hook_blocks:
-  type: yaml
-  default: []
-  help: "Agent-frozen union of language hook blocks (yaml list). bailiff injects this — do not set manually."
+  help: "Run 'pre-commit install' after rendering (init-only-guarded)."
 
 # Threaded from base (FR-010 pattern); standalone fallback is empty string.
 today:
@@ -65,37 +51,28 @@ today:
 
 # --- Dependency ordering edges (when:false hidden answers) -------------------
 
-run_after:
+depends_on:
   type: yaml
   default:
     - bailiff-mod-base
   when: false
 
-depends_on:
-  type: yaml
-  default: []
-  when: false
-
-run_before:
-  type: yaml
-  default: []
-  when: false
-
 # Template body lives under template/ — copier renders only that subtree.
 _subdirectory: template
+
+# --- Post-tasks: fragment bundler (spec 014 FR-021/R11) ----------------------
+# Runs AFTER the full render loop so all .pre-commit.d/*.yaml fragments exist.
+# The script is inert when no .pre-commit.d/*.yaml fragments exist.
+_post_tasks:
+  - "python3 scripts/_merge_precommit.py"
 
 # --- Trust-gated tasks (FR-007b / FR-012a) -----------------------------------
 # The install task is init-only-guarded: we write a committed sentinel
 # (.bailiff-precommit-installed) on first run; the `test -f` guard makes reproduce
 # a no-op so we never double-install.
 _tasks:
-  # pre-commit install (guarded: only when hook_manager=pre-commit AND install_hooks)
+  # pre-commit install (guarded: only when install_hooks=true)
   - command: >-
       test -f .bailiff-precommit-installed ||
       { pre-commit install && touch .bailiff-precommit-installed; }
-    when: "{{ hook_manager == 'pre-commit' and install_hooks }}"
-  # lefthook install (guarded: only when hook_manager=lefthook AND install_hooks)
-  - command: >-
-      test -f .bailiff-precommit-installed ||
-      { lefthook install && touch .bailiff-precommit-installed; }
-    when: "{{ hook_manager == 'lefthook' and install_hooks }}"
+    when: "{{ install_hooks }}"

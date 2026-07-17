@@ -759,11 +759,11 @@ _MODULES_DIR = _REPO_ROOT / "templates"
 _BASE_STUB_TASKS = dedent(
     """\
     _tasks:
-      # Stub gitnr: write a deterministic .gitignore marker recording the stack.
+      # Stub gitnr: write a deterministic .gitignore marker (no stack union — spec 014).
       - >-
         test -f .bailiff-base-init-done ||
         test -f .gitignore ||
-        printf '# stub gitignore\\nstack={{ gitignore_stack | join(",") }}\\n' > .gitignore
+        printf '# stub gitignore\\n' > .gitignore
       # Stub gh LICENSE fetch: guarded, idempotent, offline.
       - >-
         test -f LICENSE ||
@@ -996,14 +996,6 @@ _PRECOMMIT_STUB_TASKS = dedent(
     """
 )
 
-# Offline stub tasks for modules that invoke lefthook (hook manager).
-_LEFTHOOK_STUB_TASKS = dedent(
-    """\
-    _tasks:
-      - "printf 'lefthook-preflight-ok\\n' > .bailiff-precommit-preflight"
-    """
-)
-
 
 def _copy_module_with_stub_tasks(
     module_name: str,
@@ -1105,14 +1097,14 @@ def bailiff_mod_rust(tmp_path: Path) -> TemplateRepo:
     )
 
 
-# Minimal STUB base layer (spec 007 Q5 / FR-007): provides the threaded
-# project_name for [stub_base, bailiff-mod-apm] multi-layer tests WITHOUT a hard
-# dependency on bailiff-mod-base. It is a plain identity template with a hermetic
-# git-init task and the answers-file marker, mirroring the exemplar shape.
+# Minimal STUB base layer (spec 007 Q5 / FR-007): provides project_name for
+# [stub_base, bailiff-mod-apm] multi-layer tests WITHOUT a hard dependency on
+# bailiff-mod-base. It is a plain identity template with a hermetic git-init
+# task and the answers-file marker, mirroring the exemplar shape.
 #
-# It declares run_before: [bailiff-mod-apm] so the spec-003 engine sequences it
-# BEFORE the apm layer (threading project_name forward). Per Q5, the adjacency is
-# declared by the BASE (the module that needs it), never baked into 007's edges.
+# Ordering is expressed via `depends_on` only (FR-019/R7 dropped run_before/
+# run_after). stub-base carries no depends_on edges; tests that require a
+# specific stub-base → apm order must declare the edge on the consuming side.
 _APM_STUB_BASE_YML = dedent(
     """\
     project_name:
@@ -1123,14 +1115,6 @@ _APM_STUB_BASE_YML = dedent(
     depends_on:
       type: yaml
       default: []
-      when: false
-    run_after:
-      type: yaml
-      default: []
-      when: false
-    run_before:
-      type: yaml
-      default: ["bailiff-mod-apm"]
       when: false
     _subdirectory: template
     _tasks:
@@ -1144,17 +1128,20 @@ _APM_STUB_BASE_YML = dedent(
 # preserved, but native tool calls (bun/pnpm/uv/cargo/go) are replaced with a
 # deterministic marker write. This keeps the guard logic hermetically testable
 # without requiring any language toolchain on the CI host.
+# Stub tasks use _external_data.base.layout (spec 014 FR-004); js_pkg_manager is
+# agent-fed via answers dict (not read from ts answers — ts is sometimes-absent).
+# Tests must pre-seed .copier-answers.bailiff-mod-base.yml before calling _init.
 _PACKAGE_ADD_STUB_TASKS = dedent(
     r"""
     _tasks:
       # Monorepo gate (no-op when layout != monorepo — same as real task 1).
       - command: >-
-          if [ "{{ layout }}" != "monorepo" ]; then exit 0; fi
-        when: "{{ layout != 'monorepo' }}"
+          if [ "{{ _external_data.base.layout }}" != "monorepo" ]; then exit 0; fi
+        when: "{{ _external_data.base.layout != 'monorepo' }}"
       # Path-traversal guard (SEC-001) — preserved verbatim from the real template.
       # Exits 1 on bad input before any mkdir; no side effects on traversal attempts.
       - command: >-
-          if [ "{{ layout }}" != "monorepo" ]; then exit 0; fi;
+          if [ "{{ _external_data.base.layout }}" != "monorepo" ]; then exit 0; fi;
           name="{{ name }}";
           dir="{{ dir }}";
           err() { echo "pkg-add: $1" >&2; exit 1; };
@@ -1165,7 +1152,7 @@ _PACKAGE_ADD_STUB_TASKS = dedent(
           true
       # Stub scaffold + registration: mkdir + marker (no native tool invocation).
       - command: >-
-          if [ "{{ layout }}" != "monorepo" ]; then exit 0; fi;
+          if [ "{{ _external_data.base.layout }}" != "monorepo" ]; then exit 0; fi;
           mkdir -p "{{ dir.rstrip('/') }}/{{ name }}";
           printf 'package-add-ok lang={{ lang }} name={{ name }}\\n'
           > .bailiff-package-add-preflight
@@ -1247,22 +1234,13 @@ def apm_stub_base(tmp_path: Path) -> TemplateRepo:
 def bailiff_mod_precommit(tmp_path: Path) -> TemplateRepo:
     """The real bailiff-mod-precommit template as a hermetic repo (install task stubbed).
 
-    pre-commit install / lefthook install are replaced with a deterministic
-    offline stub that writes a marker file (.bailiff-precommit-preflight) so tests
-    never require the hook manager binary on PATH. The rendered hook config
-    (.pre-commit-config.yaml or lefthook.yml) is copied verbatim — only the
-    side-effecting install task is stubbed.
+    `pre-commit install` is replaced with a deterministic offline stub that writes
+    a marker file (.bailiff-precommit-preflight) so tests never require the hook
+    manager binary on PATH. The rendered hook config (.pre-commit-config.yaml) is
+    copied verbatim — only the side-effecting install task is stubbed.
     """
     return _copy_module_with_stub_tasks(
         "bailiff-mod-precommit", tmp_path / "bailiff-mod-precommit", _PRECOMMIT_STUB_TASKS
-    )
-
-
-@pytest.fixture
-def bailiff_mod_precommit_lefthook(tmp_path: Path) -> TemplateRepo:
-    """bailiff-mod-precommit with the lefthook install task stubbed offline."""
-    return _copy_module_with_stub_tasks(
-        "bailiff-mod-precommit", tmp_path / "bailiff-mod-precommit-lh", _LEFTHOOK_STUB_TASKS
     )
 
 

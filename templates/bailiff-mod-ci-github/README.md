@@ -17,7 +17,17 @@ Outputs `.github/workflows/ci.yml`, config-consistent on reproduce.
 
 | File | Lifecycle | Notes |
 |---|---|---|
-| `.github/workflows/ci.yml` | **managed** | Byte-identical on reproduce; re-render to update |
+| `.github/workflows/ci.yml` | **managed** | Config-consistent on reproduce; re-render to update |
+
+## Facts read via `_external_data`
+
+| Alias | Source file | Keys read |
+|---|---|---|
+| `base` | `.copier-answers.bailiff-mod-base.yml` | `default_branch` |
+
+`base` must be present in the bailiff selection (FR-006). Absent producer → preflight error naming the alias.
+
+`monorepo_tool` is agent-fed via `--data` (not a hard `_external_data` dependency). Moon is a sometimes-absent producer (R13 GENERALIZED); when selected, the orchestrating agent injects `monorepo_tool=moon` via `--data`.
 
 ## Fail-loud guard (R4)
 

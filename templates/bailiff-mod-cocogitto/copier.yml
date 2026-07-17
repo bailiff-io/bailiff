@@ -2,7 +2,7 @@
 #
 # Conventional-commit + cog-driven release discipline (spec 012 / FR-007) — the
 # same setup bailiff itself dogfoods. Renders a MANAGED `cog.toml` sized to the
-# project shape (single vs monorepo from the threaded `layout` fact).
+# project shape (single vs monorepo from the base `layout` fact).
 #
 # NO release actions at scaffold time: no `cog bump`, no tag creation, no
 # changelog write, no network. Bad commit history cannot fail an init.
@@ -11,64 +11,48 @@
 # owners of workflow/pipeline files; a cog-driven release job is a CI-model
 # decision, not release-tool-module scope.
 #
-# Frozen-union contributions (M1 — tokens only, never a second writer):
-#   cog                      → mise_tools   (base writes .mise.toml)
-#   commit-msg-lint block    → hook_blocks  (precommit writes the hook file)
+# Fragment contributions (spec 014):
+#   .mise/conf.d/bailiff-mod-cocogitto.toml  (own tools: cog)
+#   .pre-commit.d/bailiff-mod-cocogitto.yaml (commit-msg-lint hook block)
 #
 # Contract: ships template/{{ _copier_conf.answers_file }}.jinja; NO secret:
 # questions; no jinja2_time; edges are when:false hidden answers.
 
-# --- Threaded identity/shape facts (FR-010 pattern) ---------------------------
+# --- Cross-module facts via _external_data (spec 014 / FR-004) ---------------
+# base: project_name, layout — base is always-present; hard dep (FR-006).
+# monorepo_packages: agent-fed --data (standing rule R13 GENERALIZED): moon is
+#   sometimes-absent (non-monorepo stacks run without it), so its data is
+#   supplied by the orchestrating agent rather than read from _external_data.
 
-project_name:
-  type: str
-  default: "{{ project_name }}"
-  help: "The project's name (threaded from bailiff-mod-base)."
+_external_data:
+  base: .copier-answers.bailiff-mod-base.yml
 
-layout:
-  type: str
-  default: "{{ layout }}"
-  help: "Project layout (threaded from bailiff-mod-base): single or monorepo — sizes cog.toml."
+# Template body lives under template/ — copier renders only that subtree.
+_subdirectory: template
 
-monorepo_packages:
-  type: yaml
-  default: []
-  help: "Monorepo package paths (frozen fact; sizes the cog.toml [packages] section). bailiff injects this."
-
-# --- Frozen unions consumed (declared for threading; NOT written here) --------
-
-mise_tools:
-  type: yaml
-  default: []
-  help: "mise [tools] union (injected by phase-1 agent; base writes .mise.toml). cocogitto contributes {cog: <version>}."
-
-hook_blocks:
-  type: yaml
-  default: []
-  help: "Hook config blocks union (injected by phase-1 agent; precommit writes the hook file). cocogitto contributes its commit-msg-lint block."
+# cog.toml is MANAGED: config-consistent on reproduce.
 
 # --- Dependency edges (when:false hidden answers — FR-004) -------------------
 
-run_after:
+depends_on:
   type: yaml
   default:
     - bailiff-mod-base
   when: false
 
-depends_on:
+# Agent-fed: monorepo_packages is NOT read from _external_data because moon is
+# sometimes-absent (R13 GENERALIZED). The orchestrating agent passes this list
+# via --data when the stack includes bailiff-mod-moon; defaults to empty so
+# cocogitto initialises cleanly in non-monorepo stacks.
+monorepo_packages:
   type: yaml
   default: []
   when: false
 
-run_before:
-  type: yaml
-  default: []
+phase:
+  type: str
+  default: normal
   when: false
-
-# Template body lives under template/ — copier renders only that subtree.
-_subdirectory: template
-
-# cog.toml is MANAGED: byte-identical on reproduce.
 
 # --- Trust-gated tasks (FR-007b / FR-012a) -----------------------------------
 # Preflight only — cog availability via mise. Init-only-guarded via committed

@@ -1,9 +1,8 @@
 # bailiff-mod-python
 
-The Python **language overlay** (spec 011 / v1.0.0). Provides structured choice
+The Python **language overlay** (spec 014 / v2.0.0). Provides structured choice
 axes for Python toolchain configuration, native-command scaffold via `uv` or `pdm`
-init, and a managed `ruff.toml`. Runs after `bailiff-mod-base` and
-`bailiff-mod-precommit`.
+init, and a managed `ruff.toml`. Ordered after `bailiff-mod-base` via `depends_on`.
 
 ## What it produces
 
@@ -11,14 +10,16 @@ init, and a managed `ruff.toml`. Runs after `bailiff-mod-base` and
 |---|---|---|
 | `pyproject.toml` | **task-output** → **seed-once** | Written by `uv init` / `pdm init` (init-only-guarded). Never clobbered on reproduce. |
 | `ruff.toml` | **managed** (byte-identical) | Re-rendered on every reproduce from the frozen answers. |
-| `.mise.toml` [tools] | **contributed token** | python version + pkg manager token injected by the agent into base's `mise_tools` union; base is the single writer. |
-| `.gitignore` Python entries | **contributed token** | `Python` token (gitnr short-code, case-sensitive) injected into base's `gitignore_stack`; base (via gitnr) is the single writer. |
-| hook config ruff block | **contributed token** | ruff hook block injected into precommit's `hook_blocks` union; precommit is the single writer. |
+| `.mise/conf.d/bailiff-mod-python.toml` | **managed** (byte-identical) | Drop-in tool file; mise merges all `.mise/conf.d/*.toml` at runtime. |
+| `.pre-commit.d/bailiff-mod-python.yaml` | **managed** (byte-identical) | ruff hook fragment; renders unconditionally; consumed by `bailiff-mod-precommit`'s bundler `_post_task` only when `hook_manager=pre-commit`. |
+| `.gitignore.d/bailiff-mod-python` | **managed** (byte-identical) | Python gitignore fragment; folded into `.gitignore` by `bailiff-mod-base`'s `_post_task`. |
 
 ## Questions
 
 | Key | Choices / default | Notes |
 |---|---|---|
+| `project_name` | str / from base | Read from `_external_data.base.project_name`. |
+| `description` | str / from base | Read from `_external_data.base.description`. |
 | `python_pkg_manager` | [uv, pdm] / uv | |
 | `python_version` | [3.11, 3.12, 3.13, 3.14] / 3.13 | pins requires-python + ruff target + mise |
 | `python_layout` | [src, flat] / src | src = `uv init --package` (installable) |
@@ -27,13 +28,15 @@ init, and a managed `ruff.toml`. Runs after `bailiff-mod-base` and
 | `ruff_quote_style` | [double, single] / double | |
 | `ruff_rule_profile` | [standard, strict] / standard | strict adds ANN, RUF, PERF, C4, PT |
 | `add_tests` | bool / false | adds tests/ scaffold with pytest example |
-| `hook_manager` | threaded | single writer: bailiff-mod-precommit |
+| `ruff_version` | str / "" | pinned ruff version for the pre-commit fragment; agent-resolved |
 
 ## Ordering
 
-`run_after: [bailiff-mod-base, bailiff-mod-precommit]` — the spec-003 engine applies
-base and precommit before this overlay. `project_name` is threaded via
-`default: "{{ project_name }}"` (FR-010).
+`depends_on: [bailiff-mod-base]`, `_bailiff_phase: normal`. The engine orders base
+before this overlay. `project_name` and `description` are read from base via
+`_external_data.base` (spec 014 FR-004). The `.pre-commit.d/` fragment renders
+unconditionally; `bailiff-mod-precommit`'s bundler `_post_task` merges it only when
+`hook_manager=pre-commit`.
 
 ## Prerequisites (FR-007)
 

@@ -24,7 +24,18 @@ zero `_tasks`, reproduces config-consistently.
 | `ci_cache` | `true` | Enable language caches |
 | `ci_concurrency_cancel` | `true` | `workflow:auto_cancel` when `interruptible` |
 | `ci_oidc_provider` | `none` | `gitlab` → renders `id_tokens:` block |
-| `monorepo_tool` | `none` | `turborepo`/`nx`/`pnpm-workspace` for monorepo model |
+
+## Cross-module facts
+
+`bailiff-mod-base` is a hard `_external_data` dependency; absent → preflight error.
+
+| Alias | Source module | Facts read |
+|---|---|---|
+| `base` | `bailiff-mod-base` | `project_name`, `default_branch` |
+
+`monorepo_tool` and `monorepo_packages` are agent-fed via `--data` (not `_external_data`).
+Moon is monorepo-only; ci-gitlab runs in non-monorepo stacks and cannot depend on it.
+Both default to `none` / `[]` when absent.
 
 ## Usage
 

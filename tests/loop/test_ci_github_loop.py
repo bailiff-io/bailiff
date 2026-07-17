@@ -11,6 +11,8 @@ Tests cover:
 - R4 fail-loud guard: empty ci_languages + no monorepo_tool → warning comment
   + no-op job, NOT a silent empty file.
 - merge_queue_org_confirmed=false emits warning header on merge-queue model.
+- spec 014: default_branch + monorepo_tool resolve from pre-seeded _external_data
+  files when omitted from the answers dict.
 """
 
 from __future__ import annotations
@@ -502,6 +504,86 @@ def test_answers_file_written(ci_github_repo: TemplateRepo, tmp_path: Path) -> N
 
     af = yaml.safe_load(answers_files[0].read_text())
     assert af["ci_model"] == "minimal"
+
+
+# ---------------------------------------------------------------------------
+# spec 014: _external_data resolution
+# ---------------------------------------------------------------------------
+
+
+def test_external_data_resolves_base(ci_github_repo: TemplateRepo, tmp_path: Path) -> None:
+    """default_branch resolves from pre-seeded .copier-answers.bailiff-mod-base.yml.
+
+    moon is NOT in _external_data (R13 GENERALIZED — sometimes-absent producer);
+    monorepo_tool is agent-fed via --data. No moon answers file is seeded.
+    """
+    dest = tmp_path / "proj"
+    dest.mkdir(parents=True, exist_ok=True)
+
+    (dest / ".copier-answers.bailiff-mod-base.yml").write_text(
+        yaml.dump({"_src_path": "bailiff-mod-base", "default_branch": "develop"})
+    )
+    # No .copier-answers.bailiff-mod-moon.yml — must NOT be required
+
+    answers = {
+        "ci_model": "monorepo-affected",
+        "ci_languages": ["python"],
+        "ci_lang_facts": {
+            "python": {"manager": "uv", "version": "3.13", "test_runner": "pytest", "image": ""}
+        },
+        "ci_cache": False,
+        "ci_concurrency_cancel": False,
+        "ci_required_gate": False,
+        "merge_queue_org_confirmed": False,
+        "monorepo_tool": "turborepo",  # agent-fed --data, NOT from moon _external_data
+        # default_branch intentionally omitted — resolved via _external_data.base
+    }
+
+    _run_copier(ci_github_repo.url, ci_github_repo.tag, dest, answers=answers, overwrite=True)
+
+    ci = (dest / _CI_FILE).read_text()
+    # default_branch from _external_data.base
+    assert '"develop"' in ci or "develop" in ci
+    # monorepo_tool=turborepo (agent-fed) → paths-filter branch, not moon ci
+    assert "dorny/paths-filter@v3" in ci
+    assert "moon ci" not in ci
+
+
+def test_non_monorepo_no_moon_answers_file(ci_github_repo: TemplateRepo, tmp_path: Path) -> None:
+    """base+ci-github without moon: initialises cleanly, no OrderingError.
+
+    Reproduces the TS-app stack failure (test_stack_ts_app.py): moon not selected
+    → no moon answers file on disk → ci-github must not require it.
+    """
+    dest = tmp_path / "proj"
+    dest.mkdir(parents=True, exist_ok=True)
+
+    (dest / ".copier-answers.bailiff-mod-base.yml").write_text(
+        yaml.dump({"_src_path": "bailiff-mod-base", "default_branch": "main"})
+    )
+    # No .copier-answers.bailiff-mod-moon.yml — simulates non-monorepo stack
+
+    answers = {
+        "ci_model": "standard",
+        "ci_languages": ["typescript"],
+        "ci_lang_facts": {
+            "typescript": {"manager": "bun", "version": "22", "test_runner": "vitest", "image": ""}
+        },
+        "monorepo_tool": "none",
+        "default_branch": "main",
+        "ci_cache": True,
+        "ci_concurrency_cancel": True,
+        "ci_required_gate": True,
+        "merge_queue_org_confirmed": False,
+    }
+
+    # Must not raise OrderingError / dangling-edge error
+    _run_copier(ci_github_repo.url, ci_github_repo.tag, dest, answers=answers, overwrite=True)
+
+    ci = (dest / _CI_FILE).read_text()
+    assert "typescript-ci:" in ci
+    assert "python-ci:" not in ci
+    assert "gate:" in ci
 
 
 # ---------------------------------------------------------------------------
