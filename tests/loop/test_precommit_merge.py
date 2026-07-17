@@ -5,7 +5,7 @@ Tests:
 - Deduplication: same repo from two fragments → merged once
 - Rev-pin conflict: HIGHEST-WINS + WARN (never abort, spec 014 R2)
 - Inert when precommit absent from stack
-- Inert when hook_manager=none (no .pre-commit.d fragment written)
+- Inert when no .pre-commit.d fragments exist (bundler always runs; inert on empty dir)
 - Config-consistent reproduce (SC-004): same hooks on reproduce, no duplication
 
 Strategy: tests invoke the bundler script (_merge_precommit.py) directly by
@@ -452,30 +452,65 @@ def test_integration_bundler_runs_after_contributors(tmp_path: Path) -> None:
     assert "https://github.com/biomejs/biome" in urls, "biome fragment missing"
 
 
-def test_integration_inert_when_hook_manager_none(tmp_path: Path) -> None:
-    """When hook_manager=none, no .pre-commit.d fragment is written → bundler is inert.
+def test_integration_bundler_inert_with_no_fragments(tmp_path: Path) -> None:
+    """Bundler post-task runs but is inert when no .pre-commit.d/*.yaml fragments exist.
 
-    No .pre-commit-config.yaml should be produced.
+    Selects precommit alone (no contributor modules), then verifies the bundler
+    produces .pre-commit-config.yaml (precommit itself writes its own fragment).
+    This also confirms the bundler does not abort on an empty fragment dir.
     """
     precommit = _build_precommit_merge_fixture(tmp_path / "bailiff-mod-precommit")
     trust.add_trust(precommit.url)
+
+    # Build a precommit fixture that does NOT write a fragment (empty template dir)
+    no_frag_root = tmp_path / "bailiff-mod-precommit-nofrag"
+    src = _MODULES_DIR / "bailiff-mod-precommit"
+    import shutil as _shutil
+
+    _shutil.copytree(src, no_frag_root, dirs_exist_ok=True)
+    # Remove the fragment template so no .pre-commit.d file is rendered
+    for p in (no_frag_root / "template" / ".pre-commit.d").glob("*"):
+        p.unlink()
+    (no_frag_root / "template" / ".pre-commit.d").rmdir()
+    # Stub _tasks + remove depends_on
+    import re as _re
+
+    copier_yml = no_frag_root / "copier.yml"
+    text = copier_yml.read_text()
+    text = _re.sub(r"\n_tasks:.*\Z", "\n", text, flags=_re.DOTALL)
+    text = text.rstrip() + "\n\n" + _PRECOMMIT_MERGE_STUB_TASKS
+    _dep_pat = (
+        r"\ndepends_on:\s*\n\s+type: yaml\s*\n\s+default:\s*\n"
+        r"\s+- bailiff-mod-base\s*\n\s+when: false"
+    )
+    text = _re.sub(
+        _dep_pat,
+        "\ndepends_on:\n  type: yaml\n  default: []\n  when: false",
+        text,
+    )
+    copier_yml.write_text(text)
+    _git(no_frag_root, "init", "-q")
+    _git(no_frag_root, "add", "-A")
+    _git(no_frag_root, "commit", "-qm", "module")
+    _git(no_frag_root, "tag", "v1.0.0")
+    no_frag = TemplateRepo(path=no_frag_root, tag="v1.0.0")
+    trust.add_trust(no_frag.url)
 
     dest = tmp_path / "proj"
     runner.init_many(
         [
             (
-                _record("testcat/bailiff-mod-precommit", precommit, has_tasks=True),
-                {"hook_manager": "none", "project_name": "demo"},
+                _record("testcat/bailiff-mod-precommit", no_frag, has_tasks=True),
+                {"project_name": "demo"},
             ),
         ],
         str(dest),
         today="2026-07-16",
     )
 
-    # No fragment was written (template is gated on hook_manager == 'pre-commit')
-    # so bundler should be inert
+    # Bundler ran but was inert (no fragments → no config written)
     assert not (dest / ".pre-commit-config.yaml").exists(), (
-        ".pre-commit-config.yaml must not exist when hook_manager=none"
+        ".pre-commit-config.yaml must not exist when no fragments were written"
     )
 
 

@@ -1,7 +1,8 @@
 """spec 011 T005 / spec 014 Surface 2: bailiff-mod-precommit loop tests.
 
 Covers:
-- hook_manager choices: {pre-commit, none} — lefthook removed (deferred to spec 015).
+- hook_manager removed (spec 014 R13): selecting the module IS choosing pre-commit.
+- Fragment written unconditionally (no hook_manager guard).
 - Fragment content: base hygiene hooks, gitleaks, shellcheck, typo check, conventional
   commits (conditional on answers).
 - spec 014 fragment/merge model: precommit writes .pre-commit.d/bailiff-mod-precommit.yaml
@@ -38,21 +39,20 @@ def _init(repo: TemplateRepo, dest: Path, answers: dict) -> None:
 
 
 # ---------------------------------------------------------------------------
-# hook_manager=pre-commit: fragment is written (MANAGED); bundler writes merged config
+# Fragment is written unconditionally (no hook_manager question)
 # ---------------------------------------------------------------------------
 
 
-def test_precommit_writes_fragment_for_precommit(
-    bailiff_mod_precommit: TemplateRepo, tmp_path: Path
-) -> None:
-    """hook_manager=pre-commit → .pre-commit.d/bailiff-mod-precommit.yaml written (MANAGED).
+def test_precommit_writes_fragment(bailiff_mod_precommit: TemplateRepo, tmp_path: Path) -> None:
+    """Selecting precommit → .pre-commit.d/bailiff-mod-precommit.yaml written (MANAGED).
 
+    spec 014 R13: no hook_manager question; selecting the module IS the signal.
     spec 014 Surface 2: the module writes its own fragment; the bundler (_post_task)
     assembles .pre-commit-config.yaml after the full render loop.  Single-layer init
     (runner.init) does not run _post_tasks, so only the fragment exists here.
     """
     dest = tmp_path / "proj"
-    _init(bailiff_mod_precommit, dest, {"hook_manager": "pre-commit"})
+    _init(bailiff_mod_precommit, dest, {})
 
     fragment = dest / ".pre-commit.d" / "bailiff-mod-precommit.yaml"
     assert fragment.is_file(), ".pre-commit.d/bailiff-mod-precommit.yaml must exist"
@@ -66,7 +66,7 @@ def test_precommit_writes_fragment_for_precommit(
     check_script = dest / ".pre-commit-hooks" / "check-commit-msg.py"
     assert check_script.is_file(), "vendored check-commit-msg.py must be present"
 
-    # No lefthook.yml when hook_manager=pre-commit
+    # No lefthook.yml
     assert not (dest / "lefthook.yml").exists()
 
 
@@ -75,7 +75,7 @@ def test_precommit_fragment_contains_base_hooks(
 ) -> None:
     """Base hygiene hooks, gitleaks, shellcheck are in the fragment."""
     dest = tmp_path / "proj"
-    _init(bailiff_mod_precommit, dest, {"hook_manager": "pre-commit"})
+    _init(bailiff_mod_precommit, dest, {})
 
     text = (dest / ".pre-commit.d" / "bailiff-mod-precommit.yaml").read_text()
     assert "pre-commit/pre-commit-hooks" in text, "base hooks repo missing"
@@ -93,7 +93,7 @@ def test_precommit_fragment_enforce_conventional_commits(
     _init(
         bailiff_mod_precommit,
         dest,
-        {"hook_manager": "pre-commit", "enforce_conventional_commits": True},
+        {"enforce_conventional_commits": True},
     )
 
     text = (dest / ".pre-commit.d" / "bailiff-mod-precommit.yaml").read_text()
@@ -111,7 +111,7 @@ def test_precommit_fragment_no_conventional_commits_when_disabled(
     _init(
         bailiff_mod_precommit,
         dest,
-        {"hook_manager": "pre-commit", "enforce_conventional_commits": False},
+        {"enforce_conventional_commits": False},
     )
 
     text = (dest / ".pre-commit.d" / "bailiff-mod-precommit.yaml").read_text()
@@ -125,7 +125,7 @@ def test_precommit_fragment_typo_check_default_on(
 ) -> None:
     """enable_typo_check=true (default) includes the typos hook in fragment."""
     dest = tmp_path / "proj"
-    _init(bailiff_mod_precommit, dest, {"hook_manager": "pre-commit", "enable_typo_check": True})
+    _init(bailiff_mod_precommit, dest, {"enable_typo_check": True})
 
     text = (dest / ".pre-commit.d" / "bailiff-mod-precommit.yaml").read_text()
     assert "typos" in text, "typos hook must be present when enable_typo_check=true"
@@ -136,7 +136,7 @@ def test_precommit_fragment_typo_check_disabled(
 ) -> None:
     """enable_typo_check=false excludes the typos hook from fragment."""
     dest = tmp_path / "proj"
-    _init(bailiff_mod_precommit, dest, {"hook_manager": "pre-commit", "enable_typo_check": False})
+    _init(bailiff_mod_precommit, dest, {"enable_typo_check": False})
 
     text = (dest / ".pre-commit.d" / "bailiff-mod-precommit.yaml").read_text()
     assert "typos" not in text, "typos hook must be absent when enable_typo_check=false"
@@ -151,7 +151,7 @@ def test_precommit_no_direct_config_file_from_single_layer_init(
     via init_many/reproduce_many (not single-layer runner.init).
     """
     dest = tmp_path / "proj"
-    _init(bailiff_mod_precommit, dest, {"hook_manager": "pre-commit"})
+    _init(bailiff_mod_precommit, dest, {})
 
     # Fragment exists; merged config does NOT (post_task not run in single-layer init)
     assert (dest / ".pre-commit.d" / "bailiff-mod-precommit.yaml").is_file()
@@ -178,98 +178,54 @@ def test_precommit_no_hook_blocks_question(
     )
 
 
-# ---------------------------------------------------------------------------
-# hook_manager choices: {pre-commit, none} — lefthook absent (spec 014 / R13)
-# ---------------------------------------------------------------------------
-
-
-def test_hook_manager_choices_are_precommit_and_none(
+def test_hook_manager_question_absent(
     bailiff_mod_precommit: TemplateRepo,
 ) -> None:
-    """hook_manager choices must be exactly {pre-commit, none}; lefthook is removed.
+    """hook_manager question must NOT exist in copier.yml (spec 014 R13).
 
-    Lefthook support is deferred to bailiff-mod-lefthook (spec 015).
+    Selecting bailiff-mod-precommit IS choosing pre-commit; no question needed.
     """
     import yaml as _yaml
 
     from tests.conftest import _MODULES_DIR
 
     orig = _yaml.safe_load((_MODULES_DIR / "bailiff-mod-precommit" / "copier.yml").read_text())
-    choices = orig["hook_manager"]["choices"]
-    assert set(choices) == {"pre-commit", "none"}, (
-        f"hook_manager choices must be {{pre-commit, none}}, got {choices!r}"
-    )
-    assert "lefthook" not in choices, (
-        "lefthook must not be a hook_manager choice (deferred to spec 015)"
+    assert "hook_manager" not in orig, (
+        "hook_manager must be deleted from copier.yml (spec 014 R13: presence-derived)"
     )
 
 
-def test_hook_manager_precommit_never_produces_lefthook_yml(
+def test_precommit_never_produces_lefthook_yml(
     bailiff_mod_precommit: TemplateRepo, tmp_path: Path
 ) -> None:
-    """hook_manager=pre-commit never produces lefthook.yml."""
+    """Selecting precommit never produces lefthook.yml."""
     dest = tmp_path / "proj"
-    _init(bailiff_mod_precommit, dest, {"hook_manager": "pre-commit"})
+    _init(bailiff_mod_precommit, dest, {})
     assert not (dest / "lefthook.yml").exists(), (
         "lefthook.yml must never be produced by this module"
     )
 
 
 # ---------------------------------------------------------------------------
-# hook_manager=none: no hook config file is written
+# Bundler runs when precommit is selected (fragment present)
 # ---------------------------------------------------------------------------
 
 
-def test_precommit_none_writes_no_hook_file(
+def test_precommit_bundler_produces_config_when_selected(
     bailiff_mod_precommit: TemplateRepo, tmp_path: Path
 ) -> None:
-    """hook_manager=none → no fragment, no .pre-commit-config.yaml, no lefthook.yml."""
+    """Fragment is unconditionally written; bundler can merge it to produce config.
+
+    Verifies that the fragment exists and contains valid YAML with repos key —
+    confirming bundler would produce .pre-commit-config.yaml if post-task ran.
+    """
     dest = tmp_path / "proj"
-    _init(bailiff_mod_precommit, dest, {"hook_manager": "none"})
+    _init(bailiff_mod_precommit, dest, {})
 
-    assert not (dest / ".pre-commit.d").exists() or not any(
-        (dest / ".pre-commit.d").glob("*.yaml")
-    ), ".pre-commit.d/*.yaml must not exist for hook_manager=none"
-    assert not (dest / ".pre-commit-config.yaml").exists()
-    assert not (dest / "lefthook.yml").exists()
-    # The answers file is still written (copier always writes it).
-    assert (dest / ".copier-answers.bailiff-mod-precommit.yml").exists() or (
-        dest / ".copier-answers.yml"
-    ).exists(), "answers file must be written regardless of hook_manager"
-
-
-def test_precommit_none_install_tasks_have_when_guards(
-    bailiff_mod_precommit: TemplateRepo,
-) -> None:
-    """hook_manager=none → install tasks declare a when: guard excluding none."""
-    import yaml as _yaml
-
-    from tests.conftest import _MODULES_DIR
-
-    orig = _yaml.safe_load((_MODULES_DIR / "bailiff-mod-precommit" / "copier.yml").read_text())
-    tasks = orig.get("_tasks", [])
-    for task in tasks:
-        if isinstance(task, dict) and "when" in task:
-            condition = task["when"]
-            assert "none" not in condition or "!=" in condition or "hook_manager ==" in condition, (
-                f"install task `when:` does not guard against hook_manager=none: {condition!r}"
-            )
-    has_guard = any(isinstance(t, dict) and "hook_manager" in t.get("when", "") for t in tasks)
-    assert has_guard, "No install task guards on hook_manager — none case would run install"
-
-
-def test_precommit_none_reproduce_no_new_files(
-    bailiff_mod_precommit: TemplateRepo, tmp_path: Path
-) -> None:
-    """hook_manager=none: reproduce does not create hook config files."""
-    dest = tmp_path / "proj"
-    _init(bailiff_mod_precommit, dest, {"hook_manager": "none"})
-
-    # Single-layer reproduce: avoids DAG dangling-edge error.
-    runner.reproduce(str(dest))
-
-    assert not (dest / ".pre-commit-config.yaml").exists()
-    assert not (dest / "lefthook.yml").exists()
+    fragment = dest / ".pre-commit.d" / "bailiff-mod-precommit.yaml"
+    assert fragment.is_file(), "fragment must exist unconditionally when module is selected"
+    parsed = yaml.safe_load(fragment.read_text())
+    assert parsed.get("repos"), "fragment must contain non-empty repos list"
 
 
 # ---------------------------------------------------------------------------

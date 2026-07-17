@@ -1,8 +1,9 @@
 # copier.yml — bailiff-mod-precommit
 #
-# Producer for the `precommit` _external_data alias: hook_manager is a normal
-# bare question written to this module's answers file (.copier-answers.bailiff-mod-precommit.yml).
-# Language modules consume it via _external_data.precommit.hook_manager.
+# Selecting this module IS choosing pre-commit as the hook manager.
+# Language modules that contribute hooks write .pre-commit.d/<vendor>-<module>.yaml
+# fragments; this module ships _merge_precommit.py (template content) as a _post_task
+# that reads all fragments after the full render loop and emits .pre-commit-config.yaml.
 #
 # Fragment/merge model (spec 014 _fragment-merge.md Surface 2):
 # - Each hook-contributing module writes .pre-commit.d/<vendor>-<module>.yaml
@@ -16,17 +17,6 @@
 # --- Dependency ordering (spec 014 R7/R8) ------------------------------------
 # phase: normal (base=pre, family=normal)
 _bailiff_phase: normal
-
-# --- Threading: hook_manager (choice-axis key, producer for precommit alias) --
-# Written to this module's own answers file. Consumers read it via
-# _external_data: {precommit: .copier-answers.bailiff-mod-precommit.yml}
-hook_manager:
-  type: str
-  choices:
-    - pre-commit
-    - none
-  default: pre-commit
-  help: "Hook manager. pre-commit = .pre-commit-config.yaml (via fragment/merge bundler); none = no file written."
 
 # --- Optional feature flags --------------------------------------------------
 
@@ -72,8 +62,7 @@ _subdirectory: template
 
 # --- Post-tasks: fragment bundler (spec 014 FR-021/R11) ----------------------
 # Runs AFTER the full render loop so all .pre-commit.d/*.yaml fragments exist.
-# The script is inert when no .pre-commit.d/*.yaml fragments exist (hook_manager
-# != pre-commit produces no fragment, so the script exits 0 with no output).
+# The script is inert when no .pre-commit.d/*.yaml fragments exist.
 _post_tasks:
   - "python3 scripts/_merge_precommit.py"
 
@@ -82,8 +71,8 @@ _post_tasks:
 # (.bailiff-precommit-installed) on first run; the `test -f` guard makes reproduce
 # a no-op so we never double-install.
 _tasks:
-  # pre-commit install (guarded: only when hook_manager=pre-commit AND install_hooks)
+  # pre-commit install (guarded: only when install_hooks=true)
   - command: >-
       test -f .bailiff-precommit-installed ||
       { pre-commit install && touch .bailiff-precommit-installed; }
-    when: "{{ hook_manager == 'pre-commit' and install_hooks }}"
+    when: "{{ install_hooks }}"
