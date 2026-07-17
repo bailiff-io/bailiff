@@ -2,9 +2,8 @@
 
 Terraform / OpenTofu **IaC overlay** — generic infrastructure skeleton that
 works standalone or `depends_on`
-[`bailiff-mod-base`](https://github.com/bailiff-io/bailiff-mod-base) and
-[`bailiff-mod-precommit`](https://github.com/bailiff-io/bailiff-mod-precommit)
-(spec 014). Does NOT ask for `cloud_provider` or `state_backend`; users
+[`bailiff-mod-base`](https://github.com/bailiff-io/bailiff-mod-base).
+Does NOT ask for `cloud_provider` or `state_backend`; users
 configure those via commented examples in `backend.tf`.
 
 ## Flavors
@@ -51,21 +50,20 @@ Facts read from producers via `_external_data` (spec 014 `_facts.md`):
 | Fact | Producer | Alias |
 |---|---|---|
 | `project_name` | `bailiff-mod-base` | `base` |
-| `hook_manager` | `bailiff-mod-precommit` | `precommit` |
 
 ## Ordering
 
 - `_bailiff_phase: normal`
-- `depends_on: [bailiff-mod-base, bailiff-mod-precommit]` (hard data-dependencies via `_external_data`)
-- Standalone use (no base/precommit) is not supported when facts are needed; copier renders an empty
+- `depends_on: [bailiff-mod-base]` (hard data-dependency via `_external_data`)
+- Standalone use without base is not supported when `project_name` is needed; copier renders an empty
   string and bailiff produces a loud `OrderingError` when the producer is absent.
 
 ## Fragment model (spec 014)
 
 - **mise**: renders `.mise/conf.d/bailiff-mod-terraform.toml` with own tools only; mise merges all
   conf.d entries at runtime — no `.mise.toml` written by this module.
-- **pre-commit**: renders `.pre-commit.d/bailiff-mod-terraform.yaml` (own block only, conditional
-  on `hook_manager != none`); `bailiff-mod-precommit`'s bundler merges all fragments.
+- **pre-commit**: renders `.pre-commit.d/bailiff-mod-terraform.yaml` unconditionally (own block
+  only); `bailiff-mod-precommit`'s bundler merges all fragments — inert when precommit is absent.
 - **gitignore**: renders `.gitignore.d/bailiff-mod-terraform`; `bailiff-mod-base`'s concat
   `_post_task` folds fragments into `.gitignore`.
 
