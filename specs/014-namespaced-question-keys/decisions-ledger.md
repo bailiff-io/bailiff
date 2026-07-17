@@ -412,26 +412,41 @@ Design principles ratified for 015:
    dep-updates precedent). On REPRODUCE the agent does NOT run — frozen answers replay; mechanical
    `_tasks`/`_post_tasks` re-run and consume the frozen output. Agent-free + deterministic reproduce preserved.
 
-6. **ORDERING — the agent decides its relation to `_post_tasks`; bailiff does NOT hardcode a tier
-   (maintainer, 2026-07-17):** the earlier "`_post_agent_tasks` always runs before `_post_tasks`" ruling is
-   REJECTED as too rigid — some projections must happen before the mechanical merge (produce input for it),
-   others after (post-process the merged output). So a `_post_agent_tasks` declaration carries EXPLICIT
-   before/after instructions relative to the mechanical merge, e.g. *"before `_post_tasks`: project the
-   `.hooks.d/` fragments into `<manager>.d/`; after `_post_tasks`: fix up the merged config."* bailiff
-   exposes both slots; the author/agent places the work.
-   - **INIT timeline:** (a) RENDER LOOP in sort order (phase → `depends_on` DAG → basename): each module
-     renders → its inline `_tasks` → its **`_agent_tasks`** (agent, during that module's stage, frozen). (b)
-     POST-LOOP: the **before-`_post_tasks`** portion of every `_post_agent_tasks` runs (agent, frozen) →
-     then the mechanical **`_post_tasks`** merges run → then the **after-`_post_tasks`** portion of every
-     `_post_agent_tasks` runs (agent, frozen). Within each slot, order by the module sort (same tie-break as
-     `_post_tasks`).
-   - **REPRODUCE timeline:** render loop replays frozen answers (no agent); `_post_tasks` re-run on the frozen
-     state. All agent slots are SKIPPED (their output is already frozen).
-   - `_agent_tasks` is SEPARATE from this before/after machinery — it is purely inline during normal template
-     application for its own module; it has no relationship to `_post_tasks`.
-   - Open detail for the 015 spec/plan phase: exact declaration schema for the before/after slots; whether a
-     module may both project (before) and consume via `_post_tasks` and post-fix (after) in one declaration;
-     and how `update` (re-init semantics) re-runs the agent projection.
+6. **SLOTS — before/after, agent owns placement; bailiff hardcodes no tier (maintainer, 2026-07-17):** the
+   earlier "`_post_agent_tasks` always before `_post_tasks`" ruling is REJECTED as too rigid — some
+   projections run BEFORE the mechanical merge (produce its input), some AFTER (post-process the merged
+   output). Each agent-task field pairs with its mechanical sibling and positions relative to it:
+   - **`_agent_tasks`** ↔ the module's inline **`_tasks`**: `before` / `after` that module's own template
+     application. (Own-module context only.)
+   - **`_post_agent_tasks`** ↔ the post-loop **`_post_tasks`**: `before` / `after` the cross-stack merges.
+   **`during` is DROPPED** — a mechanical task is atomic, so "inside" it is undefined; before/after are the
+   only crisp slots (an optional `instead-of`, where the agent REPLACES the mechanical step, may be
+   considered in the 015 spec).
+
+7. **INSTRUCTION FORM — structured envelope + NL payload; only `slot` is required (maintainer,
+   2026-07-17):** each agent task is a structured record so it stays lintable/reviewable/freezable, but its
+   payload is natural language because the agent is the executor and translation is a reasoning task:
+   - `slot`: `before` | `after` — REQUIRED (the only required field).
+   - `instruction`: NL directive to the agent — REQUIRED.
+   - `outputs`: path/answer-key glob(s) the task may write — OPTIONAL (scope guard when present).
+   - `freeze`: recorded-answer key the result is frozen into — OPTIONAL.
+   `outputs`/`freeze` are NOT mandatory: sometimes the agent just modifies an existing file with nothing to
+   freeze. BUT the author MUST have a reproduce story (Constitution III — reproduce is agent-free):
+   - **REPRODUCE-SAFETY LINT (015):** if an agent task writes a path that a MANAGED render also owns, it MUST
+     `freeze` (else the managed re-render silently clobbers the agent's edit on reproduce — the exact
+     divergence class 014 kills). If it edits a non-managed / one-time / idempotent-and-re-derivable target,
+     `freeze` is optional. Frozen output replays on reproduce with no agent.
+
+8. **INIT/REPRODUCE TIMELINE + ORDERING:**
+   - **INIT:** (a) RENDER LOOP in sort order (phase → `depends_on` DAG → basename): each module renders →
+     its `_agent_tasks[before]` → its inline `_tasks` → its `_agent_tasks[after]` (agent, own-module stage).
+     (b) POST-LOOP: every `_post_agent_tasks[before]` → the mechanical `_post_tasks` merges → every
+     `_post_agent_tasks[after]`. Within each slot, order by the module sort (same tie-break as `_post_tasks`).
+   - **REPRODUCE:** render loop replays frozen answers (no agent); `_post_tasks` re-run on the frozen state;
+     ALL agent slots SKIPPED. Any agent output that must survive reproduce is what `freeze` (item 7) captures.
+   - Open detail for the 015 spec/plan phase: exact record schema; `instead-of` slot; whether one module may
+     project (before) + consume via `_post_tasks` + post-fix (after) in one declaration; `update` re-run
+     semantics.
    The agent MUST re-check/redo the projection based on the actual module SELECTION, for ALL capabilities, and
    the one canonical pattern MUST be DOCUMENTED (FR-018 authoring guide + cross-cutting contract) so every
    module — first- or third-party — follows the same shape.
