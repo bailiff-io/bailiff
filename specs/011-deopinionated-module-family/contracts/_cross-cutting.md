@@ -59,7 +59,7 @@ precommit is selected and is inert when no fragments exist.
 specific. With `hook_manager=lefthook` (a future module), language-contributed
 `.pre-commit.d/` fragments are not automatically projected into `lefthook.yml`.
 Cross-format translation is deferred to spec 015 via `_agent_tasks` /
-`_post_agent_tasks`. See §8 for the forward pointer.
+`_post_agent_tasks`. See §9 for the forward pointer.
 
 ## 3. Native-command scaffold pattern (FR-007 / ADR-0007)
 

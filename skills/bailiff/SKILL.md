@@ -465,7 +465,7 @@ absent from the selection, bailiff raises a preflight `OrderingError`.
 | 2. Declare edges | `depends_on: [bailiff-mod-base]` (hidden `when: false`). Add more targets for every side-effect dependency. |
 | 3. Read base facts | Declare `_external_data: {base: .copier-answers.bailiff-mod-base.yml}` and use `_external_data.base.<key>` in defaults. |
 | 4. Declare agent-fed facts | For sometimes-absent producers, declare the key with a standalone default string. Do not add `_external_data` or `depends_on` for the producer. |
-| 5. Write fragments, not combined files | Write `.mise/conf.d/<vendor>-<module>.toml`, `.pre-commit.d/<vendor>-<module>.yaml`, `.gitignore.d/<vendor>-<module>` as managed MANAGED renders. |
+| 5. Write fragments, not combined files | Write `.mise/conf.d/<vendor>-<module>.toml`, `.pre-commit.d/<vendor>-<module>.yaml`, `.gitignore.d/<vendor>-<module>` as MANAGED renders. |
 | 6. Deferred work | If work must run after all modules rendered, declare it in `_post_tasks`. |
 | 7. Mark lifecycle | Comment each output with its lifecycle (MANAGED / SEED-ONCE / TASK-OUTPUT / POST-TASK OUTPUT). |
 | 8. Ship the reproducibility marker | Include `template/{{ _copier_conf.answers_file }}.jinja`. |
