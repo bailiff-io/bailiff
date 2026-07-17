@@ -141,20 +141,31 @@ jobs:
           git push origin --tags || echo "::warning::tags already pushed (rerun)"
 
       # Step 3: derive the changed module set from module tags.
-      # Scans all bailiff-mod-*-v* tags and includes those whose target repos
-      # are empty (not yet fanned out). This makes the step fully rerun-safe
-      # regardless of how many commits have landed since the cog bump.
+      # For each module, take its HIGHEST version tag and include it when the
+      # mirror does not yet carry that exact version tag. This fans out every new
+      # version (not just the first, empty-repo release) and stays rerun-safe:
+      # fanout_module.sh re-checks the same remote tag and no-ops if present.
       - name: Detect changed modules
         id: changed
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
+          set -uo pipefail
+          # Unique module names across all version tags.
+          names="$(git tag -l 'bailiff-mod-*-v[0-9]*' | sed -E 's/-v[0-9].*$//' | sort -u)"
           tags=""
-          for tag in $(git tag -l 'bailiff-mod-*-v[0-9]*'); do
-            name="${tag%-v*}"
-            # Check if the mirror repo has any commits (empty = needs fan-out)
-            if ! gh api "repos/${{ github.repository_owner }}/$name/commits" --silent 2>/dev/null; then
-              tags="${tags}${tag}"$'\n'
+          for name in $names; do
+            # Highest PEP 440 version tag authored for this module in the monorepo.
+            latest="$(git tag -l "${name}-v[0-9]*" | sort -V | tail -1)"
+            [ -z "$latest" ] && continue
+            version="v${latest##*-v}"
+            # Mirror already at this version? (git ref present => nothing to fan out.)
+            # A missing repo or missing ref both yield non-zero => include the tag.
+            if gh api "repos/${{ github.repository_owner }}/${name}/git/ref/tags/${version}" >/dev/null 2>&1; then
+              echo "up to date: ${name} ${version} (mirror already tagged)"
+            else
+              echo "needs fan-out: ${latest}"
+              tags="${tags}${latest}"$'\n'
             fi
           done
           tags="$(echo "$tags" | sed '/^$/d')"
@@ -162,9 +173,9 @@ jobs:
           echo "$tags" >> "$GITHUB_OUTPUT"
           echo "EOF" >> "$GITHUB_OUTPUT"
           if [ -z "$tags" ]; then
-            echo "no unfanned module tags found — nothing to release"
+            echo "no module tags need fan-out — all mirrors up to date"
           else
-            echo "unfanned module tags:"; echo "$tags"
+            echo "module tags to fan out:"; echo "$tags"
           fi
 
       # Step 4: fan-out each changed module to its split repo. NAME is everything
