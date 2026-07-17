@@ -15,7 +15,6 @@ _subdirectory: template
 
 _external_data:
   base: .copier-answers.bailiff-mod-base.yml
-  moon: .copier-answers.bailiff-mod-moon.yml
 
 # --- CI model + orthogonal knobs -------------------------------------------
 
@@ -72,12 +71,12 @@ ci_lang_facts:
   default: {}
   help: "Per-language facts keyed by language id: {python: {manager: uv, version: '3.13', test_runner: pytest, image: ''}, ...}. AGENT-FROZEN."
 
-# --- Monorepo (fact from bailiff-mod-moon via _external_data) ---------------
+# --- Monorepo (agent-fed --data; moon is a sometimes-absent producer — R13 GENERALIZED) ---
 
 monorepo_tool:
   type: str
-  default: "{{ _external_data.moon.monorepo_tool }}"
-  help: "Monorepo tool (turborepo, nx, pnpm-workspace, moon) for monorepo-affected model. 'none' = not a monorepo."
+  default: "{{ monorepo_tool | default('none') }}"
+  help: "Monorepo tool (turborepo, nx, pnpm-workspace, moon) for monorepo-affected model. 'none' = not a monorepo. AGENT-FED via --data (not a hard _external_data dep)."
 
 # --- Repository context (fact from bailiff-mod-base via _external_data) -----
 
