@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generated_at": "2026-07-20T06:20:55Z",
+  "generated_at": "2026-07-20T07:10:15Z",
   "modules": [
     {
       "name": "bailiff-mod-agentic",
@@ -141,10 +141,11 @@
       "name": "bailiff-mod-editorconfig",
       "description": "",
       "source": "https://github.com/bailiff-io/bailiff-mod-editorconfig.git",
-      "latest_version": "v0.2.0",
+      "latest_version": "v0.3.0",
       "tags": [
         "v0.1.0",
-        "v0.2.0"
+        "v0.2.0",
+        "v0.3.0"
       ],
       "provides": [],
       "exclusive": false
@@ -198,6 +199,17 @@
       "exclusive": false
     },
     {
+      "name": "bailiff-mod-lefthook",
+      "description": "",
+      "source": "https://github.com/bailiff-io/bailiff-mod-lefthook.git",
+      "latest_version": "v0.1.0",
+      "tags": [
+        "v0.1.0"
+      ],
+      "provides": [],
+      "exclusive": false
+    },
+    {
       "name": "bailiff-mod-mkdocs",
       "description": "",
       "source": "https://github.com/bailiff-io/bailiff-mod-mkdocs.git",
@@ -237,10 +249,11 @@
       "name": "bailiff-mod-precommit",
       "description": "",
       "source": "https://github.com/bailiff-io/bailiff-mod-precommit.git",
-      "latest_version": "v0.2.0",
+      "latest_version": "v0.3.0",
       "tags": [
         "v0.1.0",
-        "v0.2.0"
+        "v0.2.0",
+        "v0.3.0"
       ],
       "provides": [],
       "exclusive": false
@@ -249,10 +262,11 @@
       "name": "bailiff-mod-python",
       "description": "",
       "source": "https://github.com/bailiff-io/bailiff-mod-python.git",
-      "latest_version": "v0.2.0",
+      "latest_version": "v0.3.0",
       "tags": [
         "v0.1.0",
-        "v0.2.0"
+        "v0.2.0",
+        "v0.3.0"
       ],
       "provides": [],
       "exclusive": false
