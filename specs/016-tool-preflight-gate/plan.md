@@ -43,6 +43,15 @@ Modules that provision tools via `mise` declare `mise`; the gate checks `mise` p
 never the mise-provisioned tool. This matches the existing `command -v mise → mise install`
 chain — `mise` is the single real prerequisite; the rest is mise's job.
 
+### D2a — Declare a tool only when its absence is FATAL
+
+A module declares `_bailiff_requires` for a tool only if the module cannot proceed without
+it (base: `git`/`gh`/`gitnr`/`mise` fail with exit 1). A tool whose in-`_task` guard is
+**non-fatal by design** — `bailiff-mod-github-repo`/`gitlab-repo` skip repo creation and
+exit 0 with a manual hint when `gh`/`glab` is absent — declares NOTHING, because a gate
+entry would hard-fail a run the module is built to complete gracefully. The gate enforces
+hard prerequisites; it does not override a module's intentional graceful-degrade path.
+
 ### D3 — `when` answers come from the same per-layer answer dict the render uses
 
 For `init_many`, each layer's `when` is evaluated against that layer's answers (+ `today`),
