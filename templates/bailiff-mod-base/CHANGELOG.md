@@ -22,6 +22,12 @@ cocogitto fan-out (ADR-0006); do not hand-edit released sections.
 - No `_migrations` / update path (M2 clean break to v1.0.0).
 
 - - -
+## bailiff-mod-base-v0.3.0 - 2026-07-20
+#### Features
+- fail fast (before writing) when a module's required tool is missing (#58) - (d02a12d) - Sjors Robroek
+
+- - -
+
 ## bailiff-mod-base-v0.2.1 - 2026-07-17
 #### Bug Fixes
 - tree is clean after multi-layer init (initial commit is engine-owned) (#44) - (b9e309d) - Sjors Robroek

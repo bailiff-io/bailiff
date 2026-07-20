@@ -13,6 +13,12 @@ cocogitto fan-out (ADR-0006); do not hand-edit released sections.
 
 <!--
   cocogitto inserts each released version's section ABOVE the `- - -
+## bailiff-mod-precommit-v0.4.0 - 2026-07-20
+#### Features
+- fail fast (before writing) when a module's required tool is missing (#58) - (d02a12d) - Sjors Robroek
+
+- - -
+
 ## bailiff-mod-precommit-v0.3.1 - 2026-07-20
 #### Bug Fixes
 - fail with install guidance when a module's required tool is missing (#52) - (adcf599) - Sjors Robroek

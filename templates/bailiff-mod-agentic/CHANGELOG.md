@@ -24,6 +24,12 @@ cocogitto fan-out (ADR-0006); do not hand-edit released sections.
     `uvx --from apm-cli==<ver> apm install` (when `install_via_apm` + packages).
 
 - - -
+## bailiff-mod-agentic-v0.2.0 - 2026-07-20
+#### Features
+- fail fast (before writing) when a module's required tool is missing (#58) - (d02a12d) - Sjors Robroek
+
+- - -
+
 ## bailiff-mod-agentic-v0.1.0 - 2026-07-16
 #### Features
 - rename project clerk → bailiff (PyPI: bailiff, org: bailiff-io) - (52ac605) - Sjors Robroek

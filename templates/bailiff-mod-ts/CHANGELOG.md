@@ -29,6 +29,12 @@ cocogitto fan-out (ADR-0006); do not hand-edit released sections.
   `framework` via --data must pass `ts_framework`.
 
 - - -
+## bailiff-mod-ts-v0.3.0 - 2026-07-20
+#### Features
+- fail fast (before writing) when a module's required tool is missing (#58) - (d02a12d) - Sjors Robroek
+
+- - -
+
 ## bailiff-mod-ts-v0.2.0 - 2026-07-17
 #### Features
 - (**014/n-ts**) migrate bailiff-mod-ts to private-by-default + fragment model - (d16eb47) - Sjors Robroek

@@ -14,6 +14,12 @@ cocogitto fan-out (ADR-0006); do not hand-edit released sections.
 
 <!--
   cocogitto inserts each released version's section ABOVE the `- - -
+## bailiff-mod-cocogitto-v0.3.0 - 2026-07-20
+#### Features
+- fail fast (before writing) when a module's required tool is missing (#58) - (d02a12d) - Sjors Robroek
+
+- - -
+
 ## bailiff-mod-cocogitto-v0.2.0 - 2026-07-17
 #### Features
 - (**cocogitto**) migrate to spec-014 fragment/facts model (T024/T035/T036/T041/T045/T049) - (f381738) - Sjors Robroek

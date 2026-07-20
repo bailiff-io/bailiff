@@ -4,6 +4,12 @@ All notable changes to this module are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 - - -
+## bailiff-mod-cloudformation-v0.2.0 - 2026-07-20
+#### Features
+- fail fast (before writing) when a module's required tool is missing (#58) - (d02a12d) - Sjors Robroek
+
+- - -
+
 ## bailiff-mod-cloudformation-v0.1.1 - 2026-07-20
 #### Bug Fixes
 - fail with install guidance when a module's required tool is missing (#52) - (adcf599) - Sjors Robroek

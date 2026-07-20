@@ -15,6 +15,12 @@ cocogitto fan-out (ADR-0006); do not hand-edit released sections.
 
 <!--
   cocogitto inserts each released version's section ABOVE the `- - -
+## bailiff-mod-gitlab-repo-v0.3.0 - 2026-07-20
+#### Features
+- fail fast (before writing) when a module's required tool is missing (#58) - (d02a12d) - Sjors Robroek
+
+- - -
+
 ## bailiff-mod-gitlab-repo-v0.1.0 - 2026-07-16
 #### Features
 - (**012**) bailiff-mod-gitlab-repo — glab port of github-repo with all three safety paths (T009) [skip lint] - (3727f81) - Sjors Robroek

@@ -35,6 +35,12 @@ cocogitto fan-out (ADR-0006); do not hand-edit released sections.
   `python_framework`.
 
 - - -
+## bailiff-mod-python-v0.4.0 - 2026-07-20
+#### Features
+- fail fast (before writing) when a module's required tool is missing (#58) - (d02a12d) - Sjors Robroek
+
+- - -
+
 ## bailiff-mod-python-v0.3.0 - 2026-07-20
 #### Features
 - agent-projected capabilities (cross-format hooks, agentic editorconfig) (#47) - (453464e) - Sjors Robroek

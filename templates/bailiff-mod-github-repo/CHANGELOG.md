@@ -17,6 +17,12 @@ cocogitto fan-out (ADR-0006); do not hand-edit released sections.
   - `default_enabled=false`, `run_after: [bailiff-mod-base]`, `reconcile=false`.
 
 - - -
+## bailiff-mod-github-repo-v0.3.0 - 2026-07-20
+#### Features
+- fail fast (before writing) when a module's required tool is missing (#58) - (d02a12d) - Sjors Robroek
+
+- - -
+
 ## bailiff-mod-github-repo-v0.1.0 - 2026-07-15
 #### Features
 - rename project clerk → bailiff (PyPI: bailiff, org: bailiff-io) - (52ac605) - Sjors Robroek

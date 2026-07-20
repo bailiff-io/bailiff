@@ -7,6 +7,12 @@ cocogitto fan-out (ADR-0006); do not hand-edit released sections.
 
 <!--
   cocogitto inserts each released version's section ABOVE the `- - -
+## bailiff-mod-terraform-v0.3.0 - 2026-07-20
+#### Features
+- fail fast (before writing) when a module's required tool is missing (#58) - (d02a12d) - Sjors Robroek
+
+- - -
+
 ## bailiff-mod-terraform-v0.2.0 - 2026-07-17
 #### Features
 - (**014/terraform**) migrate to fragment/merge model + _external_data facts - (7cb3bf6) - Sjors Robroek

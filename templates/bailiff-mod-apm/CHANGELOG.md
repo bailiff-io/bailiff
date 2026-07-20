@@ -29,6 +29,12 @@ cocogitto fan-out (ADR-0006); do not hand-edit released sections.
     by the spec-003 engine from the selected layers' edges.
 
 - - -
+## bailiff-mod-apm-v0.3.0 - 2026-07-20
+#### Features
+- fail fast (before writing) when a module's required tool is missing (#58) - (d02a12d) - Sjors Robroek
+
+- - -
+
 ## bailiff-mod-apm-v0.2.0 - 2026-07-17
 #### Features
 - (**014/apm**) _external_data.base facts, depends_on, .gitignore.d fragment - (84f747f) - Sjors Robroek

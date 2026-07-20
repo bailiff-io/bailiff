@@ -22,6 +22,15 @@ cocogitto fan-out (ADR-0006); do not hand-edit released sections.
     agent-frozen union (M1 — single writers: base, base, precommit respectively).
 
 - - -
+## bailiff-mod-rust-v0.2.0 - 2026-07-20
+#### Features
+- fail fast (before writing) when a module's required tool is missing (#58) - (d02a12d) - Sjors Robroek
+#### Documentation
+- reframe reproduce invariant from byte-identical to config-consistent - (498315f) - Sjors Robroek
+- reframe reproduce invariant from byte-identical to config-consistent - (c1d7faf) - Sjors Robroek
+
+- - -
+
 ## bailiff-mod-rust-v0.1.0 - 2026-07-16
 #### Features
 - rename project clerk → bailiff (PyPI: bailiff, org: bailiff-io) - (52ac605) - Sjors Robroek
