@@ -24,6 +24,9 @@ cover those decisions would need a conditional per combination.
 `github` renders every job. `ci_languages` decides which languages get a test and
 a lint workflow; `ci_jobs` decides which kinds of job render at all.
 
+`test` and `lint` render once per selected language. `security` and `quality`
+render once, and neither depends on a language.
+
 Take the language list from what you rendered in `languages/`, and confirm it with
 the user rather than inferring it from files on disk. Every language answer must
 match the language package's: `python_type_checker`, `ts_linter`, and the version

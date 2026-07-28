@@ -18,6 +18,7 @@ language-specific.
 | `.github/workflows/wc-test-<lang>.yml` | One test workflow per selected language, when `test` is in `ci_jobs` |
 | `.github/workflows/wc-lint-<lang>.yml` | One lint workflow per selected language, when `lint` is in `ci_jobs` |
 | `.github/workflows/wc-security-*.yml` | codeql, trivy, secrets, and osv, when `security` is in `ci_jobs` |
+| `.github/workflows/wc-quality.yml` | the slow repo-wide checks, when `quality` is in `ci_jobs` |
 
 ## Questions, in order
 
@@ -125,3 +126,26 @@ template with its filename embedded in the generated Python, so a quote in the
 path breaks that string literal and raises a `SyntaxError` pointing at an
 unrelated body line. The flags carry `when: false`, so they never reach the
 interview.
+
+## The quality job holds what a commit hook cannot
+
+`hooks/baseline` runs what is fast enough against staged files. These are the rest,
+measured on a 212-file repo:
+
+| Check | Why not a hook |
+|---|---|
+| `pinact run --check` | 1.4s, and it resolves every action tag over the GitHub API |
+| `yamllint` | 1.1s |
+| `markdownlint-cli2` | 1.2s |
+| `cspell` | 1.7s |
+| `lychee` without `--offline` | reaches the network; the hook only resolves relative links |
+| `lizard` whole-repo | 3.1s against 212 files, where 12 staged files take 208ms |
+| `jscpd` | duplication is invisible from a staged set, so it has no hook form |
+
+`yamllint` runs with the relaxed profile and line-length disabled when the repo
+pins no `.yamllint`. Its defaults flag 80-column lines and a missing document
+start, and a GitHub workflow routinely exceeds 80 columns, so the defaults would
+report findings that are not project rules.
+
+`lizard` and `jscpd` default off. Both report on a codebase rather than on a
+change, so they suit a repo that has agreed a threshold.

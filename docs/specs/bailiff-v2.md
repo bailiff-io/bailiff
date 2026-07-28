@@ -270,3 +270,46 @@ render order does not matter and a re-render converges.
 
 The script cannot live under `packages/`. `scan.py` treats every directory there
 as a group and would report a shared one as a group with no `index.md`.
+
+## Alternatives considered
+
+### structkit
+
+`httpdss/structkit` (Apache-2.0, v3.2.1) is YAML-first scaffolding covering much
+of what this spec builds by hand: `graph` for ordering and cycle detection, `lint`
+for validation, `explain` and `--dry-run` for preview, `--file-strategy=append`
+for fragment composition, an MCP server for agent integration, and remote content
+references that fetch a canonical file at generate time.
+
+It is not adopted, for two reasons.
+
+**No answers file.** A structure records nothing about what it was rendered with.
+Rendering with `project_name=widget` and re-rendering with `project_name=changed`
+overwrites the result and leaves no trace of the first value. `probe.py` reading
+`.copier-answers.<package>.yml` to avoid re-asking, and `copier update` remaining
+available to the user, both depend on that record existing.
+
+**Hooks receive no variables.** File content is rendered through jinja; hook
+commands are not. A hook reading `echo "NAME_IS {{@ name @}}"` prints the literal
+braces while a file in the same structure renders the value. Hooks are also
+structure-level rather than per-file, so there is no equivalent of a task gated on
+one answer.
+
+Every task in this catalog needs one or both. `uv init --name "{{ project_name }}"
+--python {{ python_version }}` needs interpolation. `uv add --dev` needs a
+condition over five answers. The rust licence patch needs both. The workaround is
+to render a shell script, which templates correctly, and have one hook execute it
+-- at which point the ordering and the conditionals live in bash where nothing
+validates them.
+
+Three of its features are better than what this spec builds, and are worth
+taking rather than dismissing:
+
+| Feature | Why it beats the current design |
+|---|---|
+| Remote content references | An org-canonical URL replaces the shared-fragment mechanism, so a template update reaches new projects with no copy-paste. Tracked separately. |
+| YAML-first structures | A package that renders only static files needs no `copier.yml` plus `template/` plus `package.md`. |
+| MCP server and agent skills | Attacks the steering prose directly, where this spec relies on an agent reading roughly 1000 lines of it. |
+
+The answers file is the one hard requirement. Everything else here is a
+preference that could be revisited if that requirement were dropped.

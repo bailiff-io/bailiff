@@ -47,11 +47,13 @@ ci_jobs:
     - test
     - lint
     - security
+    - quality
   default:
     - test
     - lint
     - security
-  help: "Kinds of job to render. test and lint render once per selected language. security renders once."
+    - quality
+  help: "Kinds of job to render. test and lint render once per selected language. security and quality render once."
 
 ci_cache:
   type: bool
@@ -318,4 +320,80 @@ setup_rust:
 job_security:
   type: bool
   default: "{{ 'security' in ci_jobs }}"
+  when: false
+
+# === quality ===
+#
+# Checks too slow for a commit hook, plus the repo-wide form of checks the hook
+# runs against the staged index alone. Timings measured on a 212-file repo.
+
+quality_pinact:
+  type: bool
+  default: true
+  when: "{{ 'quality' in ci_jobs }}"
+  help: "Check every action is pinned to a SHA (pinact, 1.4s, resolves tags over the network)."
+
+quality_yaml:
+  type: bool
+  default: true
+  when: "{{ 'quality' in ci_jobs }}"
+  help: "Lint YAML (yamllint, 1.1s)."
+
+quality_markdown:
+  type: bool
+  default: true
+  when: "{{ 'quality' in ci_jobs }}"
+  help: "Lint markdown (markdownlint-cli2, 1.2s)."
+
+quality_spelling:
+  type: bool
+  default: true
+  when: "{{ 'quality' in ci_jobs }}"
+  help: "Spell-check code and prose (cspell, 1.7s)."
+
+quality_links:
+  type: bool
+  default: true
+  when: "{{ 'quality' in ci_jobs }}"
+  help: "Check links reach their target. The commit hook only resolves relative links."
+
+quality_complexity:
+  type: bool
+  default: false
+  when: "{{ 'quality' in ci_jobs }}"
+  help: "Report whole-repo complexity (lizard, 3.1s)."
+
+quality_ccn:
+  type: int
+  default: 15
+  when: "{{ 'quality' in ci_jobs and quality_complexity }}"
+  help: "Maximum cyclomatic complexity per function."
+
+quality_length:
+  type: int
+  default: 80
+  when: "{{ 'quality' in ci_jobs and quality_complexity }}"
+  help: "Maximum lines per function."
+
+quality_args:
+  type: int
+  default: 6
+  when: "{{ 'quality' in ci_jobs and quality_complexity }}"
+  help: "Maximum parameters per function."
+
+quality_duplication:
+  type: bool
+  default: false
+  when: "{{ 'quality' in ci_jobs }}"
+  help: "Report cross-file duplication (jscpd). This has no commit-hook form: duplication is invisible from a staged set."
+
+quality_dup_tokens:
+  type: int
+  default: 50
+  when: "{{ 'quality' in ci_jobs and quality_duplication }}"
+  help: "Minimum duplicated token run to report."
+
+job_quality:
+  type: bool
+  default: "{{ 'quality' in ci_jobs }}"
   when: false
