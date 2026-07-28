@@ -116,15 +116,27 @@ names the choice axis. The group's `index.md` states what to do with each axis.
 | `languages/` | `language:*` | python, ts, go, rust, api |
 | `hooks/` | `hooks:manager` | lefthook, precommit |
 | `ci/` | `ci:*`, `ci-job:*` | github, github-python, github-ts, github-go, github-rust, github-security |
-| `repo/` | `repo:*`, `release:*`, `deps:*` | github-repo, gitlab-repo, cocogitto, release-please, dep-updates |
-| `docs/` | `docs:*` | mkdocs, decision-records |
+| `repo/` | `repo:*`, `release:*`, `deps:*`, `monorepo:*` | github-repo, gitlab-repo, cocogitto, release-please, dep-updates, moon, package-add |
+| `docs/` | `docs:*` | mkdocs, starlight, decision-records |
 | `iac/` | `iac:*` | terraform, cdk, cloudformation |
 | `agentic/` | `agentic:*`, `tracker:*` | apm, agentic, agent-hooks, beads |
-| `workspace/` | `workspace:*` | moon, justfile, devcontainer, package-add |
+| `workspace/` | `workspace:*` | justfile, devcontainer |
 
-A group holds as many axes as its members need. `repo/` holds three axes: the
-repo host allows one pick, the release tool allows at most one, and dep-updates
-is independent of both.
+A group holds as many axes as its members need. `repo/` holds five, and every one
+of them is independent of the rest.
+
+| Axis | Cardinality |
+|---|---|
+| `repo:host` | one |
+| `release:tool` | at most one |
+| `deps:updates` | at most one |
+| `monorepo:workspace` | at most one |
+| `monorepo:add` | repeatable |
+
+An axis is keyed on the tag's namespace alone, so two axes in one group need two
+namespaces. `moon` and `package-add` sit in `repo/` and tag `monorepo:*` rather
+than `repo:*`, because `repo:host` already owns that namespace and a shared one
+would report the four packages as a single mutually exclusive choice.
 
 Exclusivity is prose in the group's `index.md`. Prose states "pick exactly one",
 "pick one or more, and one per package in a monorepo", and the constraints

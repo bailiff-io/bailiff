@@ -140,8 +140,11 @@ def test_wrong_field_types_never_raise(tmp_path, line):
 # ------------------------------------------------------- generated field values
 
 # Unicode, control characters, and the empty string, in every scalar field.
+# Control characters are excluded because YAML does not round-trip them: dumping
+# '\x85' and loading it back yields ' ', so a test comparing the parsed value
+# against the input would fail on the serialiser rather than on scan.py.
 SCALARS = st.text(
-    alphabet=st.characters(blacklist_categories=("Cs",)), min_size=0, max_size=60
+    alphabet=st.characters(blacklist_categories=("Cs", "Cc")), min_size=0, max_size=60
 )
 
 

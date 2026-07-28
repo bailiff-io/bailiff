@@ -1,7 +1,7 @@
 ---
 name: package-add
 summary: One new package in a monorepo, initialised by its language's own tool
-provides: [workspace:add]
+provides: [monorepo:add]
 after: [base, moon]
 precheck: precheck.py
 ---

@@ -1,12 +1,14 @@
 # repo
 
-Forge metadata, release tooling, and dependency updates.
+Forge metadata, release tooling, dependency updates, and monorepo structure.
 
 | Axis | How many | Packages |
 |---|---|---|
 | `repo:host` | Exactly one, or none | github-repo, gitlab-repo |
 | `release:tool` | At most one | cocogitto, release-please |
 | `deps:updates` | At most one | dep-updates |
+| `monorepo:workspace` | At most one, monorepos only | moon |
+| `monorepo:add` | Repeatable, monorepos only | package-add |
 
 Every axis here is independent of the others. A project takes a repo host with no
 release tool, or a release tool with no dep-updates.
@@ -50,3 +52,32 @@ list back to the user.
 
 A monorepo release config names the package directories, so the release tool
 takes them in `monorepo_packages` after the language packages have rendered.
+
+## moon
+
+Renders `.moon/workspace.yml` and the project map that makes a monorepo's
+packages addressable as build targets. Offer it only for a monorepo.
+
+A monorepo runs without `moon`: the language toolchain's own workspace support
+(uv workspaces, pnpm workspaces, Cargo workspaces) covers dependency resolution.
+`moon` adds task orchestration and affected-target detection across languages.
+Offer it when the monorepo spans more than one language, and ask otherwise.
+
+Its `layout` answer takes `monorepo` or `single`. `single` renders a valid
+one-project workspace, so the package works on a single-package repo. Pass the
+layout the user already described.
+
+## package-add
+
+Adds one package to an existing monorepo, once per package the user adds. It runs
+against a repo that is already set up, which nothing else in the catalog does.
+`../../runbooks/monorepo/add-package/index.md` drives it.
+
+Its destination is the new package's directory. Pass
+`<repo>/<parent-dir>/<name>`, for example `/repo/packages/api-client`. Passing
+the repository root initialises the new package over the repository's own
+manifest.
+
+It has no `depends_on: [moon]`. The language's own workspace support registers
+the package, and `moon` is optional in a monorepo. Register with moon after
+rendering when the project uses it.

@@ -1,7 +1,7 @@
 ---
 name: moon
 summary: moon workspace config for cross-language task orchestration
-provides: [workspace:monorepo]
+provides: [monorepo:workspace]
 after: [base]
 ---
 

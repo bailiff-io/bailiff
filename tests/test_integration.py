@@ -426,6 +426,21 @@ def test_repo_host_axis_has_two_members(tmp_path):
     assert repo["axes"]["repo"] == ["github-repo", "gitlab-repo"]
 
 
+def test_monorepo_packages_live_in_the_repo_group(tmp_path):
+    """moon and package-add are monorepo structure, so they sit with the other
+    repo-shape packages rather than with the local-ergonomics ones. Their axis
+    namespace is 'monorepo', not 'repo', because scan.py keys an axis on the
+    namespace alone and 'repo' already names the forge-host axis."""
+    from conftest import scan
+
+    catalog = scan.build_catalog(SKILL)
+    repo = next(g for g in catalog["groups"] if g["name"] == "repo")
+    assert repo["axes"]["monorepo"] == ["moon", "package-add"]
+
+    workspace = next(g for g in catalog["groups"] if g["name"] == "workspace")
+    assert "moon" not in [p["name"] for p in workspace["packages"]]
+
+
 # -------------------------------------------------------------- fragment dirs
 
 

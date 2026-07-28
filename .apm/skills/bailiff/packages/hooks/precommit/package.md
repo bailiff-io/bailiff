@@ -2,7 +2,7 @@
 name: precommit
 summary: pre-commit as the git hook manager, with a fragment merge step
 provides: [hooks:manager]
-after: [base, python, ts, go, rust]
+after: [base, python, ts, go, rust, cocogitto]
 requires_bin: [pre-commit, git, python3]
 ---
 

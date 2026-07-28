@@ -30,7 +30,7 @@ there rather than deciding conventions.
 ## Render
 
 `dest = <repo>/<package dir>/<name>` for all three, in `scan.py --order`:
-`workspace/package-add`, the language package, `foundation/readme`.
+`repo/package-add`, the language package, `foundation/readme`.
 
 ## Register the package
 

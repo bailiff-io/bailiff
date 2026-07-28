@@ -2,7 +2,7 @@
 name: cocogitto
 summary: Conventional-commit releases driven by the local cog command
 provides: [release:tool]
-after: [base, moon, precommit]
+after: [base]
 ---
 
 Renders:
