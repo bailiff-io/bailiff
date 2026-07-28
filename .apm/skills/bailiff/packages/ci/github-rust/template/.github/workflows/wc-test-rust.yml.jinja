@@ -32,14 +32,20 @@ jobs:
         toolchain: [{% for v in ci_version_matrix %}"{{ v }}"{{ ", " if not loop.last }}{% endfor %}]
 {%- endif %}
     runs-on: {{ '${{ matrix.os }}' if runners|length > 1 else runners[0] }}
+    timeout-minutes: {{ ci_job_timeout_minutes | default(15) }}
 {%- else %}
     runs-on: {{ runners[0] }}
+    timeout-minutes: {{ ci_job_timeout_minutes | default(15) }}
 {%- endif %}
     defaults:
       run:
         working-directory: ${{ '{{' }} inputs.working-directory }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          # The default leaves GITHUB_TOKEN in .git/config for later steps to
+          # read. zizmor reports the default as a finding.
+          persist-credentials: false
 
       - uses: ./.github/actions/setup-rust
         with:

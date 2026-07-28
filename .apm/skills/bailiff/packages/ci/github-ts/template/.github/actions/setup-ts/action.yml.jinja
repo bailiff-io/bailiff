@@ -26,7 +26,7 @@ runs:
         run_install: false
 
     - name: Set up Node
-      uses: actions/setup-node@v7
+      uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
       with:
         node-version: ${{ '{{' }} inputs.node-version }}
 {%- if ci_cache %}
@@ -38,7 +38,7 @@ runs:
       run: pnpm install --frozen-lockfile
 {%- else %}
     - name: Set up Node
-      uses: actions/setup-node@v7
+      uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
       with:
         node-version: ${{ '{{' }} inputs.node-version }}
 {%- if ci_cache %}

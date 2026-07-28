@@ -73,6 +73,74 @@ ruff_rule_profile:
   default: standard
   help: "standard = [E, F, I, N, W, UP, B, SIM, TC]; strict adds [ANN, RUF, PERF, C4, PT]."
 
+# mypy is the reference implementation and what ci/github-python invokes. Before
+# this answer existed the CI lint job ran `uv run mypy .` while nothing installed
+# mypy, so the job failed on a missing binary rather than on a type error.
+python_type_checker:
+  type: str
+  choices:
+    - mypy
+    - ty
+    - pyright
+    - none
+  default: mypy
+  help: "Type checker, added to the dev dependencies and configured in pyproject.toml. ty is Astral's, still 0.0.x."
+
+python_coverage:
+  type: bool
+  default: true
+  help: "Add pytest-cov and a coverage config."
+
+python_coverage_min:
+  type: int
+  default: 0
+  when: "{{ python_coverage }}"
+  help: "Fail under this line percentage. 0 records coverage without enforcing a floor."
+
+# deptry reads the imports and compares them against the declared dependencies,
+# so it reports unused, missing, and transitive ones. The Python counterpart to
+# cargo-machete.
+python_dep_check:
+  type: bool
+  default: true
+  help: "Add deptry to detect unused, missing, and transitively-used dependencies."
+
+# Docstring presence warns; a docstring that contradicts the signature fails.
+# ruff cannot mix severities in one run, so the hook invokes it twice: once
+# blocking, once with --exit-zero for the D rules.
+python_docstring_check:
+  type: str
+  choices:
+    - warn
+    - enforce
+    - none
+  default: warn
+  help: "Docstring presence (ruff D). warn reports without failing; enforce fails the commit."
+
+# DOC rules are ruff's pydoclint port: they check the documented params, returns,
+# and raises against the real signature, which is what catches a docstring that
+# drifted after a refactor.
+python_docstring_accuracy:
+  type: bool
+  default: true
+  help: "Fail when a docstring's documented params, returns, or raises disagree with the signature (ruff DOC)."
+
+python_doctest:
+  type: bool
+  default: false
+  help: "Run docstring examples as tests (pytest --doctest-modules), so a stale example fails."
+
+# Python has no builtin multi-version test runner. The CI matrix covers most
+# projects; nox is for verifying the matrix locally before pushing, which matters
+# for a library published to PyPI.
+python_multiversion:
+  type: str
+  choices:
+    - none
+    - nox
+  default: none
+  help: "Local multi-version test runner. Offer nox when the project publishes a library supporting several Python versions."
+
 add_tests:
   type: bool
   default: false

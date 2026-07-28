@@ -1,0 +1,108 @@
+{#- .hooks.d/baseline.yaml -- the same checks as .pre-commit.d/baseline.yaml,
+    written in lefthook's schema. Both come from hooks/baseline's answers.
+
+    pre-commit installs each hook from its own pinned repo; lefthook runs what
+    is on PATH, which .mise/conf.d/hooks.toml pins to the same versions.
+    {staged_files} limits a run to the commit. -#}
+pre-commit:
+  parallel: true
+  commands:
+{%- if check_hygiene %}
+    trailing-whitespace:
+      run: |
+        for f in {staged_files}; do
+          [ -f "$f" ] || continue
+          perl -pi -e 's/[ \t]+$//' "$f"
+        done
+      stage_fixed: true
+    end-of-file-newline:
+      run: |
+        for f in {staged_files}; do
+          [ -s "$f" ] || continue
+          [ "$(tail -c1 "$f" | wc -l)" -eq 0 ] && printf '\n' >> "$f"
+        done
+      stage_fixed: true
+    check-yaml:
+      glob: "*.{yaml,yml}"
+      run: |
+        for f in {staged_files}; do
+          python3 -c 'import sys,yaml; yaml.safe_load(open(sys.argv[1]))' "$f"
+        done
+    check-toml:
+      glob: "*.toml"
+      run: |
+        for f in {staged_files}; do
+          python3 -c 'import sys,tomllib; tomllib.load(open(sys.argv[1],"rb"))' "$f"
+        done
+    check-merge-conflict:
+      run: |
+        ! grep -lE '^(<<<<<<< |=======$|>>>>>>> )' {staged_files}
+    check-added-large-files:
+      run: |
+        for f in {staged_files}; do
+          [ -f "$f" ] || continue
+          kb=$(( $(wc -c < "$f") / 1024 ))
+          if [ "$kb" -gt {{ max_file_kb }} ]; then
+            echo "$f is ${kb}kB, over the {{ max_file_kb }}kB limit" >&2
+            exit 1
+          fi
+        done
+{%- endif %}
+{%- if check_secrets %}
+    # The --staged flag selects pre-commit mode: it scans the index, not history.
+    {{ secret_scanner }}:
+      run: {{ secret_scanner }} git --pre-commit --staged --redact --no-banner
+{%- endif %}
+{%- if check_secrets_verified %}
+    # Verifies a candidate credential against the issuing API, so it reports
+    # live keys the regex scanners rate too low-entropy to flag.
+    trufflehog:
+      run: trufflehog git file://. --since-commit HEAD --results=verified --fail --no-update
+{%- endif %}
+{%- if check_typos %}
+    typos:
+      run: typos {staged_files}
+{%- endif %}
+{%- if check_shell %}
+    shellcheck:
+      glob: "*.{sh,bash}"
+      run: shellcheck {staged_files}
+{%- endif %}
+{%- if check_workflows %}
+    actionlint:
+      glob: ".github/workflows/*.{yml,yaml}"
+      run: actionlint {staged_files}
+    zizmor:
+      glob: ".github/workflows/*.{yml,yaml}"
+      run: zizmor --offline --persona regular {staged_files}
+{%- endif %}
+{%- if check_toml %}
+    taplo:
+      glob: "*.toml"
+      run: taplo lint {staged_files}
+{%- endif %}
+{%- if check_links %}
+    # Offline only: it resolves relative links and skips network URLs, so a
+    # commit never waits on HTTP. CI runs lychee without --offline.
+    lychee:
+      glob: "*.md"
+      run: lychee --offline --no-progress {staged_files}
+{%- endif %}
+{%- if check_complexity %}
+    lizard:
+      glob: "*.{py,js,ts,tsx,go,rs,c,cpp,h,java,rb}"
+      run: lizard -C {{ complexity_ccn }} -L {{ complexity_length }} -a {{ complexity_args }} -w {staged_files}
+{%- endif %}
+{%- if show_repo_stats %}
+    # Reports only: scc has no threshold flag, so `|| true` keeps it advisory.
+    scc:
+      run: scc --no-cocomo || true
+      fail_text: ""
+{%- endif %}
+{%- if enforce_conventional_commits %}
+
+commit-msg:
+  commands:
+    conventional-commit-msg:
+      run: python3 .hooks-bin/check-commit-msg.py {1}
+{%- endif %}

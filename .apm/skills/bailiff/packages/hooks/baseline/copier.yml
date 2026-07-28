@@ -1,0 +1,136 @@
+_subdirectory: template
+
+# One answer set drives both fragment schemas. The manager packages render no
+# hook definitions of their own, so lefthook and pre-commit cannot diverge on
+# what the baseline checks.
+#
+# Every check here is fast enough to run on every commit against staged files.
+# Measured on a 212-file repo: actionlint 44-154ms, zizmor in offline mode 54ms,
+# lychee in offline mode 64ms, taplo 399ms, lizard 208ms on 12 files, scc 199ms.
+# The slow ones (cspell 1.7s, markdownlint 1.2s, yamllint 1.1s, pinact 1.4s)
+# belong to the CI job instead.
+
+check_secrets:
+  type: bool
+  default: true
+  help: "Scan staged content for secrets."
+
+# betterleaks is maintained by the gitleaks authors, including its original
+# author, and takes the same staged-scan interface. Both are regex scanners and
+# found the same secrets in the same fixture.
+secret_scanner:
+  type: str
+  choices:
+    - betterleaks
+    - gitleaks
+  default: betterleaks
+  when: "{{ check_secrets }}"
+  help: "Which regex scanner runs on commit."
+
+# trufflehog verifies a candidate credential against the issuing API, so it
+# catches live keys the regex scanners rate as too low-entropy to report. It
+# scans the working tree against HEAD, not history.
+check_secrets_verified:
+  type: bool
+  default: true
+  help: "Also verify detected credentials against their live API (trufflehog)."
+
+check_typos:
+  type: bool
+  default: true
+  help: "Check for typos in source and prose (typos)."
+
+check_shell:
+  type: bool
+  default: true
+  help: "Lint shell scripts (shellcheck)."
+
+check_hygiene:
+  type: bool
+  default: true
+  help: "Trailing whitespace, end-of-file newline, YAML/TOML syntax, merge conflict markers, large files."
+
+# prek carries 26 of pre-commit-hooks' checks natively, as `repo: builtin`: it
+# runs them from its own binary, offline, with nothing to clone or pin. Only prek
+# reads the key, so the answer has to match hook_manager -- pre-commit rejects
+# `repo: builtin` with "Missing required key: rev".
+use_builtin_hygiene:
+  type: bool
+  default: true
+  when: "{{ check_hygiene }}"
+  help: "Use prek's builtin hygiene hooks instead of cloning pre-commit-hooks. Answer false when hook_manager is pre-commit."
+
+# Groups let a caller run a subset: `prek run --group security`. pre-commit has
+# no equivalent, and it ignores the key rather than failing on it, so tagging is
+# safe under either reader.
+tag_hook_groups:
+  type: bool
+  default: true
+  help: "Tag each hook with a group (hygiene, security, quality, docs) so a subset can be run on its own."
+
+max_file_kb:
+  type: int
+  default: 500
+  when: "{{ check_hygiene }}"
+  help: "Reject a staged file larger than this, in kilobytes."
+
+# The repo renders ~15 workflow files and lints none of them without this.
+# actionlint parses the workflow AST and embeds shellcheck for `run:` blocks;
+# zizmor is a security pass for injection and over-broad permissions.
+check_workflows:
+  type: bool
+  default: true
+  help: "Lint GitHub Actions workflows (actionlint, zizmor). Offer false when the repo has no .github/workflows."
+
+check_toml:
+  type: bool
+  default: true
+  help: "Lint and format-check TOML (taplo). Every package here renders TOML."
+
+check_links:
+  type: bool
+  default: true
+  help: "Check markdown links resolve, offline only (lychee). Skips network URLs on commit."
+
+# lizard exits non-zero past a threshold, which is what makes it a hook rather
+# than a report. The per-language linters flag their own complexity; lizard is
+# the uniform metric across every language, including those without one.
+check_complexity:
+  type: bool
+  default: false
+  help: "Fail a commit whose staged functions exceed the complexity thresholds (lizard)."
+
+complexity_ccn:
+  type: int
+  default: 15
+  when: "{{ check_complexity }}"
+  help: "Maximum cyclomatic complexity per function."
+
+complexity_length:
+  type: int
+  default: 80
+  when: "{{ check_complexity }}"
+  help: "Maximum lines per function."
+
+complexity_args:
+  type: int
+  default: 6
+  when: "{{ check_complexity }}"
+  help: "Maximum parameters per function."
+
+# scc has no threshold flag and no pass/fail notion, so it cannot block. It
+# prints the shape of what is being committed.
+show_repo_stats:
+  type: bool
+  default: false
+  help: "Print a non-blocking LOC and complexity summary on commit (scc)."
+
+enforce_conventional_commits:
+  type: bool
+  default: true
+  help: "Add a commit-msg hook that enforces Conventional Commits."
+
+hook_exclude_patterns:
+  type: yaml
+  default: []
+  help: "Regex patterns joined into the pre-commit config's top-level exclude (yaml list)."

@@ -38,9 +38,34 @@ passes a different directory per job. Do not render a language package twice.
 Apply these patterns. Which ones fit depends on the project the user described,
 so ask when the answer is not evident.
 
-**Path filtering.** In a monorepo, gate each package's jobs on that package's
-paths with `dorny/paths-filter` or `on.push.paths`. A push touching one package
-should not run every other package's tests.
+**Path filtering.** `github` renders `wc-changes.yml`, which wraps
+`dorny/paths-filter`. Call it first, pass one filter key per area, and gate each
+language job on the matching output:
+
+```yaml
+  changes:
+    uses: ./.github/workflows/wc-changes.yml
+    with:
+      filters: |
+        python: ['src/**', 'pyproject.toml', 'uv.lock']
+        ts: ['web/**', 'package.json']
+  test-python:
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.changes), 'python')
+    uses: ./.github/workflows/wc-test-python.yml
+```
+
+Do not reach for `on.push.paths` instead. It decides whether the whole workflow
+runs rather than which jobs run, and a workflow that never starts leaves its
+required checks pending forever, so a docs-only PR cannot merge. Use
+`paths-ignore` only for paths that should skip CI entirely.
+
+**Timeouts.** Every rendered job carries `timeout-minutes`. GitHub's default is
+360, so a hung job burns six runner hours before it is killed.
+
+**Do not persist credentials.** Every rendered checkout passes
+`persist-credentials: false`. The default writes `GITHUB_TOKEN` into
+`.git/config`, where any later step or transitive dependency can read it.
 
 **Matrix.** Put the language runtime versions the user named on the matrix axis.
 Add operating systems only when the user says the project targets more than
@@ -66,8 +91,11 @@ A superseded push should stop consuming runners.
 `permissions: id-token: write` with the provider's OIDC action. Ask the user to
 add a stored credential only when the provider has no OIDC path.
 
-**Pin actions by SHA.** Third-party actions take a full commit SHA, with the
-version in a trailing comment. Actions under `actions/` may take a tag.
+**Pin every action by SHA, including `actions/`.** A full commit SHA with the
+version in a trailing comment. zizmor's `unpinned-uses` audit reports a tag on
+`actions/checkout` as a high-confidence finding under its blanket policy, and
+`hooks/baseline` runs zizmor on commit, so a tag-pinned action fails the hook
+this catalog installed. `pinact run --check` verifies the whole tree.
 
 **Least privilege.** Declare `permissions:` at the workflow level with the
 narrowest set, and widen per job where a job needs more.

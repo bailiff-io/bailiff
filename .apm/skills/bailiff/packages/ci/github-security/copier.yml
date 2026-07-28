@@ -19,3 +19,8 @@ sec_gitleaks:
   type: bool
   default: true
   help: "Scan history for committed secrets with gitleaks."
+
+ci_job_timeout_minutes:
+  type: int
+  default: 15
+  help: "Per-job timeout. GitHub defaults to 360, so a hung job burns six runner hours before it is killed."

@@ -1,0 +1,20 @@
+# .mise/conf.d/hooks.toml -- the binaries the baseline hooks call.
+#
+# Both fragment schemas invoke these through `language: system` / plain `run:`,
+# so one pin here is what makes a version mean the same thing under lefthook,
+# pre-commit, and prek. Upstream pre-commit hook repos are deliberately not used
+# for these: most of the tools do not publish one, and a repo pin would drift
+# from the binary lefthook finds on PATH.
+[tools]
+{% if check_secrets and secret_scanner == 'betterleaks' %}betterleaks = "1.7.2"
+{% endif %}{% if check_secrets and secret_scanner == 'gitleaks' %}gitleaks = "8.30.1"
+{% endif %}{% if check_secrets_verified %}trufflehog = "3.96.0"
+{% endif %}{% if check_typos %}typos = "1.48.0"
+{% endif %}{% if check_shell %}shellcheck = "0.11.0"
+{% endif %}{% if check_workflows %}actionlint = "1.7.12"
+zizmor = "1.28.0"
+{% endif %}{% if check_toml %}taplo = "0.10.0"
+{% endif %}{% if check_links %}lychee = "0.24.2"
+{% endif %}{% if show_repo_stats %}"aqua:boyter/scc" = "3.7.0"
+{% endif %}{% if check_complexity %}"pipx:lizard" = "1.23.0"
+{% endif %}

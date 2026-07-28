@@ -14,7 +14,7 @@ Monorepo mechanics live in `../repo/index.md`: `moon` and `package-add`.
 
 Renders a `justfile` whose recipes wrap the project's real commands.
 
-Its `hook_manager` answer takes `pre-commit`, `lefthook`, or `none`, and it must
+Its `hook_manager` answer takes `pre-commit`, `prek`, `lefthook`, or `none`, and it must
 match what the user picked in `../hooks/index.md`. A contradicting value renders
 a lint recipe naming a tool the repo does not install, and `just lint` then fails
 with command-not-found.

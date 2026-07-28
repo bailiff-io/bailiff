@@ -31,7 +31,7 @@ bd_harnesses:
 bd_install_git_hooks:
   type: bool
   default: false
-  help: "Let bd manage the repo git hooks. Leave false when lefthook or precommit is selected."
+  help: "Let bd manage the repo git hooks. Leave false when hooks/manager is selected."
 
 bd_dolt_sync:
   type: str

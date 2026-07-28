@@ -11,7 +11,7 @@ Renders:
 - `.mise/conf.d/cocogitto.toml` pinning `cog = "latest"`
 - `.pre-commit.d/cocogitto.yaml` with a `commit-msg` hook running `cog verify --file`
 
-The pre-commit fragment only takes effect when the `precommit` package is also
+The pre-commit fragment only takes effect when `hooks/manager` is also
 selected; it reads `.pre-commit.d/`.
 
 ## Questions, in order

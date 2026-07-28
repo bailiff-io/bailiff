@@ -1,0 +1,157 @@
+# .pre-commit.d/baseline.yaml -- repo-wide checks, rendered by hooks/baseline.
+# The lefthook equivalent is .hooks.d/baseline.yaml, rendered from the same
+# answers. Change a check by re-rendering hooks/baseline, never by editing one
+# of the two fragments.
+#
+# Tools without an upstream pre-commit repo run as `repo: local` with
+# `language: system`, against the version .mise/conf.d/hooks.toml pins.
+{% if hook_exclude_patterns %}
+exclude: "{{ hook_exclude_patterns | join('|') }}"
+{% endif %}
+repos:
+{%- set g = ', groups: [hygiene]' if tag_hook_groups else '' %}
+{%- if check_hygiene and use_builtin_hygiene %}
+  # prek implements these natively: no clone, no rev to pin, works offline.
+  # pre-commit rejects `repo: builtin` with "Missing required key: rev", so this
+  # branch requires hook_manager: prek.
+  - repo: builtin
+    hooks:
+      - {id: trailing-whitespace{{ g }}}
+      - {id: end-of-file-fixer{{ g }}}
+      - {id: check-yaml{{ g }}}
+      - {id: check-toml{{ g }}}
+      - {id: check-merge-conflict{{ g }}}
+      - {id: check-added-large-files, args: ["--maxkb={{ max_file_kb }}"]{{ g }}}
+      - {id: detect-private-key{% if tag_hook_groups %}, groups: [security]{% endif %}}
+      - {id: mixed-line-ending{{ g }}}
+{%- elif check_hygiene %}
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-toml
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: ["--maxkb={{ max_file_kb }}"]
+      - id: detect-private-key
+      - id: mixed-line-ending
+{%- endif %}
+{%- if check_secrets and secret_scanner == 'betterleaks' %}
+
+  - repo: https://github.com/betterleaks/betterleaks
+    rev: v1.7.2
+    hooks:
+      - id: betterleaks-system
+{%- if tag_hook_groups %}
+        groups: [security]
+{%- endif %}
+{%- endif %}
+{%- if check_secrets and secret_scanner == 'gitleaks' %}
+
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.1
+    hooks:
+      - id: gitleaks-system
+{%- if tag_hook_groups %}
+        groups: [security]
+{%- endif %}
+{%- endif %}
+{%- if check_shell %}
+
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.11.0.1
+    hooks:
+      - id: shellcheck
+{%- if tag_hook_groups %}
+        groups: [quality]
+{%- endif %}
+{%- endif %}
+{%- if check_typos %}
+
+  - repo: https://github.com/crate-ci/typos
+    rev: v1.48.0
+    hooks:
+      - id: typos
+{%- if tag_hook_groups %}
+        groups: [docs]
+{%- endif %}
+{%- endif %}
+
+{#- A `repo: local` with an empty `hooks:` list is invalid, so the block only
+    renders when at least one local hook is enabled. -#}
+{%- if check_secrets_verified or check_workflows or check_toml or check_links
+       or check_complexity or show_repo_stats or enforce_conventional_commits %}
+
+  - repo: local
+    hooks:
+{%- endif %}
+{%- if check_secrets_verified %}
+      # Verifies a candidate credential against the issuing API, so it reports
+      # live keys the regex scanners rate too low-entropy to flag.
+      - id: trufflehog
+        name: trufflehog (verified secrets)
+        entry: trufflehog git file://. --since-commit HEAD --results=verified --fail --no-update
+        language: system
+        pass_filenames: false
+{%- if tag_hook_groups %}
+        groups: [security]
+{%- endif %}
+{%- endif %}
+{%- if check_workflows %}
+      - id: actionlint
+        name: actionlint
+        entry: actionlint
+        language: system
+        files: ^\.github/workflows/.*\.ya?ml${% if tag_hook_groups %}
+        groups: [quality]{% endif %}
+      - id: zizmor
+        name: zizmor (workflow security)
+        entry: zizmor --offline --persona regular
+        language: system
+        files: ^\.github/workflows/.*\.ya?ml${% if tag_hook_groups %}
+        groups: [security]{% endif %}
+{%- endif %}
+{%- if check_toml %}
+      - id: taplo
+        name: taplo lint
+        entry: taplo lint
+        language: system
+        types: [toml]{% if tag_hook_groups %}
+        groups: [quality]{% endif %}
+{%- endif %}
+{%- if check_links %}
+      # Offline only: it resolves relative links and skips network URLs, so a
+      # commit never waits on HTTP. CI runs lychee without --offline.
+      - id: lychee
+        name: lychee (offline link check)
+        entry: lychee --offline --no-progress
+        language: system
+        types: [markdown]{% if tag_hook_groups %}
+        groups: [docs]{% endif %}
+{%- endif %}
+{%- if check_complexity %}
+      - id: lizard
+        name: lizard (complexity thresholds)
+        entry: lizard -C {{ complexity_ccn }} -L {{ complexity_length }} -a {{ complexity_args }} -w
+        language: system
+        types_or: [python, javascript, ts, tsx, go, rust, c, c++, java, ruby]
+{%- endif %}
+{%- if show_repo_stats %}
+      # Reports only: scc has no threshold flag, so it cannot fail a commit.
+      - id: scc
+        name: scc (repo stats, non-blocking)
+        entry: bash -c 'scc --no-cocomo || true'
+        language: system
+        pass_filenames: false
+        verbose: true
+{%- endif %}
+{%- if enforce_conventional_commits %}
+      - id: conventional-commit-msg
+        name: Conventional Commits
+        language: python
+        entry: .hooks-bin/check-commit-msg.py
+        stages: [commit-msg]
+        pass_filenames: false
+{%- endif %}

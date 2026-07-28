@@ -2,7 +2,7 @@
 name: justfile
 summary: justfile with default, test, lint, build, dev, and clean recipes
 provides: [workspace:tasks]
-after: [base, python, ts, go, rust, lefthook, precommit]
+after: [base, python, ts, go, rust, manager]
 ---
 
 ## Renders

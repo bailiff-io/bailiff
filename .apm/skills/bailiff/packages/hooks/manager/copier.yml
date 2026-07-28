@@ -1,0 +1,37 @@
+_subdirectory: template
+
+# The managers are mutually exclusive because each writes .git/hooks/, so the
+# choice is one copier answer rather than a package per manager on an axis
+# nothing enforces.
+# prek is the default. It reads pre-commit's config format unchanged and needs no
+# Python runtime. Answer pre-commit only when the user asks for it by name.
+hook_manager:
+  type: str
+  choices:
+    - prek
+    - lefthook
+    - pre-commit
+  default: prek
+  help: "Which manager runs the git hooks. All three run hooks/baseline's checks."
+
+install_hooks:
+  type: bool
+  default: true
+  help: "Install the git hooks after rendering. Answer false when the destination is not a git repository yet."
+
+# lefthook.yml carries only the extends glob; a project that has written its own
+# hook config keeps it.
+_skip_if_exists:
+  - lefthook.yml
+
+# lefthook expands `extends:` itself. pre-commit and prek read a single file and
+# have no include directive, so their fragments need the merge first.
+_tasks:
+  - command: 'python3 "{{ _copier_conf.src_path }}/tasks/merge_precommit.py"'
+    when: "{{ hook_manager in ['pre-commit', 'prek'] }}"
+  - command: lefthook install
+    when: "{{ install_hooks and hook_manager == 'lefthook' }}"
+  - command: "pre-commit install"
+    when: "{{ install_hooks and hook_manager == 'pre-commit' }}"
+  - command: prek install
+    when: "{{ install_hooks and hook_manager == 'prek' }}"

@@ -1,4 +1,21 @@
-# Zero questions. Everything host-level renders the same way, and the decisions
-# that do vary (triggers, branches, job graph) live in the caller workflow the
-# agent writes. See package.md.
+# The gate is host-level and language-independent. Decisions that vary per
+# project (triggers, the job graph, which paths gate which job) live in the
+# caller workflow the agent writes. See package.md.
 _subdirectory: template
+
+default_branch:
+  type: str
+  default: main
+  help: "Branch the gate treats as protected. Thread the value from base."
+
+# On a personal repo a merge_group trigger stays valid and never fires, so a
+# wrong answer here has no visible symptom.
+merge_queue:
+  type: bool
+  default: false
+  help: "Add a merge_group trigger to the gate. Requires a GitHub organization or Enterprise Cloud."
+
+job_timeout_minutes:
+  type: int
+  default: 15
+  help: "Per-job timeout for the gate. GitHub defaults to 360, so a hung job burns six runner hours before it is killed."

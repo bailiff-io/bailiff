@@ -30,7 +30,7 @@ At the repo root:
 
 `main.tf`, `variables.tf`, `outputs.tf`, `backend.tf`, and
 `terraform.tfvars.example` carry `_skip_if_exists`. The fragments are inert when
-`precommit` or `mise` is absent from the selection.
+`hooks/manager` or `mise` is absent from the selection.
 
 ## Ask in this order
 
@@ -41,7 +41,7 @@ At the repo root:
    When the user also takes a second `iac` package, give each a distinct value.
 4. `tflint_version`.
 5. `pre_commit_terraform_rev` -- only worth asking when the user takes
-   `precommit`. The default is a real tag, so pre-commit accepts the fragment.
+   `hooks/manager`. The default is a real tag, so pre-commit accepts the fragment.
 6. `project_name` -- appears in the commented S3 backend key. Copy it from `base`
    when `base` is in the same selection.
 

@@ -52,7 +52,7 @@ have.
 | Group | Recommend for a new project |
 |---|---|
 | `foundation` | base, readme, editorconfig |
-| `hooks` | lefthook |
+| `hooks` | baseline, then manager with `hook_manager: lefthook` |
 | `ci` | The host they chose, plus test and lint for their language |
 | `repo` | The host, and dep-updates with renovate |
 | `agentic` | agentic, when they say they use coding agents |

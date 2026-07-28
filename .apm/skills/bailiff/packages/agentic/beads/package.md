@@ -64,7 +64,7 @@ leaves the keys `agentic` wrote intact.
    `local-only` removes that remote, keeping the issues on one machine.
 4. `bd_install_git_hooks` -- defaults to `false`. `true` points `core.hooksPath`
    at `.beads/hooks`, which displaces any other hook manager. Keep it `false`
-   whenever `lefthook` or `precommit` is in the selection.
+   whenever `hooks/manager` is in the selection.
 5. `bd_github_sync` -- whether to mirror issues to GitHub issues. Independent of
    `bd_dolt_sync`: Dolt moves the database, GitHub mirrors the issues.
 6. `bd_github_owner` and `bd_github_repo` -- asked only when `bd_github_sync` is

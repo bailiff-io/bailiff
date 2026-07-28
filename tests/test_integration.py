@@ -63,6 +63,22 @@ BASE = dict(
     run_git_init=True,
 )
 
+PYTHON_CI = dict(
+    python_version="3.13",
+    python_pkg_manager="uv",
+    python_test_command="pytest",
+    python_type_checker="mypy",
+    ci_cache=True,
+    ci_os_matrix=["ubuntu-latest"],
+    ci_version_matrix=[],
+)
+
+CI_HOST = dict(
+    default_branch="main",
+    merge_queue=False,
+    job_timeout_minutes=15,
+)
+
 PYTHON = dict(
     project_name="Widget",
     description="A widget",
@@ -213,7 +229,7 @@ def test_go_renders_and_go_mod_init_runs(tmp_path):
 def test_ci_host_and_one_language_compose(tmp_path):
     dest = tmp_path / "proj"
     do_render(dest, "foundation/base", BASE)
-    do_render(dest, "ci/github", {})
+    do_render(dest, "ci/github", CI_HOST)
     do_render(
         dest,
         "ci/github-python",
@@ -243,7 +259,7 @@ def test_every_reusable_workflow_is_callable_and_takes_working_directory(tmp_pat
     """One render of a language CI package serves every package in a monorepo,
     which only holds if each workflow is callable and accepts the directory."""
     dest = tmp_path / "proj"
-    do_render(dest, "ci/github", {})
+    do_render(dest, "ci/github", CI_HOST)
     do_render(
         dest,
         "ci/github-python",
@@ -267,13 +283,66 @@ def test_every_reusable_workflow_is_callable_and_takes_working_directory(tmp_pat
             # of its own, so it takes the caller's needs context instead.
             assert "needs" in inputs
             continue
+        if path.name == "wc-changes.yml":
+            # Path filtering is repo-wide by definition: it decides which areas
+            # changed, so it takes a filter spec rather than one directory.
+            assert "filters" in inputs
+            continue
         assert "working-directory" in inputs, path.name
         assert inputs["working-directory"]["default"] == "."
 
 
+def test_every_rendered_job_is_bounded_and_leaks_no_credentials(tmp_path):
+    """Two defaults GitHub gets wrong. A job with no timeout-minutes inherits
+    360, so a hung job burns six runner hours. A checkout with the default
+    persist-credentials leaves GITHUB_TOKEN in .git/config for any later step to
+    read, which is what zizmor's artipacked audit reports -- and hooks/baseline
+    runs zizmor, so our own templates have to pass it."""
+    dest = tmp_path / "proj"
+    do_render(dest, "ci/github", CI_HOST)
+    do_render(dest, "ci/github-python", PYTHON_CI | {"ci_job_timeout_minutes": 25})
+
+    for path in sorted((dest / ".github/workflows").glob("wc-*.yml")):
+        spec = yaml.safe_load(path.read_text())
+        for name, job in spec["jobs"].items():
+            assert "timeout-minutes" in job, f"{path.name}:{name}"
+            for step in job.get("steps", []):
+                if str(step.get("uses", "")).startswith("actions/checkout"):
+                    assert step["with"]["persist-credentials"] is False, path.name
+
+    # The answer reaches the file rather than falling back to the jinja default.
+    test_wf = yaml.safe_load(
+        (dest / ".github/workflows/wc-test-python.yml").read_text()
+    )
+    assert test_wf["jobs"]["test"]["timeout-minutes"] == 25
+
+
+def test_every_action_reference_is_pinned_to_a_sha(tmp_path):
+    """zizmor's unpinned-uses audit rejects a tag on any action under its blanket
+    policy, including actions/*. A 40-char SHA is the only form that passes."""
+    import re
+
+    dest = tmp_path / "proj"
+    do_render(dest, "ci/github", CI_HOST)
+    do_render(dest, "ci/github-python", PYTHON_CI)
+
+    unpinned = []
+    for path in sorted((dest / ".github").rglob("*.yml")):
+        for line in path.read_text().splitlines():
+            m = re.search(r"uses:\s*([^\s]+)", line)
+            if not m:
+                continue
+            ref = m.group(1)
+            if ref.startswith("./"):
+                continue  # a local composite action has nothing to pin
+            if not re.search(r"@[0-9a-f]{40}$", ref):
+                unpinned.append(f"{path.name}: {ref}")
+    assert not unpinned, unpinned
+
+
 def test_security_workflows_follow_the_selection(tmp_path):
     dest = tmp_path / "proj"
-    do_render(dest, "ci/github", {})
+    do_render(dest, "ci/github", CI_HOST)
     do_render(
         dest,
         "ci/github-security",
@@ -297,7 +366,7 @@ def test_security_workflows_follow_the_selection(tmp_path):
 
 def test_deselecting_every_codeql_language_still_renders_a_matrix(tmp_path):
     dest = tmp_path / "proj"
-    do_render(dest, "ci/github", {})
+    do_render(dest, "ci/github", CI_HOST)
     do_render(
         dest,
         "ci/github-security",
@@ -316,7 +385,7 @@ def test_deselecting_every_runner_still_renders_a_runs_on(tmp_path):
     """ci_os_matrix is the full runner list, so an empty selection is reachable
     and must fall back rather than index an empty list."""
     dest = tmp_path / "proj"
-    do_render(dest, "ci/github", {})
+    do_render(dest, "ci/github", CI_HOST)
     do_render(
         dest,
         "ci/github-python",
@@ -338,7 +407,7 @@ def test_deselecting_every_runner_still_renders_a_runs_on(tmp_path):
 
 def test_full_matrix_renders_valid_yaml(tmp_path):
     dest = tmp_path / "proj"
-    do_render(dest, "ci/github", {})
+    do_render(dest, "ci/github", CI_HOST)
     do_render(
         dest,
         "ci/github-python",
@@ -370,7 +439,7 @@ def test_full_matrix_renders_valid_yaml(tmp_path):
 )
 def test_rendered_workflows_pass_actionlint(tmp_path):
     dest = tmp_path / "proj"
-    do_render(dest, "ci/github", {})
+    do_render(dest, "ci/github", CI_HOST)
     do_render(
         dest,
         "ci/github-python",
@@ -407,16 +476,21 @@ def test_rendered_workflows_pass_actionlint(tmp_path):
 # ------------------------------------------------------------- exclusive axes
 
 
-def test_every_hook_manager_claims_the_same_axis(tmp_path):
-    """lefthook, precommit, and prek all provide hooks:manager. The catalog has
-    to expose that as one axis with all three members, because that is what
-    tells the agent they are mutually exclusive: each writes .git/hooks/, so
-    whichever installs last wins."""
+def test_hooks_group_splits_checks_from_the_manager(tmp_path):
+    """The checks and the manager are separate decisions, so they are separate
+    packages. The manager choice itself is a copier answer rather than a package
+    per manager, because each writes .git/hooks/ and whichever installs last
+    wins: an enum makes that exclusive at render time."""
     from conftest import scan
 
     catalog = scan.build_catalog(SKILL)
     hooks = next(g for g in catalog["groups"] if g["name"] == "hooks")
-    assert hooks["axes"]["hooks"] == ["lefthook", "precommit", "prek"]
+    assert hooks["axes"] == {"hooks": ["baseline", "manager"]}
+
+    manager = next(p for p in hooks["packages"] if p["name"] == "manager")
+    choice = next(q for q in manager["questions"] if q["key"] == "hook_manager")
+    assert choice["choices"] == ["prek", "lefthook", "pre-commit"]
+    assert choice["default"] == "prek"
 
 
 def test_repo_host_axis_has_two_members(tmp_path):
@@ -445,57 +519,84 @@ def test_monorepo_packages_live_in_the_repo_group(tmp_path):
 # -------------------------------------------------------------- fragment dirs
 
 
+BASELINE = dict(
+    check_secrets=False,
+    check_secrets_verified=False,
+    check_typos=False,
+    check_shell=False,
+    check_hygiene=True,
+    max_file_kb=500,
+    check_workflows=False,
+    check_toml=False,
+    check_links=False,
+    check_complexity=False,
+    show_repo_stats=False,
+    enforce_conventional_commits=True,
+    hook_exclude_patterns=[],
+)
+
+
 @pytest.mark.skipif(not have("mise"), reason="languages/python requires mise")
-def test_precommit_merges_the_fragment_directory(tmp_path):
-    """pre-commit has no include directive, so the package must merge
-    .pre-commit.d/ into a real .pre-commit-config.yaml. Without the merge task
-    the fragments are inert."""
+@pytest.mark.parametrize("manager", ["prek", "pre-commit"])
+def test_the_fragment_directory_is_merged_for_either_config_reader(
+    tmp_path, manager
+):
+    """prek and pre-commit read the same single config file and neither has an
+    include directive, so both need the merge. A language fragment must reach
+    the merged config whichever of the two the user picked."""
     dest = tmp_path / "proj"
     do_render(dest, "foundation/base", BASE)
     do_render(dest, "languages/python", PYTHON)
+    do_render(dest, "hooks/baseline", BASELINE)
     do_render(
-        dest,
-        "hooks/precommit",
-        dict(
-            enforce_conventional_commits=True,
-            enable_typo_check=False,
-            precommit_exclude_patterns=[],
-            install_hooks=False,
-        ),
+        dest, "hooks/manager", dict(hook_manager=manager, install_hooks=False)
     )
     config = dest / ".pre-commit-config.yaml"
     assert config.is_file(), "the merge task did not produce a config"
     merged = yaml.safe_load(config.read_text())
     repos = yaml.safe_dump(merged["repos"])
-    # The python fragment's hook must appear in the merged output.
-    assert "ruff" in repos
+    assert "ruff" in repos, "the python fragment did not reach the merged config"
+    # lefthook.yml belongs to the other answer and must not appear.
+    assert not (dest / "lefthook.yml").exists()
 
 
 @pytest.mark.skipif(not have("mise"), reason="languages/python requires mise")
-def test_prek_merges_the_same_fragment_directory(tmp_path):
-    """prek reads pre-commit's config format, so it consumes the identical
-    .pre-commit.d/ fragments and needs the identical merge. A language fragment
-    written for precommit must reach prek's config unchanged."""
+def test_lefthook_gets_its_entry_point_and_no_merged_config(tmp_path):
+    """lefthook expands .hooks.d/*.yaml itself, so it needs the extends glob and
+    no merged file. Rendering the merged config for it would leave a derived
+    file nothing reads."""
     dest = tmp_path / "proj"
     do_render(dest, "foundation/base", BASE)
     do_render(dest, "languages/python", PYTHON)
+    do_render(dest, "hooks/baseline", BASELINE)
     do_render(
-        dest,
-        "hooks/prek",
-        dict(
-            enforce_conventional_commits=True,
-            enable_typo_check=False,
-            precommit_exclude_patterns=[],
-            install_hooks=False,
-        ),
+        dest, "hooks/manager", dict(hook_manager="lefthook", install_hooks=False)
     )
-    config = dest / ".pre-commit-config.yaml"
-    assert config.is_file(), "the merge task did not produce a config"
-    merged = yaml.safe_load(config.read_text())
-    repos = yaml.safe_dump(merged["repos"])
-    assert "ruff" in repos, "the python fragment did not reach prek's config"
-    assert (dest / ".pre-commit.d" / "prek.yaml").is_file()
-    assert (dest / ".mise" / "conf.d" / "prek.toml").is_file()
+    assert (dest / "lefthook.yml").is_file()
+    assert not (dest / ".pre-commit-config.yaml").exists()
+
+
+@pytest.mark.skipif(not have("mise"), reason="languages/python requires mise")
+def test_baseline_writes_the_same_checks_into_both_schemas(tmp_path):
+    """The parity guarantee: picking a different manager must not weaken the
+    checks. Both fragments come from one answer set, so a check enabled once
+    appears in each schema."""
+    dest = tmp_path / "proj"
+    do_render(dest, "foundation/base", BASE)
+    answers = dict(BASELINE, check_secrets=True, secret_scanner="betterleaks")
+    do_render(dest, "hooks/baseline", answers)
+
+    lefthook = yaml.safe_load((dest / ".hooks.d" / "baseline.yaml").read_text())
+    precommit = yaml.safe_load(
+        (dest / ".pre-commit.d" / "baseline.yaml").read_text()
+    )
+
+    assert "betterleaks" in lefthook["pre-commit"]["commands"]
+    assert "betterleaks" in yaml.safe_dump(precommit["repos"])
+    # The commit-msg hook is in both, and the script both call is rendered once.
+    assert "commit-msg" in lefthook
+    assert "conventional-commit-msg" in yaml.safe_dump(precommit["repos"])
+    assert (dest / ".hooks-bin" / "check-commit-msg.py").is_file()
 
 
 @pytest.mark.skipif(not have("mise"), reason="languages/python requires mise")
@@ -657,7 +758,9 @@ def test_lefthook_validates_and_merges_each_fragment(tmp_path, package_id, answe
     dest.mkdir()
     subprocess.run(["git", "-C", str(dest), "init", "--quiet"], check=True)
     do_render(dest, package_id, answers)
-    do_render(dest, "hooks/lefthook", dict(install_hooks=False))
+    do_render(
+        dest, "hooks/manager", dict(hook_manager="lefthook", install_hooks=False)
+    )
 
     validate = subprocess.run(
         ["lefthook", "validate"], cwd=str(dest), capture_output=True, text=True

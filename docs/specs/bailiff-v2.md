@@ -114,7 +114,7 @@ names the choice axis. The group's `index.md` states what to do with each axis.
 |---|---|---|
 | `foundation/` | `scaffold:*` | base, readme, editorconfig |
 | `languages/` | `language:*` | python, ts, go, rust, api |
-| `hooks/` | `hooks:manager` | lefthook, precommit, prek |
+| `hooks/` | `hooks:baseline`, `hooks:manager` | baseline, manager |
 | `ci/` | `ci:*`, `ci-job:*` | github, github-python, github-ts, github-go, github-rust, github-security |
 | `repo/` | `repo:*`, `release:*`, `deps:*`, `monorepo:*` | github-repo, gitlab-repo, cocogitto, release-please, dep-updates, moon, package-add |
 | `docs/` | `docs:*` | mkdocs, starlight, decision-records |
@@ -253,7 +253,7 @@ The other two need a task, because neither consumer has an include directive:
 |---|---|---|
 | `.mise/conf.d/` | mise, natively | -- |
 | `.hooks.d/` | lefthook, via `extends` | -- |
-| `.pre-commit.d/` | `tasks/merge_precommit.py` | `hooks/precommit` |
+| `.pre-commit.d/` | `tasks/merge_precommit.py` | `hooks/manager` |
 | `.gitignore.d/` | `tasks/fold_gitignore.py` | every contributing package |
 
 A fragment is written in its consumer's own schema; the conventions share a

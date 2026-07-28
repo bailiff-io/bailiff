@@ -45,3 +45,8 @@ ci_version_matrix:
     - "1.24"
   default: []
   help: "Go versions to test against. Empty tests only go_version."
+
+ci_job_timeout_minutes:
+  type: int
+  default: 15
+  help: "Per-job timeout. GitHub defaults to 360, so a hung job burns six runner hours before it is killed."

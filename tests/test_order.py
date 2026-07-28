@@ -175,9 +175,9 @@ def test_languages_precede_the_hook_manager_and_ci_jobs():
     exists at all."""
     catalog = scan.build_catalog(SKILL)
     ordered, _ = scan.order(
-        catalog, ["base", "python", "ts", "lefthook", "github", "github-python"]
+        catalog, ["base", "python", "ts", "manager", "github", "github-python"]
     )
-    assert ordered.index("languages/python") < ordered.index("hooks/lefthook")
+    assert ordered.index("languages/python") < ordered.index("hooks/manager")
     assert ordered.index("languages/python") < ordered.index("ci/github-python")
     assert ordered.index("ci/github") < ordered.index("ci/github-python")
 
@@ -191,11 +191,11 @@ def test_beads_follows_agentic_because_both_write_agents_md():
 def test_cli_order_matches_the_library(tmp_path):
     proc = subprocess.run(
         [sys.executable, str(SKILL / "scripts/scan.py"), "--skill-dir", str(SKILL),
-         "--order", "base", "python", "lefthook"],
+         "--order", "base", "python", "manager"],
         capture_output=True,
         text=True,
     )
     assert proc.returncode == 0, proc.stderr
     payload = json.loads(proc.stdout)
     assert payload["order"][0] == "foundation/base"
-    assert payload["order"][-1] == "hooks/lefthook"
+    assert payload["order"][-1] == "hooks/manager"

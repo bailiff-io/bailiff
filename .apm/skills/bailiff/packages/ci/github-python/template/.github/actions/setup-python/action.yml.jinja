@@ -11,7 +11,7 @@ runs:
   using: composite
   steps:
     - name: Set up Python
-      uses: actions/setup-python@v7
+      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
       with:
         python-version: ${{ '{{' }} inputs.python-version }}
 {%- if python_pkg_manager == "uv" %}
@@ -33,7 +33,7 @@ runs:
 {%- if ci_cache %}
 
     - name: Cache pdm
-      uses: actions/cache@v6
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
       with:
         path: ~/.cache/pdm
         key: ${{ '{{' }} runner.os }}-pdm-${{ '{{' }} hashFiles('**/pdm.lock') }}
