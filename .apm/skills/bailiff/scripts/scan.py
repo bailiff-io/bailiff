@@ -43,13 +43,37 @@ def _as_list(value: Any) -> list[str]:
     return []
 
 
+class _DuplicateKeyLoader(yaml.SafeLoader):
+    """SafeLoader that rejects a repeated mapping key.
+
+    Plain YAML lets the last value win, so a copier.yml with two questions of the
+    same name silently loses one. That is invisible in the rendered output and in
+    the answers file, so it has to be a parse error.
+    """
+
+    def construct_mapping(self, node, deep=False):  # type: ignore[no-untyped-def]
+        seen: set[Any] = set()
+        for key_node, _ in node.value:
+            key = self.construct_object(key_node, deep=deep)
+            try:
+                duplicate = key in seen
+            except TypeError:  # unhashable key; yaml itself will complain
+                continue
+            if duplicate:
+                raise yaml.constructor.ConstructorError(
+                    None, None, f"duplicate key {key!r}", key_node.start_mark
+                )
+            seen.add(key)
+        return super().construct_mapping(node, deep=deep)
+
+
 def read_questions(copier_yml: Path) -> tuple[list[dict[str, Any]], str | None]:
     """Extract question definitions from a copier.yml.
 
     Returns (questions, error). Reserved keys (leading underscore) are skipped.
     """
     try:
-        raw = yaml.safe_load(copier_yml.read_text(encoding="utf-8")) or {}
+        raw = yaml.load(copier_yml.read_text(encoding="utf-8"), _DuplicateKeyLoader) or {}
     except yaml.YAMLError as exc:
         return [], f"unparseable copier.yml: {exc}"
     if not isinstance(raw, dict):

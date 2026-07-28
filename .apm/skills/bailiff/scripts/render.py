@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import shutil
 import subprocess
 import sys
@@ -28,6 +29,12 @@ EXIT_OK = 0
 EXIT_USAGE = 2
 EXIT_PRECHECK = 3
 EXIT_RENDER = 4
+
+# A package id is exactly one group slug and one package slug. It reaches the
+# filesystem as a path, so anything outside this shape is rejected before it is
+# joined: '..', a leading '/', a NUL byte, and a case variant that a
+# case-insensitive filesystem would otherwise resolve to a real directory.
+PACKAGE_ID = re.compile(r"^[a-z0-9][a-z0-9._-]*/[a-z0-9][a-z0-9._-]*$")
 
 
 class RenderError(Exception):
@@ -108,7 +115,17 @@ def render(
     pretend: bool = False,
     quiet: bool = False,
 ) -> dict[str, Any]:
-    pkg_dir = (skill_dir / "tools" / package_id).resolve()
+    if not PACKAGE_ID.match(package_id):
+        raise RenderError(
+            f"malformed package id '{package_id}'; expected <group>/<package>", EXIT_USAGE
+        )
+
+    root = (skill_dir / "tools").resolve()
+    pkg_dir = (root / package_id).resolve()
+    # The id is well-formed, but a symlink inside tools/ can still point out of
+    # it, so containment is checked after resolution rather than inferred.
+    if not pkg_dir.is_relative_to(root):
+        raise RenderError(f"package '{package_id}' resolves outside {root}", EXIT_USAGE)
     if not pkg_dir.is_dir():
         raise RenderError(f"unknown package '{package_id}'", EXIT_USAGE)
 
