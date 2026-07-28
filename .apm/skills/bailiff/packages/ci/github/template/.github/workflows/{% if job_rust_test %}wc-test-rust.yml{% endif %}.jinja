@@ -1,16 +1,15 @@
-{%- set run = "bun run " if ts_pkg_manager == "bun" else ("pnpm run " if ts_pkg_manager == "pnpm" else "npm run ") -%}
-name: Test TypeScript
+name: Test Rust
 
 on:
   workflow_call:
     inputs:
-      node-version:
-        description: Override the Node version.
+      toolchain:
+        description: Override the Rust toolchain.
         required: false
         type: string
-        default: "{{ node_version }}"
+        default: "{{ rust_toolchain }}"
       working-directory:
-        description: Directory to run in. Set this per package in a monorepo.
+        description: Directory to run in. Set this per crate in a workspace.
         required: false
         type: string
         default: "."
@@ -22,21 +21,21 @@ permissions:
 jobs:
   test:
     name: Test
-{%- if runners|length > 1 or ci_version_matrix %}
+{%- if runners|length > 1 or rust_version_matrix %}
     strategy:
       fail-fast: false
       matrix:
 {%- if runners|length > 1 %}
         os: [{% for os in runners %}{{ os }}{{ ", " if not loop.last }}{% endfor %}]
 {%- endif %}
-{%- if ci_version_matrix %}
-        node-version: [{% for v in ci_version_matrix %}"{{ v }}"{{ ", " if not loop.last }}{% endfor %}]
+{%- if rust_version_matrix %}
+        toolchain: [{% for v in rust_version_matrix %}"{{ v }}"{{ ", " if not loop.last }}{% endfor %}]
 {%- endif %}
     runs-on: {{ '${{ matrix.os }}' if runners|length > 1 else runners[0] }}
-    timeout-minutes: {{ ci_job_timeout_minutes | default(15) }}
+    timeout-minutes: {{ job_timeout_minutes | default(15) }}
 {%- else %}
     runs-on: {{ runners[0] }}
-    timeout-minutes: {{ ci_job_timeout_minutes | default(15) }}
+    timeout-minutes: {{ job_timeout_minutes | default(15) }}
 {%- endif %}
     defaults:
       run:
@@ -48,13 +47,13 @@ jobs:
           # read. zizmor reports the default as a finding.
           persist-credentials: false
 
-      - uses: ./.github/actions/setup-ts
+      - uses: ./.github/actions/setup-rust
         with:
-{%- if ci_version_matrix %}
-          node-version: ${{ '{{' }} matrix.node-version }}
+{%- if rust_version_matrix %}
+          toolchain: ${{ '{{' }} matrix.toolchain }}
 {%- else %}
-          node-version: ${{ '{{' }} inputs.node-version }}
+          toolchain: ${{ '{{' }} inputs.toolchain }}
 {%- endif %}
 
       - name: Test
-        run: {{ run }}{{ ts_test_command }}
+        run: cargo {{ rust_test_command }}{{ ' --all-features' if rust_all_features }}

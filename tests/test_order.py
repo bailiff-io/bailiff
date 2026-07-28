@@ -175,11 +175,9 @@ def test_languages_precede_the_hook_manager_and_ci_jobs():
     exists at all."""
     catalog = scan.build_catalog(SKILL)
     ordered, _ = scan.order(
-        catalog, ["base", "python", "ts", "manager", "github", "github-python"]
+        catalog, ["base", "python", "ts", "manager", "github"]
     )
     assert ordered.index("languages/python") < ordered.index("hooks/manager")
-    assert ordered.index("languages/python") < ordered.index("ci/github-python")
-    assert ordered.index("ci/github") < ordered.index("ci/github-python")
 
 
 def test_beads_follows_agentic_because_both_write_agents_md():

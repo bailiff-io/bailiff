@@ -1,0 +1,48 @@
+name: OSV scan
+
+# One binary reading every ecosystem's lockfile, against the OSV database. This
+# is the only dependency vulnerability scan in the catalog that is not
+# language-specific: trivy's fs scan covers IaC misconfiguration and images,
+# cargo-deny covers Rust advisories alone, and govulncheck covers Go alone.
+
+on:
+  workflow_call:
+    inputs:
+      working-directory:
+        description: Directory to scan. Set this per package in a monorepo.
+        required: false
+        type: string
+        default: "."
+
+permissions:
+  contents: read
+  # The reusable workflow uploads SARIF, so it needs the code-scanning scope.
+  security-events: write
+
+jobs:
+  osv:
+    name: OSV scan
+    runs-on: ubuntu-latest
+    timeout-minutes: {{ job_timeout_minutes | default(15) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Scan lockfiles
+        uses: google/osv-scanner-action@9a498708959aeaef5ef730655706c5a1df1edbc2 # v2.3.8
+        with:
+          scan-args: |-
+            --recursive
+            --format=sarif
+            --output=osv-results.sarif
+            ${{ '{{' }} inputs.working-directory }}
+        # A finding is a non-zero exit, and the SARIF upload below still has to
+        # run so the alerts reach the security tab.
+        continue-on-error: true
+
+      - name: Upload results
+        uses: github/codeql-action/upload-sarif@e4fba868fa4b1b91e1fdab776edc8cfbe6e9fb81 # v4.37.3
+        with:
+          sarif_file: osv-results.sarif
+        if: always()

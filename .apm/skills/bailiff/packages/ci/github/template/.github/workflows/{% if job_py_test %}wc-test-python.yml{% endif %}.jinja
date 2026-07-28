@@ -21,21 +21,21 @@ permissions:
 jobs:
   test:
     name: Test
-{%- if runners|length > 1 or ci_version_matrix %}
+{%- if runners|length > 1 or python_version_matrix %}
     strategy:
       fail-fast: false
       matrix:
 {%- if runners|length > 1 %}
         os: [{% for os in runners %}{{ os }}{{ ", " if not loop.last }}{% endfor %}]
 {%- endif %}
-{%- if ci_version_matrix %}
-        python-version: [{% for v in ci_version_matrix %}"{{ v }}"{{ ", " if not loop.last }}{% endfor %}]
+{%- if python_version_matrix %}
+        python-version: [{% for v in python_version_matrix %}"{{ v }}"{{ ", " if not loop.last }}{% endfor %}]
 {%- endif %}
     runs-on: {{ '${{ matrix.os }}' if runners|length > 1 else runners[0] }}
-    timeout-minutes: {{ ci_job_timeout_minutes | default(15) }}
+    timeout-minutes: {{ job_timeout_minutes | default(15) }}
 {%- else %}
     runs-on: {{ runners[0] }}
-    timeout-minutes: {{ ci_job_timeout_minutes | default(15) }}
+    timeout-minutes: {{ job_timeout_minutes | default(15) }}
 {%- endif %}
     defaults:
       run:
@@ -49,7 +49,7 @@ jobs:
 
       - uses: ./.github/actions/setup-python
         with:
-{%- if ci_version_matrix %}
+{%- if python_version_matrix %}
           python-version: ${{ '{{' }} matrix.python-version }}
 {%- else %}
           python-version: ${{ '{{' }} inputs.python-version }}

@@ -17,7 +17,7 @@ jobs:
   trivy:
     name: Trivy
     runs-on: ubuntu-latest
-    timeout-minutes: {{ ci_job_timeout_minutes | default(15) }}
+    timeout-minutes: {{ job_timeout_minutes | default(15) }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:

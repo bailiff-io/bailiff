@@ -18,7 +18,7 @@ jobs:
   lint:
     name: Lint
     runs-on: ubuntu-latest
-    timeout-minutes: {{ ci_job_timeout_minutes | default(15) }}
+    timeout-minutes: {{ job_timeout_minutes | default(15) }}
     defaults:
       run:
         working-directory: ${{ '{{' }} inputs.working-directory }}

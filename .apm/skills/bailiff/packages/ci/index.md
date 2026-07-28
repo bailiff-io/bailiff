@@ -5,7 +5,6 @@ CI packages render deterministic units. You write the workflow that calls them.
 | Axis | How many | Packages |
 |---|---|---|
 | `ci:host` | Exactly one, or none | github |
-| `ci-job:*` | One or more, matched to the languages present | github-python, github-ts, github-go, github-rust, github-security |
 
 ## What renders and what you write
 
@@ -20,18 +19,30 @@ specific to the project: which jobs run on which paths, what depends on what, an
 which matrix dimensions are worth the runner minutes. A template that tried to
 cover those decisions would need a conditional per combination.
 
-## Pick the jobs
+## One package, two multiselects
 
-Render one language package per language the project has. Each one provides both
-a test job and a lint job, as two reusable workflows sharing one composite setup
-action. Take the language list from what you rendered in `languages/`, and confirm
-it with the user rather than inferring it from files on disk.
+`github` renders every job. `ci_languages` decides which languages get a test and
+a lint workflow; `ci_jobs` decides which kinds of job render at all.
 
-Every workflow takes a `working-directory` input defaulting to `.`. One render of
-`github-python` therefore serves every Python package in a monorepo; the caller
-passes a different directory per job. Do not render a language package twice.
+Take the language list from what you rendered in `languages/`, and confirm it with
+the user rather than inferring it from files on disk. Every language answer must
+match the language package's: `python_type_checker`, `ts_linter`, and the version
+answers all name tools the CI job invokes, and a mismatch means the job runs
+something the project did not install.
 
-`github-security` is language-independent. Offer it once.
+Adding a language is one answer. Adding a host is one package.
+
+Every workflow takes a `working-directory` input defaulting to `.`. One render
+therefore serves every package in a monorepo; the caller passes a different
+directory per job.
+
+### Conditional filenames carry no quote character
+
+A filename like `{% if job_py_test %}wc-test-python.yml{% endif %}.jinja` uses a
+derived boolean rather than `{% if "python" in ci_languages %}`. jinja compiles
+each template with its filename embedded in the generated Python, so a quote in
+the path breaks that string literal. The failure is a `SyntaxError` pointing at an
+unrelated line of the file body, which is why the flags exist.
 
 ## Compose the caller
 

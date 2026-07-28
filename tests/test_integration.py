@@ -63,20 +63,29 @@ BASE = dict(
     run_git_init=True,
 )
 
-PYTHON_CI = dict(
-    python_version="3.13",
-    python_pkg_manager="uv",
-    python_test_command="pytest",
-    python_type_checker="mypy",
-    ci_cache=True,
-    ci_os_matrix=["ubuntu-latest"],
-    ci_version_matrix=[],
-)
-
+# ci/github is one package now: the language selection and every language answer
+# live alongside the host answers.
 CI_HOST = dict(
     default_branch="main",
     merge_queue=False,
     job_timeout_minutes=15,
+    ci_languages=[],
+    ci_jobs=["test", "lint", "security"],
+    ci_cache=True,
+    ci_os_matrix=["ubuntu-latest"],
+    sec_codeql=True,
+    sec_trivy=True,
+    sec_secrets=True,
+    sec_osv=True,
+)
+
+CI_PYTHON = CI_HOST | dict(
+    ci_languages=["python"],
+    python_version="3.13",
+    python_pkg_manager="uv",
+    python_test_command="pytest",
+    python_type_checker="mypy",
+    python_version_matrix=[],
 )
 
 PYTHON = dict(
@@ -229,20 +238,7 @@ def test_go_renders_and_go_mod_init_runs(tmp_path):
 def test_ci_host_and_one_language_compose(tmp_path):
     dest = tmp_path / "proj"
     do_render(dest, "foundation/base", BASE)
-    do_render(dest, "ci/github", CI_HOST)
-    do_render(
-        dest,
-        "ci/github-python",
-        dict(
-            python_version="3.13",
-            python_pkg_manager="uv",
-            python_test_command="pytest",
-            python_type_checker="mypy",
-            ci_cache=True,
-            ci_os_matrix=["ubuntu-latest"],
-            ci_version_matrix=[],
-        ),
-    )
+    do_render(dest, "ci/github", CI_PYTHON)
     rendered = files_in(dest)
     assert rendered >= {
         ".github/actions/ci-gate/action.yml",
@@ -259,29 +255,23 @@ def test_every_reusable_workflow_is_callable_and_takes_working_directory(tmp_pat
     """One render of a language CI package serves every package in a monorepo,
     which only holds if each workflow is callable and accepts the directory."""
     dest = tmp_path / "proj"
-    do_render(dest, "ci/github", CI_HOST)
-    do_render(
-        dest,
-        "ci/github-python",
-        dict(
-            python_version="3.13",
-            python_pkg_manager="uv",
-            python_test_command="pytest",
-            python_type_checker="mypy",
-            ci_cache=True,
-            ci_os_matrix=["ubuntu-latest"],
-            ci_version_matrix=[],
-        ),
-    )
+    do_render(dest, "ci/github", CI_PYTHON)
     for path in sorted((dest / ".github/workflows").glob("wc-*.yml")):
         spec = yaml.safe_load(path.read_text())
         trigger = spec.get("on") or spec.get(True)  # YAML 1.1 reads `on:` as True
         assert "workflow_call" in trigger, path.name
-        inputs = trigger["workflow_call"].get("inputs") or {}
+        # `workflow_call:` with no inputs parses as None, not an empty mapping.
+        inputs = (trigger["workflow_call"] or {}).get("inputs") or {}
         if path.name == "wc-gate.yml":
             # The gate aggregates the other jobs' results and runs no build step
             # of its own, so it takes the caller's needs context instead.
             assert "needs" in inputs
+            continue
+        if path.name.startswith("wc-security-"):
+            # Security jobs scan the repository, not one package, so most take no
+            # inputs. wc-security-osv is the exception and takes a directory.
+            if path.name == "wc-security-osv.yml":
+                assert "working-directory" in inputs, path.name
             continue
         if path.name == "wc-changes.yml":
             # Path filtering is repo-wide by definition: it decides which areas
@@ -299,8 +289,7 @@ def test_every_rendered_job_is_bounded_and_leaks_no_credentials(tmp_path):
     read, which is what zizmor's artipacked audit reports -- and hooks/baseline
     runs zizmor, so our own templates have to pass it."""
     dest = tmp_path / "proj"
-    do_render(dest, "ci/github", CI_HOST)
-    do_render(dest, "ci/github-python", PYTHON_CI | {"ci_job_timeout_minutes": 25})
+    do_render(dest, "ci/github", CI_PYTHON | {"job_timeout_minutes": 25})
 
     for path in sorted((dest / ".github/workflows").glob("wc-*.yml")):
         spec = yaml.safe_load(path.read_text())
@@ -323,8 +312,7 @@ def test_every_action_reference_is_pinned_to_a_sha(tmp_path):
     import re
 
     dest = tmp_path / "proj"
-    do_render(dest, "ci/github", CI_HOST)
-    do_render(dest, "ci/github-python", PYTHON_CI)
+    do_render(dest, "ci/github", CI_PYTHON)
 
     unpinned = []
     for path in sorted((dest / ".github").rglob("*.yml")):
@@ -342,21 +330,23 @@ def test_every_action_reference_is_pinned_to_a_sha(tmp_path):
 
 def test_security_workflows_follow_the_selection(tmp_path):
     dest = tmp_path / "proj"
-    do_render(dest, "ci/github", CI_HOST)
     do_render(
         dest,
-        "ci/github-security",
-        dict(
+        "ci/github",
+        CI_HOST
+        | dict(
             sec_codeql=True,
             sec_codeql_languages=["python"],
             sec_trivy=False,
-            sec_gitleaks=False,
+            sec_secrets=False,
+            sec_osv=False,
         ),
     )
     rendered = files_in(dest)
     assert ".github/workflows/wc-security-codeql.yml" in rendered
     assert not any("trivy" in f for f in rendered)
-    assert not any("gitleaks" in f for f in rendered)
+    assert not any("secrets" in f for f in rendered)
+    assert not any("osv" in f for f in rendered)
 
     codeql = (dest / ".github/workflows/wc-security-codeql.yml").read_text()
     assert "language: [python]" in codeql
@@ -366,15 +356,16 @@ def test_security_workflows_follow_the_selection(tmp_path):
 
 def test_deselecting_every_codeql_language_still_renders_a_matrix(tmp_path):
     dest = tmp_path / "proj"
-    do_render(dest, "ci/github", CI_HOST)
     do_render(
         dest,
-        "ci/github-security",
-        dict(
+        "ci/github",
+        CI_HOST
+        | dict(
             sec_codeql=True,
             sec_codeql_languages=[],
             sec_trivy=False,
-            sec_gitleaks=False,
+            sec_secrets=False,
+            sec_osv=False,
         ),
     )
     codeql = (dest / ".github/workflows/wc-security-codeql.yml").read_text()
@@ -385,20 +376,7 @@ def test_deselecting_every_runner_still_renders_a_runs_on(tmp_path):
     """ci_os_matrix is the full runner list, so an empty selection is reachable
     and must fall back rather than index an empty list."""
     dest = tmp_path / "proj"
-    do_render(dest, "ci/github", CI_HOST)
-    do_render(
-        dest,
-        "ci/github-python",
-        dict(
-            python_version="3.13",
-            python_pkg_manager="uv",
-            python_test_command="pytest",
-            python_type_checker="mypy",
-            ci_cache=True,
-            ci_os_matrix=[],
-            ci_version_matrix=[],
-        ),
-    )
+    do_render(dest, "ci/github", CI_PYTHON)
     body = (dest / ".github/workflows/wc-test-python.yml").read_text()
     assert "runs-on: ubuntu-latest" in body
     spec = yaml.safe_load(body)
@@ -407,18 +385,13 @@ def test_deselecting_every_runner_still_renders_a_runs_on(tmp_path):
 
 def test_full_matrix_renders_valid_yaml(tmp_path):
     dest = tmp_path / "proj"
-    do_render(dest, "ci/github", CI_HOST)
     do_render(
         dest,
-        "ci/github-python",
-        dict(
-            python_version="3.13",
-            python_pkg_manager="uv",
-            python_test_command="pytest",
-            python_type_checker="mypy",
-            ci_cache=True,
+        "ci/github",
+        CI_PYTHON
+        | dict(
             ci_os_matrix=["ubuntu-latest", "macos-latest", "windows-latest"],
-            ci_version_matrix=["3.12", "3.13"],
+            python_version_matrix=["3.13", "3.12"],
         ),
     )
     spec = yaml.safe_load((dest / ".github/workflows/wc-test-python.yml").read_text())
@@ -434,34 +407,81 @@ def test_full_matrix_renders_valid_yaml(tmp_path):
     assert step["with"]["python-version"] == "${{ matrix.python-version }}"
 
 
+@pytest.mark.parametrize(
+    "languages,jobs,expected",
+    [
+        (["python"], ["test"], {"wc-test-python.yml"}),
+        (["python"], ["lint"], {"wc-lint-python.yml"}),
+        (
+            ["python", "go"],
+            ["test", "lint"],
+            {
+                "wc-test-python.yml",
+                "wc-lint-python.yml",
+                "wc-test-go.yml",
+                "wc-lint-go.yml",
+            },
+        ),
+        (["rust"], ["test", "lint"], {"wc-test-rust.yml", "wc-lint-rust.yml"}),
+        ([], ["test", "lint"], set()),
+    ],
+)
+def test_the_selection_decides_the_exact_file_set(tmp_path, languages, jobs, expected):
+    """The collapse trades five packages for conditional filenames, so nothing
+    lints that a given path is reachable. This does: every selection renders
+    exactly its own language workflows and none of the others."""
+    dest = tmp_path / "proj"
+    do_render(
+        dest,
+        "ci/github",
+        CI_HOST
+        | dict(ci_languages=languages, ci_jobs=jobs)
+        | dict(
+            python_version="3.13",
+            python_pkg_manager="uv",
+            python_test_command="pytest",
+            python_type_checker="mypy",
+            python_version_matrix=[],
+            node_version="24",
+            ts_pkg_manager="bun",
+            ts_test_command="test",
+            ts_linter="biome",
+            ts_typecheck=True,
+            ts_version_matrix=[],
+            go_version="1.26",
+            go_race=True,
+            go_coverage=True,
+            go_vulncheck=True,
+            go_version_matrix=[],
+            rust_toolchain="stable",
+            rust_test_command="test --workspace",
+            rust_all_features=True,
+            rust_deny=True,
+            rust_version_matrix=[],
+        ),
+    )
+    workflows = {
+        f.name
+        for f in (dest / ".github/workflows").iterdir()
+        if not f.name.startswith(("wc-gate", "wc-changes", "wc-security"))
+    }
+    assert workflows == expected
+
+    # No filename kept an unrendered jinja expression.
+    assert not any(
+        "{%" in f or "{{" in f for f in files_in(dest)
+    ), "a conditional filename did not evaluate"
+
+
 @pytest.mark.skipif(
     not have("actionlint"), reason="workflow linting requires actionlint"
 )
 def test_rendered_workflows_pass_actionlint(tmp_path):
     dest = tmp_path / "proj"
-    do_render(dest, "ci/github", CI_HOST)
     do_render(
         dest,
-        "ci/github-python",
-        dict(
-            python_version="3.13",
-            python_pkg_manager="uv",
-            python_test_command="pytest",
-            python_type_checker="mypy",
-            ci_cache=True,
-            ci_os_matrix=["ubuntu-latest", "macos-latest"],
-            ci_version_matrix=["3.13"],
-        ),
-    )
-    do_render(
-        dest,
-        "ci/github-security",
-        dict(
-            sec_codeql=True,
-            sec_codeql_languages=["python", "actions"],
-            sec_trivy=True,
-            sec_gitleaks=True,
-        ),
+        "ci/github",
+        CI_PYTHON | dict(sec_codeql_languages=["python", "actions"]),
     )
     subprocess.run(["git", "-C", str(dest), "init", "--quiet"], check=True)
     proc = subprocess.run(

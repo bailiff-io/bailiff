@@ -1,6 +1,13 @@
-# The gate is host-level and language-independent. Decisions that vary per
-# project (triggers, the job graph, which paths gate which job) live in the
-# caller workflow the agent writes. See package.md.
+# One package per CI host. `ci_languages` selects which language jobs render and
+# which questions are asked. `ci_jobs` selects which kinds of job.
+#
+# This replaced five near-identical packages (github-python, -ts, -go, -rust,
+# -security). Their test and lint workflows differed by roughly the job name, the
+# version input, and the run line, so adding GitLab meant five more packages
+# rather than one. Adding a language is now one answer.
+#
+# Decisions that vary per project (triggers, the job graph, which paths gate
+# which job) live in the caller workflow the agent writes. See package.md.
 _subdirectory: template
 
 default_branch:
@@ -18,4 +25,297 @@ merge_queue:
 job_timeout_minutes:
   type: int
   default: 15
-  help: "Per-job timeout for the gate. GitHub defaults to 360, so a hung job burns six runner hours before it is killed."
+  help: "Per-job timeout. GitHub defaults to 360, so a hung job burns six runner hours before it is killed."
+
+# Zero languages is valid: a docs-only repo still wants the gate and the security
+# jobs. Every language question below is gated on membership of this list.
+ci_languages:
+  type: str
+  multiselect: true
+  choices:
+    - python
+    - ts
+    - go
+    - rust
+  default: []
+  help: "Languages to render test and lint jobs for. Take the list from what you rendered in languages/."
+
+ci_jobs:
+  type: str
+  multiselect: true
+  choices:
+    - test
+    - lint
+    - security
+  default:
+    - test
+    - lint
+    - security
+  help: "Kinds of job to render. test and lint render once per selected language. security renders once."
+
+ci_cache:
+  type: bool
+  default: true
+  help: "Cache the dependency install between runs."
+
+ci_os_matrix:
+  type: str
+  multiselect: true
+  choices:
+    - ubuntu-latest
+    - ubuntu-24.04-arm
+    - macos-latest
+    - windows-latest
+  default:
+    - ubuntu-latest
+  help: "Runner images the test jobs build a matrix from. Each extra entry multiplies runner minutes."
+
+# === python ===
+
+python_version:
+  type: str
+  choices: ["3.14", "3.13", "3.12", "3.11", "3.10"]
+  default: "3.14"
+  when: "{{ 'python' in ci_languages }}"
+  help: "Python version the CI jobs install. Match what the python language package uses."
+
+python_pkg_manager:
+  type: str
+  choices: [uv, pdm]
+  default: uv
+  when: "{{ 'python' in ci_languages }}"
+  help: "Package manager the CI jobs install dependencies with. Match the python language package."
+
+python_test_command:
+  type: str
+  default: pytest
+  when: "{{ 'python' in ci_languages and 'test' in ci_jobs }}"
+  help: "Command the test job runs, without the package-manager prefix."
+
+python_type_checker:
+  type: str
+  choices: [none, mypy, pyright, ty]
+  default: mypy
+  when: "{{ 'python' in ci_languages and 'lint' in ci_jobs }}"
+  help: "Type checker the lint job runs. Must match languages/python, or the job runs a tool the project did not install."
+
+python_version_matrix:
+  type: str
+  multiselect: true
+  choices: ["3.14", "3.13", "3.12", "3.11", "3.10"]
+  default: []
+  when: "{{ 'python' in ci_languages and 'test' in ci_jobs }}"
+  help: "Python versions to test against. Empty tests only python_version."
+
+# === ts ===
+
+node_version:
+  type: str
+  choices: ["24", "22", "20"]
+  default: "24"
+  when: "{{ 'ts' in ci_languages }}"
+  help: "Node version the CI jobs install. Match what the ts language package uses."
+
+ts_pkg_manager:
+  type: str
+  choices: [pnpm, bun, npm]
+  default: bun
+  when: "{{ 'ts' in ci_languages }}"
+  help: "Package manager the CI jobs install dependencies with. Match the ts language package."
+
+ts_test_command:
+  type: str
+  default: test
+  when: "{{ 'ts' in ci_languages and 'test' in ci_jobs }}"
+  help: "Package script the test job runs, without the run prefix."
+
+ts_linter:
+  type: str
+  choices: [biome, oxlint, none]
+  default: biome
+  when: "{{ 'ts' in ci_languages and 'lint' in ci_jobs }}"
+  help: "Linter the lint job runs. Must match languages/ts. biome covers lint and format in one step."
+
+ts_typecheck:
+  type: bool
+  default: true
+  when: "{{ 'ts' in ci_languages and 'lint' in ci_jobs }}"
+  help: "Run tsc --noEmit in the lint job. Neither linter checks types."
+
+ts_version_matrix:
+  type: str
+  multiselect: true
+  choices: ["24", "22", "20"]
+  default: []
+  when: "{{ 'ts' in ci_languages and 'test' in ci_jobs }}"
+  help: "Node versions to test against. Empty tests only node_version."
+
+# === go ===
+
+go_version:
+  type: str
+  choices: ["1.26", "1.25", "1.24"]
+  default: "1.26"
+  when: "{{ 'go' in ci_languages }}"
+  help: "Go version the CI jobs install. Match what the go language package uses."
+
+go_race:
+  type: bool
+  default: true
+  when: "{{ 'go' in ci_languages and 'test' in ci_jobs }}"
+  help: "Pass -race to go test. Catches data races the compiler cannot see."
+
+go_coverage:
+  type: bool
+  default: true
+  when: "{{ 'go' in ci_languages and 'test' in ci_jobs }}"
+  help: "Write a coverage profile."
+
+go_vulncheck:
+  type: bool
+  default: true
+  when: "{{ 'go' in ci_languages and 'lint' in ci_jobs }}"
+  help: "Run govulncheck, which reports vulnerabilities on a reachable code path."
+
+go_version_matrix:
+  type: str
+  multiselect: true
+  choices: ["1.26", "1.25", "1.24"]
+  default: []
+  when: "{{ 'go' in ci_languages and 'test' in ci_jobs }}"
+  help: "Go versions to test against. Empty tests only go_version."
+
+# === rust ===
+
+rust_toolchain:
+  type: str
+  choices: [stable, beta, nightly, "1.90.0", "1.85.0"]
+  default: stable
+  when: "{{ 'rust' in ci_languages }}"
+  help: "Rust toolchain the CI jobs install. A pinned version keeps a clippy release from breaking an unrelated commit."
+
+rust_test_command:
+  type: str
+  default: "test --workspace"
+  when: "{{ 'rust' in ci_languages and 'test' in ci_jobs }}"
+  help: "Cargo subcommand the test job runs, without the leading cargo. Use `nextest run` when the project uses nextest."
+
+rust_all_features:
+  type: bool
+  default: true
+  when: "{{ 'rust' in ci_languages }}"
+  help: "Pass --all-features to test and clippy. Turn it off when features are mutually exclusive."
+
+rust_deny:
+  type: bool
+  default: true
+  when: "{{ 'rust' in ci_languages and 'lint' in ci_jobs }}"
+  help: "Run cargo deny check. Covers licence policy, banned crates, and registries, which no generic scanner does."
+
+rust_version_matrix:
+  type: str
+  multiselect: true
+  choices: [stable, beta, nightly, "1.90.0", "1.85.0"]
+  default: []
+  when: "{{ 'rust' in ci_languages and 'test' in ci_jobs }}"
+  help: "Toolchains to test against. Empty tests only rust_toolchain. Add the crate MSRV alongside stable."
+
+# === security ===
+
+sec_codeql:
+  type: bool
+  default: true
+  when: "{{ 'security' in ci_jobs }}"
+  help: "Run CodeQL static analysis. Free on public repos; needs GitHub Advanced Security on private ones."
+
+# Derived from ci_languages rather than asked, so the two cannot disagree. CodeQL
+# names javascript-typescript where the catalog says ts.
+sec_codeql_languages:
+  type: yaml
+  # A `yaml` answer is parsed from the rendered string, and a jinja list renders
+  # as a Python repr with single quotes. tojson produces a valid YAML sequence.
+  default: "{{ ci_languages | map('replace', 'ts', 'javascript-typescript') | list | tojson }}"
+  when: "{{ 'security' in ci_jobs and sec_codeql }}"
+  help: "CodeQL languages. Defaults to the selected languages; edit only to add one the catalog does not scaffold."
+
+sec_trivy:
+  type: bool
+  default: true
+  when: "{{ 'security' in ci_jobs }}"
+  help: "Scan the filesystem for vulnerable dependencies and misconfigured IaC with Trivy."
+
+sec_secrets:
+  type: bool
+  default: true
+  when: "{{ 'security' in ci_jobs }}"
+  help: "Scan history for committed secrets. The commit hook scans the index; this catches what a --no-verify push skipped."
+
+sec_osv:
+  type: bool
+  default: true
+  when: "{{ 'security' in ci_jobs }}"
+  help: "Run osv-scanner over every lockfile. One binary covering every ecosystem."
+
+# === derived render flags ===
+#
+# A conditional FILENAME must contain no quote character. jinja compiles each
+# template with the filename embedded in the generated Python, and a quote in the
+# path breaks that string literal, so `{% if "x" in y %}` in a name fails with
+# "SyntaxError: invalid syntax" pointing at an unrelated body line. These flags
+# move the membership tests out of the filenames.
+#
+# They are computed, never asked: `when: false` keeps them out of the interview
+# while still recording them in the answers file.
+
+job_py_test:
+  type: bool
+  default: "{{ 'python' in ci_languages and 'test' in ci_jobs }}"
+  when: false
+job_py_lint:
+  type: bool
+  default: "{{ 'python' in ci_languages and 'lint' in ci_jobs }}"
+  when: false
+job_ts_test:
+  type: bool
+  default: "{{ 'ts' in ci_languages and 'test' in ci_jobs }}"
+  when: false
+job_ts_lint:
+  type: bool
+  default: "{{ 'ts' in ci_languages and 'lint' in ci_jobs }}"
+  when: false
+job_go_test:
+  type: bool
+  default: "{{ 'go' in ci_languages and 'test' in ci_jobs }}"
+  when: false
+job_go_lint:
+  type: bool
+  default: "{{ 'go' in ci_languages and 'lint' in ci_jobs }}"
+  when: false
+job_rust_test:
+  type: bool
+  default: "{{ 'rust' in ci_languages and 'test' in ci_jobs }}"
+  when: false
+job_rust_lint:
+  type: bool
+  default: "{{ 'rust' in ci_languages and 'lint' in ci_jobs }}"
+  when: false
+setup_py:
+  type: bool
+  default: "{{ 'python' in ci_languages }}"
+  when: false
+setup_ts:
+  type: bool
+  default: "{{ 'ts' in ci_languages }}"
+  when: false
+setup_go:
+  type: bool
+  default: "{{ 'go' in ci_languages }}"
+  when: false
+setup_rust:
+  type: bool
+  default: "{{ 'rust' in ci_languages }}"
+  when: false
+job_security:
+  type: bool
+  default: "{{ 'security' in ci_jobs }}"
+  when: false
