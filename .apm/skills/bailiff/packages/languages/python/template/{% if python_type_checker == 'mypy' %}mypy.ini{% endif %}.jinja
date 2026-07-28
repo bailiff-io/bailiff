@@ -1,0 +1,23 @@
+[mypy]
+# mypy.ini -- rendered by the bailiff python package.
+# A separate file rather than [tool.mypy] in pyproject.toml, because `uv init`
+# writes pyproject.toml after this renders and copier does not merge into it.
+python_version = {{ python_version }}
+{% if python_layout == "src" -%}
+mypy_path = src
+{% endif -%}
+warn_unused_configs = True
+warn_redundant_casts = True
+warn_unused_ignores = True
+warn_return_any = True
+# An untyped def is invisible to a type checker, so a codebase can look clean
+# while most of it is unchecked. This reports them instead.
+disallow_untyped_defs = True
+check_untyped_defs = True
+no_implicit_optional = True
+strict_equality = True
+
+[mypy-tests.*]
+# Test helpers are frequently untyped, and requiring annotations there tends to
+# push people to skip mypy entirely rather than annotate a fixture.
+disallow_untyped_defs = False

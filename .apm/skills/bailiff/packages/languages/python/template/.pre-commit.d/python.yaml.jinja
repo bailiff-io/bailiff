@@ -1,9 +1,48 @@
-# .pre-commit.d/python.yaml -- ruff hooks contributed by the python package.
-# precommit reads .pre-commit.d/ and folds every fragment into its config.
+# .pre-commit.d/python.yaml -- hooks contributed by the python package.
+# hooks/manager folds every fragment here into .pre-commit-config.yaml. The
+# lefthook equivalent is .hooks.d/python.yaml, from the same answers.
+{%- set run = 'uv run ' if python_pkg_manager == 'uv' else ('pdm run ' if python_pkg_manager == 'pdm' else '') %}
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: "{{ ruff_version if ruff_version else 'v0.16.0' }}"
     hooks:
       - id: ruff
-        args: [--fix]
+        args: [--fix{% if python_docstring_check == 'warn' %}, --extend-ignore=D{% endif %}]
       - id: ruff-format
+{%- if python_docstring_check == 'warn' or python_type_checker != 'none' or python_dep_check %}
+
+  - repo: local
+    hooks:
+{%- if python_docstring_check == 'warn' %}
+      # ruff cannot mix severities in one run, so docstring presence gets its own
+      # pass with --exit-zero: it prints findings and never fails the commit.
+      # The blocking pass above ignores D for the same reason.
+      - id: ruff-docstrings-advisory
+        name: docstrings present (advisory)
+        entry: {{ run }}ruff check --select D --exit-zero --no-cache
+        language: system
+        types: [python]
+        verbose: true
+{%- endif %}
+{%- if python_type_checker != 'none' %}
+      # Runs from the project environment: a type checker without the project's
+      # dependencies installed reports a missing import for every one of them.
+      - id: {{ python_type_checker }}
+        name: {{ python_type_checker }}
+        entry: {{ run }}{{ python_type_checker }}
+        language: system
+        types: [python]
+        # Type checking is whole-program; a per-file run resolves nothing.
+        pass_filenames: false
+{%- endif %}
+{%- if python_dep_check %}
+      # Compares the imports against the declared dependencies, so it reads the
+      # manifest and the whole tree rather than the staged files.
+      - id: deptry
+        name: deptry
+        entry: {{ run }}deptry .
+        language: system
+        pass_filenames: false
+        files: ^(pyproject\.toml|uv\.lock|pdm\.lock|.*\.py)$
+{%- endif %}
+{%- endif %}

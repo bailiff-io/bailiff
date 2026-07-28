@@ -1,0 +1,49 @@
+"""noxfile.py -- rendered by the bailiff python package.
+
+Python has no builtin way to run a suite against several interpreters, which is
+what nox is for. The CI matrix runs the same versions in parallel; this exists so
+a maintainer can check the matrix locally before pushing, which matters for a
+library whose users pin a version you do not have installed.
+
+    nox              run every session
+    nox -s tests-{{ python_version }}   one interpreter
+    nox -l           list sessions
+"""
+
+import nox
+
+# uv is a builtin backend, so no plugin is needed and the venvs reuse uv's cache.
+nox.options.default_venv_backend = "uv"
+nox.options.reuse_existing_virtualenvs = True
+
+# Widen this list to the versions the project supports. bailiff renders the one
+# version it was told about; nox has no way to know the rest.
+PYTHONS = ["{{ python_version }}"]
+
+
+@nox.session(python=PYTHONS)
+def tests(session: nox.Session) -> None:
+    """Run the test suite against one interpreter."""
+    session.install("-e", ".")
+    session.install("pytest"{% if python_coverage %}, "pytest-cov"{% endif %})
+    session.run("pytest", *session.posargs)
+{%- if python_type_checker != 'none' %}
+
+
+@nox.session(python=PYTHONS[0])
+def types(session: nox.Session) -> None:
+    """Type-check against the lowest supported interpreter, where a version-gated
+    incompatibility shows up first."""
+    session.install("-e", ".")
+    session.install("{{ python_type_checker }}")
+    session.run("{{ python_type_checker }}", ".")
+{%- endif %}
+
+
+@nox.session(python=PYTHONS[0])
+def lint(session: nox.Session) -> None:
+    """Lint and format-check. One interpreter is enough: ruff's target-version is
+    pinned in ruff.toml and does not vary with the interpreter running it."""
+    session.install("ruff")
+    session.run("ruff", "check", ".")
+    session.run("ruff", "format", "--check", ".")

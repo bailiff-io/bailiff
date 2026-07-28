@@ -4,3 +4,24 @@ testpaths = tests
 python_files = test_*.py
 python_classes = Test*
 python_functions = test_*
+{%- set opts = [] %}
+{%- if python_coverage %}
+{%- set pkg = project_name | default('project', true) | lower | replace(' ', '_') | replace('-', '_') %}
+{%- set opts = opts + ["--cov=" ~ (("src/" ~ pkg) if python_layout == "src" else pkg), "--cov-report=term-missing", "--cov-report=xml"] %}
+{%- if python_coverage_min and python_coverage_min > 0 %}
+{%- set opts = opts + ["--cov-fail-under=" ~ python_coverage_min] %}
+{%- endif %}
+{%- endif %}
+{%- if python_doctest %}
+{#- Runs the examples in every docstring, so an example that drifted from the
+    code fails as a test rather than misleading a reader. -#}
+{%- set opts = opts + ["--doctest-modules"] %}
+{%- endif %}
+{%- if opts %}
+addopts = {{ opts | join(' ') }}
+{%- endif %}
+{%- if python_coverage %}
+
+# --cov-report=xml writes coverage.xml for the CI upload. The terminal report is
+# what a developer reads locally.
+{%- endif %}

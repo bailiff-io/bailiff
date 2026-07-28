@@ -1,15 +1,34 @@
-{#- .hooks.d/python.yaml -- the same ruff hooks as the .pre-commit.d fragment,
-    written in lefthook's own schema. lefthook merges whatever its `extends`
-    glob matches and does not translate between formats, so the top-level key
-    has to be a stage name. {staged_files} limits each run to the commit. -#}
+{#- .hooks.d/python.yaml -- the same hooks as the .pre-commit.d fragment, in
+    lefthook's own schema. lefthook merges whatever its `extends` glob matches
+    and does not translate between formats, so the top-level key has to be a
+    stage name. {staged_files} limits each run to the commit. -#}
+{%- set run = 'uv run ' if python_pkg_manager == 'uv' else ('pdm run ' if python_pkg_manager == 'pdm' else '') %}
 pre-commit:
   parallel: true
   commands:
     ruff:
       glob: "*.py"
-      run: ruff check --fix {staged_files}
+      run: {{ run }}ruff check --fix{% if python_docstring_check == 'warn' %} --extend-ignore=D{% endif %} {staged_files}
       stage_fixed: true
     ruff-format:
       glob: "*.py"
-      run: ruff format {staged_files}
+      run: {{ run }}ruff format {staged_files}
       stage_fixed: true
+{%- if python_docstring_check == 'warn' %}
+    # Advisory: --exit-zero reports missing docstrings and never fails the commit.
+    ruff-docstrings-advisory:
+      glob: "*.py"
+      run: {{ run }}ruff check --select D --exit-zero --no-cache {staged_files}
+{%- endif %}
+{%- if python_type_checker != 'none' %}
+    # Whole-program, so no {staged_files}: a per-file run cannot resolve types
+    # defined in the files that were left out.
+    {{ python_type_checker }}:
+      glob: "*.py"
+      run: {{ run }}{{ python_type_checker }}
+{%- endif %}
+{%- if python_dep_check %}
+    deptry:
+      glob: "*.{py,toml}"
+      run: {{ run }}deptry .
+{%- endif %}

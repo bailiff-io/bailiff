@@ -178,3 +178,30 @@ _tasks:
       test -f pyproject.toml ||
       pdm init --non-interactive --python {{ python_version }}
     when: "{{ python_pkg_manager == 'pdm' }}"
+  # Dev tooling as a dependency group, so the hooks and the CI jobs run tools the
+  # project actually installs. Before this, ci/github-python invoked `uv run mypy`
+  # while nothing added mypy, and the job failed on a missing binary rather than
+  # on a type error.
+  #
+  # copier.yml is parsed as YAML before jinja renders it, so the tool list is one
+  # inline expression rather than a set of {% set %} blocks.
+  - command: >-
+      uv add --dev
+      {% if python_type_checker != 'none' %}{{ python_type_checker }} {% endif %}
+      {%- if add_tests %}pytest {% endif %}
+      {%- if python_coverage %}pytest-cov {% endif %}
+      {%- if python_dep_check %}deptry {% endif %}
+      {%- if python_multiversion == 'nox' %}nox{% endif %}
+    when: >-
+      {{ python_pkg_manager == 'uv' and (python_type_checker != 'none' or add_tests
+      or python_coverage or python_dep_check or python_multiversion == 'nox') }}
+  - command: >-
+      pdm add --dev
+      {% if python_type_checker != 'none' %}{{ python_type_checker }} {% endif %}
+      {%- if add_tests %}pytest {% endif %}
+      {%- if python_coverage %}pytest-cov {% endif %}
+      {%- if python_dep_check %}deptry {% endif %}
+      {%- if python_multiversion == 'nox' %}nox{% endif %}
+    when: >-
+      {{ python_pkg_manager == 'pdm' and (python_type_checker != 'none' or add_tests
+      or python_coverage or python_dep_check or python_multiversion == 'nox') }}
