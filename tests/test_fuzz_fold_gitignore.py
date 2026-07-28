@@ -10,7 +10,6 @@ languages/python and asserts the copies have not drifted.
 
 from __future__ import annotations
 
-import hashlib
 import importlib.util
 import os
 import subprocess
@@ -23,7 +22,7 @@ from hypothesis import strategies as st
 
 from conftest import PACKAGES
 
-SCRIPT = PACKAGES / "languages/python/tasks/fold_gitignore.py"
+SCRIPT = PACKAGES.parent / "scripts/fold_gitignore.py"
 
 NO_SHRINK = settings(
     max_examples=60,
@@ -51,15 +50,25 @@ def run_in(path: Path) -> int:
     return proc.returncode
 
 
-def test_every_copy_is_identical():
-    """The script must not drift between packages, or one package would fold
-    differently from another."""
-    copies = sorted(PACKAGES.glob("*/*/tasks/fold_gitignore.py"))
-    assert len(copies) >= 6
-    digests = {
-        hashlib.sha256(p.read_bytes()).hexdigest() for p in copies
-    }
-    assert len(digests) == 1, f"copies have drifted: {[str(p) for p in copies]}"
+def test_the_fold_script_exists_once():
+    """It used to live as seven byte-identical copies, one per contributing
+    package, which is drift waiting to happen. Copier tasks run from the source
+    tree rather than the destination, so a path outside the package resolves and
+    one shared copy works for every caller."""
+    assert SCRIPT.is_file()
+    assert not list(PACKAGES.glob("*/*/tasks/fold_gitignore.py")), (
+        "a per-package copy came back; every caller reads scripts/ instead"
+    )
+
+    # Every package that contributes a .gitignore.d fragment must invoke the
+    # shared copy, or its fragment stays inert.
+    contributors = sorted(
+        p for p in PACKAGES.glob("*/*/copier.yml")
+        if "fold_gitignore" in p.read_text()
+    )
+    assert len(contributors) >= 6, [str(p) for p in contributors]
+    for c in contributors:
+        assert "../../../scripts/fold_gitignore.py" in c.read_text(), str(c)
 
 
 def test_no_fragment_directory_is_a_no_op(tmp_path):

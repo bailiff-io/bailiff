@@ -11,4 +11,4 @@ hook_languages:
 _tasks:
   # git has no include directive, so the .gitignore.d fragment is inert until
   # it is folded in. Idempotent and order-independent.
-  - 'python3 "{{ _copier_conf.src_path }}/tasks/fold_gitignore.py"'
+  - 'python3 "{{ _copier_conf.src_path }}/../../../scripts/fold_gitignore.py"'

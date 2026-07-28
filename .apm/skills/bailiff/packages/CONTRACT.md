@@ -71,7 +71,7 @@ differs per directory.
 | `.hooks.d/` | `<package>.yaml` | lefthook expands `extends: [.hooks.d/*.yaml]` itself |
 | `.mise/conf.d/` | `<package>.toml` | mise reads the directory itself |
 | `.pre-commit.d/` | `<package>.yaml` | `hooks/manager`'s `merge_precommit.py` task writes `.pre-commit-config.yaml`; pre-commit and prek have no include directive |
-| `.gitignore.d/` | `<package>` | each contributing package ships `tasks/fold_gitignore.py` and folds its own block into `.gitignore` |
+| `.gitignore.d/` | `<package>` | each contributing package calls the shared `scripts/fold_gitignore.py` from `_tasks` and folds its own block into `.gitignore` |
 
 ## Verify a package
 

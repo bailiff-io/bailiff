@@ -254,14 +254,19 @@ The other two need a task, because neither consumer has an include directive:
 | `.mise/conf.d/` | mise, natively | -- |
 | `.hooks.d/` | lefthook, via `extends` | -- |
 | `.pre-commit.d/` | `tasks/merge_precommit.py` | `hooks/manager` |
-| `.gitignore.d/` | `tasks/fold_gitignore.py` | every contributing package |
+| `.gitignore.d/` | `scripts/fold_gitignore.py` | every contributing package |
 
 A fragment is written in its consumer's own schema; the conventions share a
 directory shape, not a format. lefthook reports `hooks: Value is array but
 should be object` and then runs nothing when handed a pre-commit-shaped
 fragment, so a fragment that lints clean as YAML can still be inert.
 
-`fold_gitignore.py` ships as a byte-identical copy in each package that writes a
-`.gitignore.d/` fragment, because a copier template cannot reference a sibling
-package's files. It is idempotent and rewrites its own delimited block, so
+`fold_gitignore.py` lives once, under `scripts/`. Every package that writes a
+`.gitignore.d/` fragment invokes it as
+`{{ _copier_conf.src_path }}/../../../scripts/fold_gitignore.py`: a `_tasks`
+entry runs from the source tree rather than the destination, so a path outside
+the package resolves. It is idempotent and rewrites its own delimited block, so
 render order does not matter and a re-render converges.
+
+The script cannot live under `packages/`. `scan.py` treats every directory there
+as a group and would report a shared one as a group with no `index.md`.
