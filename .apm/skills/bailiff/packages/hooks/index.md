@@ -4,13 +4,13 @@ Git hook managers. Selecting a package here is how the project chooses its manag
 
 | Axis | How many | Packages |
 |---|---|---|
-| `hooks:manager` | Exactly one, or none | lefthook, precommit |
+| `hooks:manager` | Exactly one, or none | lefthook, precommit, prek |
 
 ## Pick one
 
-`lefthook install` and `pre-commit install` both write `.git/hooks/`, so whichever
-runs second overwrites the first. When the user asks for both, say that and ask
-which one runs the hooks.
+`lefthook install`, `pre-commit install`, and `prek install` all write
+`.git/hooks/`, so whichever runs last overwrites the others. When the user asks
+for more than one, say that and ask which one runs the hooks.
 
 Offer nothing here when the user does not want managed hooks. Language packages
 still write their `.pre-commit.d/<package>.yaml` fragments; without a manager
@@ -24,6 +24,11 @@ repository is not initialised yet, then install by hand.
 |---|---|
 | `lefthook` | Any language mix; hooks run native project commands; Go binary, no Python needed |
 | `precommit` | The repo is already Python-centric, or the user wants the pre-commit hook ecosystem |
+| `prek` | The user wants the pre-commit hook ecosystem without a Python runtime; a Rust binary reading the same config |
+
+`prek` and `precommit` read the same `.pre-commit-config.yaml` and both generate
+it from `.pre-commit.d/` with the same merge task. They differ in the binary that
+runs the hooks and in the `_tasks` command that installs them.
 
 ## Fragments
 

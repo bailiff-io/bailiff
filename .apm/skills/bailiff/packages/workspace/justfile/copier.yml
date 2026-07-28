@@ -24,6 +24,7 @@ hook_manager:
   type: str
   choices:
     - pre-commit
+    - prek
     - lefthook
     - none
   default: none

@@ -14,6 +14,9 @@ test:
 {%- if hook_manager == "pre-commit" %}
 lint:
     pre-commit run --all-files
+{%- elif hook_manager == "prek" %}
+lint:
+    prek run --all-files
 {%- elif hook_manager == "lefthook" %}
 lint:
     lefthook run pre-commit
@@ -43,6 +46,9 @@ test:
 {%- if hook_manager == "pre-commit" %}
 lint:
     pre-commit run --all-files
+{%- elif hook_manager == "prek" %}
+lint:
+    prek run --all-files
 {%- elif hook_manager == "lefthook" %}
 lint:
     lefthook run pre-commit
@@ -72,6 +78,9 @@ test:
 {%- if hook_manager == "pre-commit" %}
 lint:
     pre-commit run --all-files
+{%- elif hook_manager == "prek" %}
+lint:
+    prek run --all-files
 {%- elif hook_manager == "lefthook" %}
 lint:
     lefthook run pre-commit
@@ -101,6 +110,9 @@ test:
 {%- if hook_manager == "pre-commit" %}
 lint:
     pre-commit run --all-files
+{%- elif hook_manager == "prek" %}
+lint:
+    prek run --all-files
 {%- elif hook_manager == "lefthook" %}
 lint:
     lefthook run pre-commit

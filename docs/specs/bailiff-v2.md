@@ -114,7 +114,7 @@ names the choice axis. The group's `index.md` states what to do with each axis.
 |---|---|---|
 | `foundation/` | `scaffold:*` | base, readme, editorconfig |
 | `languages/` | `language:*` | python, ts, go, rust, api |
-| `hooks/` | `hooks:manager` | lefthook, precommit |
+| `hooks/` | `hooks:manager` | lefthook, precommit, prek |
 | `ci/` | `ci:*`, `ci-job:*` | github, github-python, github-ts, github-go, github-rust, github-security |
 | `repo/` | `repo:*`, `release:*`, `deps:*`, `monorepo:*` | github-repo, gitlab-repo, cocogitto, release-please, dep-updates, moon, package-add |
 | `docs/` | `docs:*` | mkdocs, starlight, decision-records |

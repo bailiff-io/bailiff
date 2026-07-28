@@ -407,15 +407,16 @@ def test_rendered_workflows_pass_actionlint(tmp_path):
 # ------------------------------------------------------------- exclusive axes
 
 
-def test_two_hook_managers_both_claim_the_same_axis(tmp_path):
-    """lefthook and precommit both provide hooks:manager. The catalog has to
-    expose that as one axis with two members, because that is what tells the
-    agent they are mutually exclusive."""
+def test_every_hook_manager_claims_the_same_axis(tmp_path):
+    """lefthook, precommit, and prek all provide hooks:manager. The catalog has
+    to expose that as one axis with all three members, because that is what
+    tells the agent they are mutually exclusive: each writes .git/hooks/, so
+    whichever installs last wins."""
     from conftest import scan
 
     catalog = scan.build_catalog(SKILL)
     hooks = next(g for g in catalog["groups"] if g["name"] == "hooks")
-    assert hooks["axes"]["hooks"] == ["lefthook", "precommit"]
+    assert hooks["axes"]["hooks"] == ["lefthook", "precommit", "prek"]
 
 
 def test_repo_host_axis_has_two_members(tmp_path):
@@ -468,6 +469,33 @@ def test_precommit_merges_the_fragment_directory(tmp_path):
     repos = yaml.safe_dump(merged["repos"])
     # The python fragment's hook must appear in the merged output.
     assert "ruff" in repos
+
+
+@pytest.mark.skipif(not have("mise"), reason="languages/python requires mise")
+def test_prek_merges_the_same_fragment_directory(tmp_path):
+    """prek reads pre-commit's config format, so it consumes the identical
+    .pre-commit.d/ fragments and needs the identical merge. A language fragment
+    written for precommit must reach prek's config unchanged."""
+    dest = tmp_path / "proj"
+    do_render(dest, "foundation/base", BASE)
+    do_render(dest, "languages/python", PYTHON)
+    do_render(
+        dest,
+        "hooks/prek",
+        dict(
+            enforce_conventional_commits=True,
+            enable_typo_check=False,
+            precommit_exclude_patterns=[],
+            install_hooks=False,
+        ),
+    )
+    config = dest / ".pre-commit-config.yaml"
+    assert config.is_file(), "the merge task did not produce a config"
+    merged = yaml.safe_load(config.read_text())
+    repos = yaml.safe_dump(merged["repos"])
+    assert "ruff" in repos, "the python fragment did not reach prek's config"
+    assert (dest / ".pre-commit.d" / "prek.yaml").is_file()
+    assert (dest / ".mise" / "conf.d" / "prek.toml").is_file()
 
 
 @pytest.mark.skipif(not have("mise"), reason="languages/python requires mise")

@@ -23,17 +23,19 @@ In this order:
    the user selected.
 2. `js_pkg_manager` (`bun`, `pnpm`, `npm`; default `bun`) -- named by the `test`,
    `build`, and `dev` recipes. Ask only when `language: ts`.
-3. `hook_manager` (`pre-commit`, `lefthook`, `none`; default `none`) -- see below.
+3. `hook_manager` (`pre-commit`, `prek`, `lefthook`, `none`; default `none`) --
+   see below.
 
 ## hook_manager must match the hooks group
 
 The answer has to be the package the user picked from `hooks/`: `lefthook` for
-`hooks/lefthook`, `pre-commit` for `hooks/precommit`, `none` when the user
-selected neither. It decides the `lint` recipe body:
+`hooks/lefthook`, `pre-commit` for `hooks/precommit`, `prek` for `hooks/prek`,
+`none` when the user selected none of them. It decides the `lint` recipe body:
 
 | Answer | `lint` runs |
 |---|---|
 | `pre-commit` | `pre-commit run --all-files` |
+| `prek` | `prek run --all-files` |
 | `lefthook` | `lefthook run pre-commit` |
 | `none` | the language's own linter, for example `uv run ruff check .` |
 
