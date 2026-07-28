@@ -173,7 +173,29 @@ properly rather than dismissed. Verified by running it:
 
 That was read as a blocker, and it is not one at single-user scope. See above.
 
-## structkit adoption research (done)
+## structkit adoption is ON HOLD
+
+The user, after a day of hands-on use: "i'm not sure if structkit is the right fit
+after all." Warranted, and the reason is not capability.
+
+Documented behaviours that turned out not to exist, each caught by testing rather
+than reading:
+
+| Documented | Reality |
+|---|---|
+| Variables in hooks, with two worked examples | Hooks are never rendered. `generate.py:132` loads YAML, `:201` reads the hooks, `:100` runs `subprocess.run(shell=True)`, with no render between |
+| `completion install` offers fish | shtab has no fish support; `SUPPORTED_SHELLS` is bash, zsh, tcsh |
+| `prompt:` generates file content | With no API key it writes the string `AI generation skipped: ...` into the file as its content |
+
+The capabilities below are all verified and good. The concern is that the
+documentation cannot be trusted as a specification, so every feature costs a test
+before use, which works against the reason for adopting a scaffolding tool. Bus
+factor is also one: `httpdss` holds 372 of 376 commits.
+
+The live options are structkit, the existing copier catalog, or a tool the
+landscape survey turns up. Do not decide before that survey returns.
+
+## structkit capability research (done)
 
 `docs/specs/structkit-architecture.md` holds the full proposal. Verified against
 3.2.1, and these are the findings that decide the architecture:

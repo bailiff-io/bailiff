@@ -1,14 +1,21 @@
 ---
 title: structkit template architecture
-status: Proposed
+status: On hold
 date: 2026-07-28
 ---
 
 # structkit template architecture
 
-A proposal for `structkit-templates`, the repository that replaces the bailiff
-copier catalog if `bfsh-asl` decides that way. Everything below was verified
-against structkit 3.2.1.
+A proposal for `structkit-templates`, the repository that would replace the
+bailiff copier catalog. Everything below was verified against structkit 3.2.1.
+
+**On hold.** Adoption is in doubt after a day of use. The capabilities below all
+hold, but three documented behaviours turned out not to exist: variables in
+hooks, fish completion, and a `prompt:` key that writes an error message into the
+file as content when no API key is set. A tool whose documentation cannot serve
+as a specification costs testing time on every feature, which works against the
+reason for adopting it. `bfsh-asl` holds the decision, and a survey of
+alternatives is in flight.
 
 ## Capabilities, verified
 
@@ -23,9 +30,19 @@ against structkit 3.2.1.
 
 ## Untemplated hooks
 
-**Hooks are not templated.** A `post_hooks` entry containing `{{@ name @}}`
-passes the braces to the shell unrendered, while a file in the same structure
-renders the value. Hooks are therefore unconditional one-liners.
+**Hooks are not templated**, despite the upstream documentation claiming
+otherwise. The hooks page shows `echo "Setting up {{@ project_name @}}"` and
+`docker build -t {{@ project_name | slugify @}} .` under a "Variables in Hooks"
+heading. Neither renders.
+
+Traced in `commands/generate.py`: line 184 loads the YAML, line 201 reads
+`config.get('pre_hooks', [])`, line 205 calls `_run_hooks`, and line 100 runs
+`subprocess.run(cmd, shell=True)`. No render step sits between them, and only
+file content passes through the renderer.
+
+So hooks are unconditional one-liners today. An upstream patch making the
+documented behaviour real is tracked as `bfsh-oct`, and would remove this
+constraint entirely.
 
 That is survivable because the preferences are fixed rather than asked. With prek,
 uv, biome, bun, release-please, and GitHub settled, every task in the copier
