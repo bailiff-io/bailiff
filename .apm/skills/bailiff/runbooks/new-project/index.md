@@ -40,6 +40,13 @@ docs/*, iac/*, agentic/*, workspace/*
 its answers. Language before hooks and CI because both read what the language
 packages wrote.
 
+A framework scaffold breaks that order. `create-vite` and `nuxi init` refuse a
+directory that holds files, so they run before `foundation/base`, not after it:
+scaffold into the empty destination, then render `base` and the language package
+over the result. `languages/ts/package.md` carries the commands and their
+non-interactive flags. `ts_framework: sst` has no non-interactive path at all --
+tell the user to run `npx sst@4 init` and continue once they have.
+
 ## What to recommend
 
 Recommend, then accept what the user says.

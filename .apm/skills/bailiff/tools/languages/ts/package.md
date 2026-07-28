@@ -41,16 +41,30 @@ precheck: precheck.py
 
 ## Framework scaffolds
 
-The render runs no framework scaffold. `create-vite`, `nuxi init`, and `sst init`
-all refuse a directory that already holds files, and this render writes
-`tsconfig.json` before any task could run. Run the scaffold in the destination
-first, then render this package over it:
+The render runs no framework scaffold, because every scaffold refuses a directory
+that already holds files and this render writes `tsconfig.json` before any task
+could fire. Run the scaffold in the destination first, then render this package
+over it. `ts_framework` and `vite_template` are recorded so the answers file says
+which scaffold produced the tree.
 
 | Framework | Command |
 |---|---|
 | vite | `pnpm dlx create-vite@9 . --template <vite_template>` |
-| nuxt | `pnpm dlx nuxi@3 init . --template minimal --packageManager <js_pkg_manager>` |
-| sst | `npx sst@4 init` (answers an interactive prompt) |
+| nuxt | `pnpm dlx nuxi@3 init . --template minimal --packageManager <js_pkg_manager> --no-install --force --gitInit=false` |
+| sst | No non-interactive form. Have the user run `npx sst@4 init` themselves. |
+
+Check that the scaffold wrote files rather than trusting its exit status. `nuxi`
+exits 0 after printing a prompt it could not ask, so a missing flag reads as
+success. It needs all three of `--template`, `--force`, and `--gitInit=false`: it
+refuses a destination that exists at all, and treats the other two as required in
+a non-interactive terminal. `--force` overwrites only the paths the template
+writes.
+
+`sst@4 init` has a `--yes` flag, but it skips the confirmation only. The provider
+question still prompts, and the command exits 1 without writing.
+
+`create-vite@9` writes the vanilla template for a `--template` name it does not
+recognise rather than failing, which is why `vite_template` is an enum.
 
 A scaffold writes its own `package.json` and `tsconfig.json`. `package.json`
 carries `_skip_if_exists` so the render leaves it alone; `tsconfig.json` does not,

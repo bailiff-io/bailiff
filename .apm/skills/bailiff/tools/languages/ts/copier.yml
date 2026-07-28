@@ -60,9 +60,23 @@ ts_framework:
 
 vite_template:
   type: str
+  choices:
+    - vanilla-ts
+    - vue-ts
+    - react-ts
+    - react-compiler-ts
+    - preact-ts
+    - lit-ts
+    - svelte-ts
+    - solid-ts
+    - qwik-ts
   default: vanilla-ts
   when: "{{ ts_framework == 'vite' }}"
-  help: "create-vite template: vanilla-ts, react-ts, vue-ts, and the rest of its list."
+  # create-vite 9 falls back to vanilla for a name it does not know instead of
+  # failing, so a typo here would scaffold the wrong project silently. The list
+  # is create-vite's TypeScript templates; its JavaScript ones are omitted
+  # because this package renders a tsconfig.
+  help: "create-vite template."
 
 ui_kit:
   type: str

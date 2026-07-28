@@ -715,6 +715,31 @@ def test_missing_required_binary_stops_before_rendering(tmp_path, monkeypatch):
     assert not (dest / "Cargo.toml").exists()
 
 
+@pytest.mark.skipif(not have("mise") or not have("bun"), reason="needs mise and bun")
+def test_vite_template_rejects_a_name_create_vite_does_not_have(tmp_path):
+    """create-vite 9 scaffolds vanilla for an unknown --template instead of
+    failing, so the enum is the only thing standing between a typo and the wrong
+    project. The valid answer has to still render, or the enum is just a wall."""
+    ts = dict(
+        project_name="W",
+        description="d",
+        js_pkg_manager="bun",
+        ts_linter="biome",
+        test_runner="none",
+        node_version="24",
+        ts_framework="vite",
+        ui_kit="none",
+    )
+
+    with pytest.raises(render.RenderError) as caught:
+        do_render(tmp_path / "bad", "languages/ts", ts | {"vite_template": "reactts"})
+    assert caught.value.code == render.EXIT_RENDER
+
+    do_render(tmp_path / "ok", "languages/ts", ts | {"vite_template": "react-ts"})
+    answers = yaml.safe_load((tmp_path / "ok" / ".copier-answers.ts.yml").read_text())
+    assert answers["vite_template"] == "react-ts"
+
+
 def test_pretend_touches_nothing(tmp_path):
     dest = tmp_path / "proj"
     do_render(dest, "foundation/base", BASE, pretend=True)
