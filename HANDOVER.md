@@ -3,7 +3,7 @@
 Work state for bailiff v2 tooling. Task tracking is in beads (`bd ready`), not
 here. This file records what is decided, what is verified, and what is unknown.
 
-Last updated: 2026-07-28, after commit `c58c36e`.
+Last updated: 2026-07-28, after commit `ca11aab`.
 
 ## Where to look
 
@@ -28,6 +28,8 @@ Last updated: 2026-07-28, after commit `c58c36e`.
 | `3ca5225` | Go: gosec and revive enabled, govulncheck, tidy check |
 | `4e40b16` | ci/: five language packages collapsed into one host package |
 | `c58c36e` | CI quality job; structkit recorded as considered and rejected |
+| `384c083` | publish jobs with OIDC trusted publishing |
+| `ca11aab` | SECURITY.md, CONTRIBUTING.md, CODE_OF_CONDUCT.md |
 
 ## Decisions that govern the remaining work
 
@@ -154,8 +156,8 @@ selection rather than templating.
 All seven bugs found this week came from *generating* configuration rather than
 committing it, which argues the same way.
 
-This is now a P0 decision, not a settled question. Do not add to the copier
-catalog before it is resolved.
+This is now an open P0 decision. Do not add to the copier catalog before it is
+resolved.
 
 ## structkit, the original analysis
 
@@ -170,6 +172,31 @@ properly rather than dismissed. Verified by running it:
   outright.
 
 That was read as a blocker, and it is not one at single-user scope. See above.
+
+## structkit adoption research (done)
+
+`docs/specs/structkit-architecture.md` holds the full proposal. Verified against
+3.2.1, and these are the findings that decide the architecture:
+
+- **Structures stack.** A `folders:` entry takes a `struct:` list, each with its
+  own `with:` variables.
+- **A monorepo package can be added later** by rendering at its subpath. A
+  hand-edited sibling file survived untouched, which replaces the whole
+  `repo/package-add` runbook.
+- **Named sources** live in `~/.config/structkit/sources.yaml`, so the templates
+  repo is registered once and referenced by name. A chezmoi target.
+- **Do not reuse the bundled `project/*` structures.** `project/python` ships
+  `setup.py`, `setup.cfg`, `requirements.txt`, a `Makefile`, and fetches
+  structkit's own `LICENSE`. It declares no variables. The single-purpose
+  `configs/*` ones are fine.
+- **The `prompt:` key is excluded.** It generates file content through pydantic-ai
+  at render time, and with no `OPENAI_API_KEY` it writes the string
+  `AI generation skipped: ...` into the file as content. `AI_MODEL` does route to
+  Claude, since pydantic-ai supports it.
+- **`structkit` package added to agentic-packages** with the MCP server and a
+  hand-written skill, at `0c89cc7d2` and `7d2ec48c2` in that repo.
+- **Upstream bug:** `completion install` advertises fish and
+  `--print-completion fish` rejects it. Tracked as `bfsh-dt8`.
 
 ## Unknowns and open questions
 
