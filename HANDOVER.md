@@ -3,7 +3,7 @@
 Work state for bailiff v2 tooling. Task tracking is in beads (`bd ready`), not
 here. This file records what is decided, what is verified, and what is unknown.
 
-Last updated: 2026-07-28, after commit `3ca5225`.
+Last updated: 2026-07-28, after commit `c58c36e`.
 
 ## Where to look
 
@@ -26,6 +26,8 @@ Last updated: 2026-07-28, after commit `3ca5225`.
 | `dbb4fb4` | TS: eslint dropped for oxlint, plus tsc, knip, coverage |
 | `eaf3e00` | Rust: cargo-deny, cargo-machete, cargo-llvm-cov, doc lints |
 | `3ca5225` | Go: gosec and revive enabled, govulncheck, tidy check |
+| `4e40b16` | ci/: five language packages collapsed into one host package |
+| `c58c36e` | CI quality job; structkit recorded as considered and rejected |
 
 ## Decisions that govern the remaining work
 
@@ -74,6 +76,14 @@ Also verified in copier:
   Use inline expressions inside a value.
 - Conditional filenames need a guard per path segment, which is why
   `agentic/agentic` has a two-clause condition repeated in one path.
+- **A conditional filename must contain no quote character.** jinja compiles each
+  template with the filename embedded in the generated Python, so a quote in the
+  path breaks that string literal. `{% if "python" in ci_languages %}` in a name
+  raises a `SyntaxError` pointing at an unrelated line of the file body. Use a
+  derived boolean carrying `when: false` instead. This cost an hour to diagnose.
+- A `yaml`-typed answer whose default is a jinja expression needs `| tojson`. A
+  jinja list renders as a Python repr with single quotes, which the YAML parser
+  rejects.
 
 **Measured hook timings** (212-file repo, warm), which decided the
 commit-vs-CI split:
@@ -124,6 +134,24 @@ and running rather than reviewing the template.
 | `languages/python` | ruff `DOC` rules are preview-gated and silently checked nothing |
 | `languages/python` | `D` in `select` made a bare `ruff check` fail, defeating the advisory intent |
 | `ci/*` | `actions/*` pinned by tag failed the zizmor hook the same catalog installs |
+| `ci/github` | a conditional FILENAME containing a quote character breaks jinja compilation |
+| `ci/github` | a `yaml`-typed answer needs `\| tojson`, since a jinja list renders as a Python repr |
+
+## structkit, evaluated and rejected
+
+`httpdss/structkit` (Apache-2.0, v3.2.1) overlaps substantially and was evaluated
+properly rather than dismissed. Verified by running it:
+
+- Remote content works: `file: github://github/gitignore/main/Python.gitignore`
+  fetches correctly. Better than the `scripts/` dedup, tracked as `bfsh-ehp`.
+- File content is templated. **Hook commands are not.** A post-hook of
+  `echo "NAME_IS {{@ name @}}"` printed the literal braces while a file in the
+  same structure rendered the value, and a jinja conditional in a hook failed
+  outright.
+
+That last point is the blocker: every `_tasks` entry in this catalog needs
+interpolation, a condition, or both. Recorded in the spec under Alternatives
+considered, with the three features that genuinely beat the current design.
 
 ## Unknowns and open questions
 
@@ -146,6 +174,10 @@ and running rather than reviewing the template.
   `/usr/local/amazon/var/git-defender/hooks/`. Hook *installation* is therefore
   unverified; hook *config* is verified via `lefthook validate` and
   `prek validate-config`.
+- **The global mise config at `~/.config/mise/conf.d/20-core-cli.toml:12` has a
+  malformed key**, `pipx:structkit = "latest"`, which needs quoting. Until it is
+  fixed every `mise install` fails, which makes six integration tests fail for
+  environmental reasons rather than code ones. The user added it and owns the fix.
 - **`scan.py`'s `axes` field contradicts four group indexes.** It keys an axis on
   the namespace before the colon, so `docs:site` and `docs:decisions` both
   collapse to `docs`. Any lint built on it would reject `mkdocs +
