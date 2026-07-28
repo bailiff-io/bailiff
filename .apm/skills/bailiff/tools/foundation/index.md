@@ -6,7 +6,7 @@ Project identity and the files every repo carries regardless of language.
 |---|---|---|
 | `scaffold:identity` | Exactly one, always | base |
 | `scaffold:readme` | At most one | readme |
-| `scaffold:editor` | At most one | editorconfig |
+| `scaffold:editorconfig` | At most one | editorconfig |
 
 ## base is not optional
 
