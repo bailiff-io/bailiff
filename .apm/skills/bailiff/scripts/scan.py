@@ -219,7 +219,90 @@ def build_catalog(skill_dir: Path) -> dict[str, Any]:
                             f"{package['id']}: {field} names unknown package '{target}'"
                         )
 
-    return {"groups": groups, "lint": sorted(lint)}
+    catalog = {"groups": groups, "lint": []}
+    for cycle in find_cycles(index_by_name(catalog)):
+        lint.append(f"after: cycle: {' -> '.join(cycle)}")
+
+    catalog["lint"] = sorted(set(lint))
+    return catalog
+
+
+def index_by_name(catalog: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    return {p["name"]: p for g in catalog["groups"] for p in g["packages"]}
+
+
+def find_cycles(by_name: dict[str, dict[str, Any]]) -> list[list[str]]:
+    """Every `after:` cycle, as a list of the names taking part in each.
+
+    A cycle makes the render order undefined, and the agent derives that order
+    from this metadata, so a cycle has to be a lint finding rather than
+    something order() discovers at use time.
+    """
+    cycles: list[list[str]] = []
+    seen: set[str] = set()
+
+    def walk(name: str, path: list[str]) -> None:
+        if name in path:
+            cycles.append(path[path.index(name) :] + [name])
+            return
+        if name in seen:
+            return
+        for target in sorted(by_name.get(name, {}).get("after", [])):
+            if target in by_name:
+                walk(target, path + [name])
+        seen.add(name)
+
+    for name in sorted(by_name):
+        walk(name, [])
+    return cycles
+
+
+def order(catalog: dict[str, Any], selection: list[str]) -> tuple[list[str], list[str]]:
+    """Order a selection for rendering. Returns (ordered ids, notes).
+
+    `after:` names the packages that render first when they are also selected,
+    which is exactly a dependency edge, so the render order is a topological
+    sort of the selection and not a list anyone maintains by hand. Edges to
+    unselected packages are dropped rather than pulling them in: `after` is soft
+    ordering, and `depends_on` is what states a hard requirement.
+
+    Ties break on catalog order (group name, then package name) so the same
+    selection always produces the same sequence.
+    """
+    by_name = index_by_name(catalog)
+    notes: list[str] = []
+
+    rank = {name: i for i, name in enumerate(sorted(by_name))}
+    wanted: list[str] = []
+    for item in selection:
+        name = item.split("/", 1)[1] if "/" in item else item
+        if name not in by_name:
+            notes.append(f"unknown package '{item}'")
+            continue
+        if name not in wanted:
+            wanted.append(name)
+
+    chosen = set(wanted)
+    for name in wanted:
+        for target in by_name[name]["depends_on"]:
+            if target not in chosen:
+                notes.append(f"{name}: depends_on '{target}', which is not selected")
+
+    pending = {n: [t for t in by_name[n]["after"] if t in chosen] for n in wanted}
+    ordered: list[str] = []
+    while pending:
+        ready = sorted((n for n, edges in pending.items() if not edges), key=rank.get)
+        if not ready:
+            # find_cycles reports this as a lint finding; refuse rather than
+            # emitting an order that silently drops the packages in the cycle.
+            raise ValueError(f"after: cycle among {sorted(pending)}")
+        for name in ready:
+            ordered.append(by_name[name]["id"])
+            del pending[name]
+        done = {i.split("/", 1)[1] for i in ordered}
+        pending = {n: [t for t in edges if t not in done] for n, edges in pending.items()}
+
+    return ordered, notes
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -235,9 +318,25 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="print only contract violations",
     )
+    parser.add_argument(
+        "--order",
+        metavar="PACKAGE",
+        nargs="+",
+        help="order these packages for rendering; takes names or <group>/<package> ids",
+    )
     args = parser.parse_args(argv)
 
     catalog = build_catalog(args.skill_dir.resolve())
+
+    if args.order is not None:
+        try:
+            ordered, notes = order(catalog, args.order)
+        except ValueError as exc:
+            print(f"scan.py: {exc}", file=sys.stderr)
+            return 1
+        json.dump({"order": ordered, "notes": notes}, sys.stdout, indent=2)
+        sys.stdout.write("\n")
+        return 0
 
     if args.lint_only:
         for message in catalog["lint"]:
