@@ -3,7 +3,7 @@
 Work state for bailiff v2 tooling. Task tracking is in beads (`bd ready`), not
 here. This file records what is decided, what is verified, and what is unknown.
 
-Last updated: 2026-07-28, after commit `7067e7b`.
+Last updated: 2026-07-28, after commit `3ca5225`.
 
 ## Where to look
 
@@ -23,6 +23,9 @@ Last updated: 2026-07-28, after commit `7067e7b`.
 | `9b714a4` | hooks split into `baseline` + `manager`; CI defaults hardened |
 | `3375ec2` | `fold_gitignore.py` deduplicated, 7 copies to 1 |
 | `7067e7b` | Python type checker, coverage, deptry, docstring rules, nox |
+| `dbb4fb4` | TS: eslint dropped for oxlint, plus tsc, knip, coverage |
+| `eaf3e00` | Rust: cargo-deny, cargo-machete, cargo-llvm-cov, doc lints |
+| `3ca5225` | Go: gosec and revive enabled, govulncheck, tidy check |
 
 ## Decisions that govern the remaining work
 
@@ -106,6 +109,21 @@ commit-vs-CI split:
 - `on.push.paths` cannot replace job-level path filtering: it gates the whole
   workflow, and a workflow that never runs leaves required checks pending
   forever, so a docs-only PR cannot merge.
+
+## Bugs found by testing rather than reading
+
+Each of these would have failed at first use. They are the argument for rendering
+and running rather than reviewing the template.
+
+| Package | Bug |
+|---|---|
+| `languages/go` | `gosec` ships inside golangci-lint and was never enabled, so Go had no security lint |
+| `languages/go` | the settings block used v1's top-level `linters-settings`, which golangci v2 rejects outright |
+| `languages/rust` | `cargo init` writes no `license` key, so cargo-deny failed the licences check on the project's own crate |
+| `languages/ts` | `bun exec` is not a command; every fragment would have failed with "command not found" |
+| `languages/python` | ruff `DOC` rules are preview-gated and silently checked nothing |
+| `languages/python` | `D` in `select` made a bare `ruff check` fail, defeating the advisory intent |
+| `ci/*` | `actions/*` pinned by tag failed the zizmor hook the same catalog installs |
 
 ## Unknowns and open questions
 
