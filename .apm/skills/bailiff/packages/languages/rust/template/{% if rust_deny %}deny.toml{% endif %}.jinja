@@ -1,0 +1,40 @@
+# deny.toml -- rendered by the bailiff rust package.
+#
+# cargo-deny checks four things. osv-scanner overlaps only on `advisories`; the
+# licence, ban, and registry policy below has no osv-scanner equivalent.
+#
+#   cargo deny check              all of it
+#   cargo deny check licenses     just the allowlist
+
+[graph]
+all-features = true
+
+[advisories]
+# The RustSec database. `deny` on an unmaintained crate is too aggressive for a
+# gate: it fires on transitive dependencies nobody in the tree can fix.
+yanked = "deny"
+unmaintained = "workspace"
+
+[licenses]
+# A dependency carrying anything outside this list fails the build. Add to the
+# list deliberately rather than widening it to silence a failure.
+allow = [
+{%- for lic in rust_license_allow %}
+  "{{ lic }}",
+{%- endfor %}
+]
+# Below this score a detected licence counts as unknown rather than matched.
+confidence-threshold = 0.9
+
+[bans]
+# Two versions of one crate means both get compiled and linked. Usually a
+# transitive lag rather than a mistake, so it warns.
+multiple-versions = "warn"
+wildcards = "deny"
+
+[sources]
+# A dependency from an unexpected registry or a git URL is a supply-chain
+# question, not a convenience.
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]

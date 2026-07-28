@@ -18,3 +18,5 @@
 {"id":"int-472400674912c8235266d49e7a39b6e6","kind":"field_change","created_at":"2026-07-28T16:26:22.072065Z","actor":"Sjors Robroek","issue_id":"bfsh-bb5","extra":{"field":"status","new_value":"in_progress","old_value":"open"}}
 {"id":"int-e8c8be703af9ba06b69dec1050f036fd","kind":"field_change","created_at":"2026-07-28T16:35:42.340343Z","actor":"Sjors Robroek","issue_id":"bfsh-bb5","extra":{"field":"status","new_value":"closed","old_value":"in_progress"}}
 {"id":"int-bb209a543cfc0ea06840179593077547","kind":"field_change","created_at":"2026-07-28T16:36:42.510996Z","actor":"Sjors Robroek","issue_id":"bfsh-61g","extra":{"field":"status","new_value":"in_progress","old_value":"open"}}
+{"id":"int-36865f1652444748282ebe8a71f32a7d","kind":"field_change","created_at":"2026-07-28T16:43:25.950661Z","actor":"Sjors Robroek","issue_id":"bfsh-61g","extra":{"field":"status","new_value":"closed","old_value":"in_progress"}}
+{"id":"int-b1489475a321896e774288900e1fcb2f","kind":"field_change","created_at":"2026-07-28T16:43:37.173944Z","actor":"Sjors Robroek","issue_id":"bfsh-3dr","extra":{"field":"status","new_value":"in_progress","old_value":"open"}}

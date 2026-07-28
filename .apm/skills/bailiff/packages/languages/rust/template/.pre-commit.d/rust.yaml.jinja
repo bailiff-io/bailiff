@@ -15,3 +15,21 @@ repos:
         types: [rust]
         pass_filenames: false
         stages: ["{{ clippy_stage }}"]
+{%- if rust_unused_deps %}
+      - id: cargo-machete
+        name: cargo machete (unused deps)
+        entry: cargo machete
+        language: system
+        pass_filenames: false
+        files: ^(Cargo\.toml|Cargo\.lock|.*\.rs)$
+{%- endif %}
+{%- if rust_deny %}
+      # Resolves the whole dependency graph, so it runs on push rather than on
+      # every commit, and only Cargo.lock changes affect it.
+      - id: cargo-deny
+        name: cargo deny check
+        entry: cargo deny check
+        language: system
+        pass_filenames: false
+        stages: [pre-push]
+{%- endif %}

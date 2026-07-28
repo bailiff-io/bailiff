@@ -13,10 +13,24 @@ pre-commit:
       glob: "*.rs"
       run: cargo clippy --all-targets --all-features -- -D warnings
 {%- endif %}
-{%- if clippy_stage != 'pre-commit' %}
+{%- if rust_unused_deps %}
+    # No compile needed, so it is cheap enough for a commit.
+    cargo-machete:
+      glob: "*.{rs,toml}"
+      run: cargo machete
+{%- endif %}
+{%- if clippy_stage != 'pre-commit' or rust_deny %}
 
-{{ clippy_stage }}:
+{{ clippy_stage if clippy_stage != 'pre-commit' else 'pre-push' }}:
   commands:
+{%- if clippy_stage != 'pre-commit' %}
     clippy:
       run: cargo clippy --all-targets --all-features -- -D warnings
+{%- endif %}
+{%- if rust_deny %}
+    # cargo-deny resolves the whole dependency graph, which is too slow per
+    # commit and only changes when Cargo.lock does.
+    cargo-deny:
+      run: cargo deny check
+{%- endif %}
 {%- endif %}

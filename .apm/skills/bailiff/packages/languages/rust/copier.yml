@@ -45,6 +45,54 @@ test_runner:
     - nextest
   help: "nextest adds cargo-nextest to the mise fragment; cargo-test uses the built-in runner."
 
+# cargo-deny is dependency policy, which osv-scanner has no concept of. Only its
+# `advisories` check overlaps: `licenses`, `bans`, and `sources` do not.
+# base collects the licence but nothing wrote it into Cargo.toml, so cargo-deny
+# reported the project's own crate as `unlicensed` and failed the licences check.
+# The SPDX id is the same value base uses for the LICENSE file.
+rust_license_spdx:
+  type: str
+  default: ""
+  help: "SPDX id written to Cargo.toml's license field. Thread the value from base; empty leaves it unset."
+
+rust_deny:
+  type: bool
+  default: true
+  help: "Add cargo-deny with a licenses allowlist, duplicate-version bans, and a registry allowlist."
+
+rust_license_allow:
+  type: yaml
+  default: ["MIT", "Apache-2.0", "MPL-2.0", "BSD-2-Clause", "BSD-3-Clause", "ISC", "Unicode-3.0"]
+  when: "{{ rust_deny }}"
+  help: "SPDX licences a dependency may carry. cargo-deny fails the build on anything else."
+
+rust_unused_deps:
+  type: bool
+  default: true
+  help: "Add cargo-machete, which finds unused dependencies without compiling."
+
+rust_coverage:
+  type: bool
+  default: true
+  help: "Add cargo-llvm-cov for line coverage."
+
+rust_coverage_min:
+  type: int
+  default: 0
+  when: "{{ rust_coverage }}"
+  help: "Fail under this line percentage. 0 records coverage without enforcing a floor."
+
+# cargo test already runs /// examples, so this only decides whether missing docs
+# warn and whether a broken intra-doc link fails.
+rust_doc_lints:
+  type: str
+  choices:
+    - warn
+    - deny
+    - none
+  default: warn
+  help: "missing_docs severity for a lib crate. Broken intra-doc links always deny."
+
 rustfmt_heuristics:
   type: str
   default: Max
@@ -80,3 +128,21 @@ _tasks:
     --name "{{ project_name | default('project', true) | lower | replace(' ', '-') | replace('_', '-') }}"
     --edition "{{ rust_edition }}"
     .
+  # cargo-deny reports a crate with no `license` as unlicensed and fails the
+  # licences check, so the SPDX id has to reach Cargo.toml. `cargo init` does not
+  # write one.
+  - command: >-
+      grep -q '^license' Cargo.toml ||
+      sed -i.bak 's|^edition = |license = "{{ rust_license_spdx }}"\nedition = |' Cargo.toml
+      && rm -f Cargo.toml.bak
+    when: "{{ rust_license_spdx != '' }}"
+  # Doc lints live in Cargo.toml's [lints] table, which cargo init does not write.
+  # A broken intra-doc link always denies: it is a link that resolves to nothing,
+  # not a matter of taste. missing_docs takes the answer's severity.
+  - command: >-
+      grep -q '^\[lints.rust\]' Cargo.toml ||
+      printf '\n[lints.rust]\n{% if rust_doc_lints != "none" and crate_kind == "lib" %}missing_docs = "{{ rust_doc_lints }}"\n{% endif %}\n[lints.rustdoc]\nbroken_intra_doc_links = "deny"\n' >> Cargo.toml
+    when: "{{ rust_doc_lints != 'none' }}"
+  # mise trust precedes install: a freshly rendered .mise/conf.d is untrusted and
+  # `mise install` would refuse to read it.
+  - mise trust --yes && mise install
