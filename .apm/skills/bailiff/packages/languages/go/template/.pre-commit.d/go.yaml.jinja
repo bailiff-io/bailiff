@@ -1,9 +1,29 @@
-{#- .pre-commit.d/go.yaml -- golangci-lint hook contributed by the go package.
-    An empty golangci_hook_rev renders an empty fragment, which is valid. -#}
-{%- if golangci_hook_rev %}
+{#- .pre-commit.d/go.yaml -- hooks contributed by the go package.
+    An empty golangci_hook_rev renders only the local hooks, which is valid. -#}
 repos:
+{%- if golangci_hook_rev %}
   - repo: https://github.com/golangci/golangci-lint
     rev: "{{ golangci_hook_rev }}"
     hooks:
       - id: golangci-lint
+{%- endif %}
+
+  - repo: local
+    hooks:
+      # -diff reports what tidy would change and exits non-zero rather than
+      # rewriting files, so a stale go.mod fails instead of being fixed silently.
+      - id: go-mod-tidy
+        name: go mod tidy -diff
+        entry: go mod tidy -diff
+        language: system
+        pass_filenames: false
+        files: ^(go\.mod|go\.sum|.*\.go)$
+{%- if go_vulncheck %}
+      # Queries the vulnerability database, so it runs on push.
+      - id: govulncheck
+        name: govulncheck
+        entry: govulncheck ./...
+        language: system
+        pass_filenames: false
+        stages: [pre-push]
 {%- endif %}

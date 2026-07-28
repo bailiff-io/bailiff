@@ -36,6 +36,37 @@ test_runner:
     - gotestsum
   help: "go-test uses the built-in runner; gotestsum adds gotestsum to the mise fragment."
 
+# golangci-lint bundles ~50 analyzers, so Go needs fewer extra tools than the
+# other languages. These decide which of the bundled ones are on.
+go_security_lint:
+  type: bool
+  default: true
+  help: "Enable gosec inside golangci-lint. It ships with the runner; the default config leaves it off."
+
+go_doc_lint:
+  type: bool
+  default: true
+  help: "Report an exported symbol with no doc comment (revive's exported rule) as a warning."
+
+go_coverage:
+  type: bool
+  default: true
+  help: "Add a coverage profile to the test command and a coverage target."
+
+go_coverage_min:
+  type: int
+  default: 0
+  when: "{{ go_coverage }}"
+  help: "Fail under this percentage. 0 records coverage without enforcing a floor."
+
+# The compiler and golangci cover correctness; neither reads the vulnerability
+# database. govulncheck is Go's own, and it reports only vulnerabilities on a code
+# path the module actually reaches.
+go_vulncheck:
+  type: bool
+  default: true
+  help: "Add govulncheck, which reports reachable vulnerabilities rather than every advisory."
+
 use_vendor_mode:
   type: bool
   default: false

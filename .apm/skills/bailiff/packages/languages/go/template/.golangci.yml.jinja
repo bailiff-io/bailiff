@@ -1,4 +1,7 @@
-{#- .golangci.yml -- seeded once (_skip_if_exists); tune it after setup. -#}
+{#- .golangci.yml -- seeded once (_skip_if_exists); tune it after setup.
+    Schema is golangci-lint v2: settings nest under `linters.settings`. A
+    top-level `linters-settings` key is rejected outright with
+    "additional properties 'linters-settings' not allowed". -#}
 version: "2"
 
 run:
@@ -12,6 +15,23 @@ linters:
     - ineffassign
     - staticcheck
     - unused
+{%- if go_security_lint %}
+    # gosec ships inside golangci-lint but the standard set leaves it off.
+    - gosec
+{%- endif %}
+{%- if go_doc_lint %}
+    - revive
+{%- endif %}
+{%- if go_doc_lint %}
+  settings:
+    revive:
+      rules:
+        # A missing doc comment on an exported symbol carries warning severity:
+        # worth reporting, and not worth blocking a commit over.
+        - name: exported
+          severity: warning
+          disabled: false
+{%- endif %}
 
 issues:
   max-issues-per-linter: 50

@@ -3,4 +3,6 @@
 [tools]
 go = "{{ go_version }}"
 {% if test_runner == "gotestsum" %}gotestsum = "latest"
+{% endif %}{% if golangci_hook_rev %}"aqua:golangci/golangci-lint" = "2.12.2"
+{% endif %}{% if go_vulncheck %}"go:golang.org/x/vuln/cmd/govulncheck" = "1.6.0"
 {% endif %}
