@@ -19,6 +19,7 @@ language-specific.
 | `.github/workflows/wc-lint-<lang>.yml` | One lint workflow per selected language, when `lint` is in `ci_jobs` |
 | `.github/workflows/wc-security-*.yml` | codeql, trivy, secrets, and osv, when `security` is in `ci_jobs` |
 | `.github/workflows/wc-quality.yml` | the slow repo-wide checks, when `quality` is in `ci_jobs` |
+| `.github/workflows/wc-publish.yml` | one publish job per selected language, when `publish` is in `ci_jobs` |
 
 ## Questions, in order
 
@@ -149,3 +150,22 @@ report findings that are not project rules.
 
 `lizard` and `jscpd` default off. Both report on a codebase rather than on a
 change, so they suit a repo that has agreed a threshold.
+
+## Publishing needs a one-time setup per ecosystem
+
+The release tools tag a version and open a PR. `wc-publish.yml` is what ships the
+artifact. It renders one job per selected language, and each uses OIDC trusted
+publishing rather than a stored token.
+
+| Ecosystem | What the user does once |
+|---|---|
+| PyPI | Register a trusted publisher for the repo and the `release` environment. No API token is stored. |
+| crates.io | `rust-lang/crates-io-auth-action` exchanges the OIDC token for a short-lived registry token. |
+| npm | Publishes with `--provenance`. Still needs `NPM_TOKEN`, since npm has no OIDC exchange. |
+| Go | `goreleaser` builds the binaries and creates the release, using the workflow's own `GITHUB_TOKEN`. |
+
+Tell the user which of these applies and that PyPI and crates.io need no secret at
+all. The npm job is the one that does.
+
+The goreleaser job checks out at `fetch-depth: 0`. It reads tag history to build a
+changelog, and the default shallow clone gives it nothing to work from.

@@ -48,6 +48,7 @@ ci_jobs:
     - lint
     - security
     - quality
+    - publish
   default:
     - test
     - lint
@@ -396,4 +397,21 @@ quality_dup_tokens:
 job_quality:
   type: bool
   default: "{{ 'quality' in ci_jobs }}"
+  when: false
+
+# === publish ===
+#
+# The release tools tag a version and open a PR; until this job existed nothing
+# shipped the artifact. Every ecosystem here supports OIDC trusted publishing, so
+# no long-lived token is stored in the repository.
+
+publish_attest:
+  type: bool
+  default: true
+  when: "{{ 'publish' in ci_jobs }}"
+  help: "Attach a build-provenance attestation to the published artifact."
+
+job_publish:
+  type: bool
+  default: "{{ 'publish' in ci_jobs }}"
   when: false
