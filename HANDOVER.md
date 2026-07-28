@@ -137,7 +137,27 @@ and running rather than reviewing the template.
 | `ci/github` | a conditional FILENAME containing a quote character breaks jinja compilation |
 | `ci/github` | a `yaml`-typed answer needs `\| tojson`, since a jinja list renders as a Python repr |
 
-## structkit, evaluated and rejected
+## structkit: rejection reopened (`bfsh-asl`, P0)
+
+The user pushed back on 2026-07-28: the tool exists primarily for one person, so
+if static templates with fixed preferences suffice, the hook-templating limitation
+stops mattering. **The pushback holds.**
+
+With the hook manager, package managers, linters, CI host, and release tool fixed
+rather than asked, 9 of 17 task categories become "commit the file" and the other
+8 become unconditional one-liners that structkit hooks run today. Only `go mod
+init` and `cdk init` need a value, and it is one the user types anyway.
+
+What is genuinely variable is the language and the licence, which is directory
+selection rather than templating.
+
+All seven bugs found this week came from *generating* configuration rather than
+committing it, which argues the same way.
+
+This is now a P0 decision, not a settled question. Do not add to the copier
+catalog before it is resolved.
+
+## structkit, the original analysis
 
 `httpdss/structkit` (Apache-2.0, v3.2.1) overlaps substantially and was evaluated
 properly rather than dismissed. Verified by running it:
@@ -149,9 +169,7 @@ properly rather than dismissed. Verified by running it:
   same structure rendered the value, and a jinja conditional in a hook failed
   outright.
 
-That last point is the blocker: every `_tasks` entry in this catalog needs
-interpolation, a condition, or both. Recorded in the spec under Alternatives
-considered, with the three features that genuinely beat the current design.
+That was read as a blocker, and it is not one at single-user scope. See above.
 
 ## Unknowns and open questions
 

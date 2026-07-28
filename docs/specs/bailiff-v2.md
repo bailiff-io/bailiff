@@ -281,7 +281,9 @@ for validation, `explain` and `--dry-run` for preview, `--file-strategy=append`
 for fragment composition, an MCP server for agent integration, and remote content
 references that fetch a canonical file at generate time.
 
-It is not adopted, for two reasons.
+Whether to adopt it is an open decision, tracked as `bfsh-asl`. The analysis
+below is why it was first rejected, and why that rejection does not survive the
+tool being for one person.
 
 **No answers file.** A structure records nothing about what it was rendered with.
 Rendering with `project_name=widget` and re-rendering with `project_name=changed`
@@ -311,5 +313,27 @@ taking rather than dismissing:
 | YAML-first structures | A package that renders only static files needs no `copier.yml` plus `template/` plus `package.md`. |
 | MCP server and agent skills | Attacks the steering prose directly, where this spec relies on an agent reading roughly 1000 lines of it. |
 
-The answers file is the one hard requirement. Everything else here is a
-preference that could be revisited if that requirement were dropped.
+## The rejection does not survive a single-user scope
+
+The hooks limitation is real, and it only matters because this catalog
+parameterises choices the intended user does not vary. With the hook manager,
+package managers, linters, CI host, and release tool fixed rather than asked, each
+task becomes either a file to commit or a one-line command:
+
+| Group | Count | What replaces the task |
+|---|---|---|
+| Static file | 9 | Commit the file. Covers both `init` commands, the fragment merges, the licence fetch, and the conditional dev-dependency install. |
+| Unconditional one-liner | 8 | `git init -b main`, `mise trust && mise install`, `prek install`, `bd init`, `apm install`, `gh repo create`, `go mod init <path>`, `cdk init`. |
+
+Only `go mod init` and `cdk init` need a value, and it is one the user supplies
+anyway. structkit's untemplated hooks handle every line in the second group.
+
+What is genuinely variable is the language and the licence, which is directory
+selection rather than templating: one folder per language, and one file per
+licence. The single-versus-monorepo shape is the one structural difference.
+
+The evidence points the same way. Every defect found while building the language
+packages came from generating configuration rather than committing it: `cargo
+init` writes no `license` key, golangci-lint v2 rejects the v1 settings shape,
+`bun exec` is not a command, and ruff's `DOC` rules need `preview = true`. A
+committed file that has been run once is correct by construction.
