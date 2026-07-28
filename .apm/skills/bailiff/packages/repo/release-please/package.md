@@ -44,11 +44,6 @@ writes one entry per directory with a `component` taken from the last path
 segment, sets `include-component-in-tag: true` for `<component>-vX.Y.Z` tags, and
 sets `separate-pull-requests: false` so one PR covers every package.
 
-## Order
-
-Render this after the language packages, so `monorepo_packages` names directories
-that exist, and after `github-repo`, which owns the rest of `.github/`.
-
 ## After rendering
 
 `release-please-config.json` applies one `release-type` to every package. A

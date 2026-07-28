@@ -47,11 +47,9 @@ tracking, or work spanning sessions. A single-session project does not need it.
 `beads` needs `bd` on PATH and needs the destination to be a git repository.
 `render.py` checks both and exits 3 when either is missing.
 
-## Order
+## AGENTS.md is written twice
 
-Render `base` first for `project_name`. Render `agent-hooks` after the language
-packages. `beads` needs `git init` to have run, which `base` does.
-
-Render `beads` after `agentic`. Both write `AGENTS.md`: `agentic` renders the
-whole file, then `bd setup codex` appends a delimited block to it. The reverse
-order drops the beads block.
+`agentic` renders the whole file, then `beads` runs `bd setup codex`, which
+appends a delimited block to it. The reverse order drops the beads block, which is
+why `beads` carries `after: [base, agentic]`. `beads` also needs the `git init`
+that `base` performs.

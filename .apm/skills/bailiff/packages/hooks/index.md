@@ -25,10 +25,10 @@ repository is not initialised yet, then install by hand.
 | `lefthook` | Any language mix; hooks run native project commands; Go binary, no Python needed |
 | `precommit` | The repo is already Python-centric, or the user wants the pre-commit hook ecosystem |
 
-## Order
+## Fragments
 
-Render the hook manager after every language package, because each manager reads
-the fragments those packages write.
+Each manager reads what the language packages wrote, which is what its `after:`
+encodes.
 
 | Package | Reads | How |
 |---|---|---|

@@ -48,8 +48,5 @@ The `dep_ecosystems` answer lists the ecosystems to watch, in the chosen tool's
 vocabulary. Derive it from the language packages the project has and read the
 list back to the user.
 
-## Order
-
-Render `base` first for `project_name` and `org`. Render the release tool after
-the language packages, because a monorepo release config names the package
-directories.
+A monorepo release config names the package directories, so the release tool
+takes them in `monorepo_packages` after the language packages have rendered.

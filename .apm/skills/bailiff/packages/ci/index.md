@@ -72,7 +72,5 @@ version in a trailing comment. Actions under `actions/` may take a tag.
 **Least privilege.** Declare `permissions:` at the workflow level with the
 narrowest set, and widen per job where a job needs more.
 
-## Order
-
-Render the host package before the job packages. Render every job package before
-you write the caller, so the caller references files that exist.
+Write the caller last, after every job package has rendered, so it references
+files that exist.

@@ -24,10 +24,7 @@ only when the directory genuinely holds both.
 `api` adds an OpenAPI contract and a spec-lint step. It needs a language package
 to supply the server toolchain, so offer it after the user has picked one.
 
-## Order
+## What downstream packages take from these
 
-Render `base` before any language package: the language templates take
-`project_name` and `description` in their answers.
-
-Render language packages before CI. The CI packages ask which languages the
-project has, and the answer comes from what you already rendered.
+The CI, hook, and `agent-hooks` packages ask which languages the project has, and
+the answer is what you rendered here rather than what is on disk.

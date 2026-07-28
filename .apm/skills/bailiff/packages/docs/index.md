@@ -43,8 +43,3 @@ decision is your work after rendering, not the package's.
 Its default `decisions_dir` is `docs/decisions`. When `starlight` places its
 project at `docs/`, that default lands inside the Astro project, so answer
 `decisions_dir` with a path outside it.
-
-## Order
-
-Render after `base`, which supplies `project_name` and `description` for the site
-title. Nothing else in the catalog depends on these packages.

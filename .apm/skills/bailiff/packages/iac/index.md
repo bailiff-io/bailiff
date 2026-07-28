@@ -33,8 +33,3 @@ credentials, and they run no `apply`.
 Tell the user what remains: the state backend, the deployment role, and the CI
 authentication. `ci/index.md` covers OIDC, which is the path to prefer over a
 stored cloud key.
-
-## Order
-
-Render after the language packages when the user picked `cdk`. Order does not
-matter for `terraform` or `cloudformation`.

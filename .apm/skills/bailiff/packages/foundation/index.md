@@ -12,8 +12,8 @@ Project identity and the files every repo carries regardless of language.
 
 `base` collects `project_name`, `org`, `description`, `layout`, and
 `default_branch`. Other packages ask for the same values, and you pass the same
-answer to each. Render `base` first so the values you thread onward are the ones
-the user confirmed.
+answer to each, so every other package carries `after: [base]` and the values you
+thread onward are the ones the user confirmed here.
 
 Skip `base` only when the destination already holds a
 `.copier-answers.base.yml`. Read the identity out of that file instead of asking

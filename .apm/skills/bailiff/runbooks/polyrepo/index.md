@@ -1,22 +1,35 @@
 # Runbook: polyrepo
 
-Several separate repos that share conventions. Each repo gets its own full setup;
-what makes this a distinct scenario is that the answers must agree across them.
+Several separate repos that share conventions. Each repo is a full setup that
+delegates to another runbook. What makes this a scenario of its own is that the
+shared answers must agree across every repo.
 
-## Establish the shared set first
+## Rules
 
-Ask for the conventions once, before touching any repo. These are the answers you
-will reuse verbatim:
+1. **Ask the shared answers once, before touching any repo.** Re-asking per repo
+   is how the fourth repo ends up with a different `org`.
+2. **Render the first repo completely, then stop and confirm.** A convention the
+   user dislikes is cheap to change in one repo and expensive across six.
+3. **Copy the shared answers, never retype them.** A typo in `org` puts the wrong
+   holder in that repo's LICENSE and nothing downstream catches it.
+4. **Delegate per repo.** `probe.py` each destination and run
+   `../new-project/index.md` or `../existing-repo/index.md` as it reports. Beyond
+   the shared set, this runbook holds no interview of its own.
+5. **Report per repo.** When one repo's verification fails and the others pass,
+   name it. A pass rate is not a result.
 
-1. **`org`** and **`default_branch`**.
-2. **Repo host**, and whether remotes get created now.
-3. **Hook manager**, one for all repos.
-4. **CI host** and the composition patterns.
-5. **Release tool** and **dep-updates tool**.
-6. **Agentic configuration**, when they use it.
+## What is shared and what differs
 
-Write these into a shared answers fragment and copy it into each repo's answers
-file:
+| Differs per repo | Identical across repos |
+|---|---|
+| `project_name`, `description` | `org`, `default_branch` |
+| language and its version | hook manager |
+| CI job packages, following the language | CI host and composition patterns |
+| whether infrastructure applies | release tool, dep-updates tool |
+
+Ask the right-hand column once, in that order, plus agentic configuration when
+they use it. Write the answers into a fragment and copy it into each repo's
+answers file:
 
 ```yaml
 # /tmp/bailiff-answers-shared.yml
@@ -24,50 +37,10 @@ org: acme
 default_branch: main
 ```
 
-Per repo, only `project_name`, `description`, and the language answers differ.
+Then get the repo list: name, description, and language per repo, one at a time.
 
-## Then get the repo list
+## When a shared answer changes partway
 
-Ask for the repos and what each does, one at a time. For each, capture the name,
-the description, and the language. A repo whose language differs from the others
-is fine, and it changes only that repo's language and CI job packages.
-
-## Render one repo completely, then confirm
-
-Run `runbooks/new-project/index.md` or `runbooks/existing-repo/index.md` for the
-first repo, whichever its state calls for. Then stop.
-
-Show the user the tree and ask whether this is the shape they want repeated. A
-convention the user dislikes is cheap to change in one repo and expensive across
-six.
-
-Once they confirm, render the rest without re-asking the shared questions. Ask
-per repo only what is specific to it.
-
-## Keep the answers identical
-
-The value of a polyrepo setup is that the repos agree. Copy the shared answers;
-do not retype them. A typo in `org` in the fourth repo puts the wrong copyright
-holder in its LICENSE, and nothing downstream catches it.
-
-When the user asks to change a shared answer partway through, say which repos
-already have the old value and ask whether to re-render those.
-
-## Per-repo differences that are legitimate
-
-| Differs per repo | Stays the same |
-|---|---|
-| `project_name`, `description` | `org`, `default_branch` |
-| language and its version | hook manager |
-| CI job packages, following the language | CI host and composition patterns |
-| whether infrastructure applies | release tool, dep-updates tool |
-
-## After rendering
-
-Report per repo: the destination, the packages rendered, and the files written.
-Then state what is consistent across all of them and what differs, so the user can
-see the convention held.
-
-Verify each repo independently. A repo that renders is not a repo that builds; run
-each one's install and test command and report the output per repo. When one fails
-and the others pass, say which and why rather than reporting a summary.
+Say which repos already carry the old value, and ask whether to re-render those.
+Changing it only for the repos still to come leaves the set inconsistent in a way
+nothing reports.

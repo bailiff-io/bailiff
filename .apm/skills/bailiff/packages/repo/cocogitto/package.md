@@ -31,11 +31,6 @@ network and reads no commit history.
 The two `_tasks` entries check for `mise` and run `mise install` to fetch `cog`.
 Both exit 0 on failure, so a missing `mise` leaves the rendered files in place.
 
-## Order
-
-Render this after the language packages, so `monorepo_packages` names directories
-that exist.
-
 ## After rendering
 
 The keys written here match cog 7.x. Tell the user to run `cog check` to validate

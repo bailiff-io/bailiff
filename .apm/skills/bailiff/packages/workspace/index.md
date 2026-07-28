@@ -51,8 +51,5 @@ It has no `depends_on: [moon]`. The language's own workspace support registers
 the package, and `moon` is optional in a monorepo. Register with moon after
 rendering when the project uses it.
 
-## Order
-
-Render `moon` before `package-add`, because the new package registers with the
-workspace. Render `justfile` after the hook manager and after the language
-packages, because its recipes name their commands.
+`justfile`'s recipes name the commands the hook manager and the language packages
+installed, which is what its `after:` encodes.

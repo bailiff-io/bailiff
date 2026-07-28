@@ -1,4 +1,4 @@
-# Tool package contract
+# Package contract
 
 Every directory under `packages/<group>/<package>/` obeys this. `scan.py` enforces
 the mechanical half and exits 1 on a violation.
@@ -51,11 +51,9 @@ Every package that declares questions MUST state an order for them.
 
 - `_subdirectory: template` on every rendering package.
 - Questions carry `type`, `help`, and `choices` where the answer is closed.
-- No `_external_data`. A package never reads another package's answers file; the
-  agent threads shared values into each answers file.
-- No `when: false` questions used as dependency edges. Edges live in
-  `package.md` frontmatter.
-- No `secret:` questions. Secrets never enter an answers file.
+- No `secret:` questions. The answers file is committed, so a secret answer would
+  be committed with it. A task fetches the value at the point of use instead.
+- Ordering edges live in `package.md` frontmatter, never in `copier.yml`.
 - `_tasks` entries run after rendering, in written order, with answers available
   as jinja values and as environment variables.
 
@@ -65,15 +63,15 @@ A package with no questions is valid. `copier.yml` holding only
 ## Fragment conventions
 
 A package that contributes to a shared config writes one namespaced file into a
-`.d` directory rather than editing a merged file. The consuming tool reads the
-directory itself.
+`.d` directory rather than editing a merged file. What merges the fragments
+differs per directory.
 
-| Directory | Filename | Read by |
+| Directory | Filename | How it is consumed |
 |---|---|---|
-| `.gitignore.d/` | `<package>` | the gitignore fold task |
-| `.pre-commit.d/` | `<package>.yaml` | precommit |
-| `.hooks.d/` | `<package>.yaml` | lefthook |
-| `.mise/conf.d/` | `<package>.toml` | mise |
+| `.hooks.d/` | `<package>.yaml` | lefthook expands `extends: [.hooks.d/*.yaml]` itself |
+| `.mise/conf.d/` | `<package>.toml` | mise reads the directory itself |
+| `.pre-commit.d/` | `<package>.yaml` | `precommit`'s `merge_precommit.py` task writes `.pre-commit-config.yaml`; pre-commit has no include directive |
+| `.gitignore.d/` | `<package>` | each contributing package ships `tasks/fold_gitignore.py` and folds its own block into `.gitignore` |
 
 ## Verify a package
 
