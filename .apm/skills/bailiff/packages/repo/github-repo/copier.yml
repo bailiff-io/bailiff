@@ -10,6 +10,55 @@ org:
   default: ""
   help: "GitHub owner or team handle written into .github/CODEOWNERS."
 
+# GitHub's community-health checklist wants all three. A public repo with no
+# SECURITY.md offers no documented way to report a vulnerability privately, which
+# is the one of the three with a real consequence.
+community_health:
+  type: bool
+  default: true
+  help: "Render SECURITY.md, CONTRIBUTING.md, and CODE_OF_CONDUCT.md."
+
+security_contact:
+  type: str
+  default: ""
+  when: "{{ community_health }}"
+  help: "Where to report a vulnerability privately. Empty uses GitHub's private reporting form, which needs enabling in repo settings."
+
+supported_versions:
+  type: str
+  default: "the latest release"
+  when: "{{ community_health }}"
+  help: "Which versions receive security fixes, as prose for the SECURITY.md table."
+
+coc_contact:
+  type: str
+  default: ""
+  when: "{{ community_health }}"
+  help: "Where to report a code-of-conduct violation. Empty renders a placeholder the user must fill in."
+
+# CONTRIBUTING.md names the project's real commands, so it has to match what the
+# hooks and task-runner packages rendered.
+contributing_hook_manager:
+  type: str
+  choices:
+    - prek
+    - pre-commit
+    - lefthook
+    - none
+  default: prek
+  when: "{{ community_health }}"
+  help: "Hook manager CONTRIBUTING.md tells a contributor to install. Match hooks/manager."
+
+contributing_task_runner:
+  type: str
+  choices:
+    - just
+    - task
+    - none
+  default: none
+  when: "{{ community_health }}"
+  help: "Task runner CONTRIBUTING.md names. Match the workspace package."
+
 create_remote:
   type: bool
   default: false
@@ -49,6 +98,13 @@ team:
 
 # gh is deliberately absent from requires_bin: a missing gh skips remote
 # creation and leaves the rendered .github/ files in place.
+# All three are edited after the fact -- a contact address, a version table, a
+# project-specific rule -- so a re-render must not overwrite them.
+_skip_if_exists:
+  - SECURITY.md
+  - CONTRIBUTING.md
+  - CODE_OF_CONDUCT.md
+
 _tasks:
   - command: >-
       command -v gh >/dev/null 2>&1 ||

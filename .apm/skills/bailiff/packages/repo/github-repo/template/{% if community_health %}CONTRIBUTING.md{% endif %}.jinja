@@ -1,0 +1,63 @@
+# Contributing
+
+## Setup
+
+```sh
+git clone {{ ('https://github.com/' ~ org ~ '/' ~ project_name) if org and project_name else '<repo-url>' }}
+cd {{ project_name | default('<repo>', true) }}
+mise install
+```
+
+`mise install` reads `.mise/conf.d/` and installs the pinned toolchain, so the
+versions you build with match the versions CI builds with.
+{% if contributing_hook_manager != 'none' %}
+Then install the git hooks:
+
+```sh
+{% if contributing_hook_manager == 'prek' -%}
+prek install
+{%- elif contributing_hook_manager == 'pre-commit' -%}
+pre-commit install
+{%- else -%}
+lefthook install
+{%- endif %}
+```
+
+The hooks run on every commit. They check formatting, lint, secrets, and the
+commit message, so a push that passed locally rarely fails CI on style.
+{%- endif %}
+
+## Making a change
+
+1. Branch off the default branch.
+2. Make the change, with a test that fails without it.
+{%- if contributing_task_runner != 'none' %}
+3. Run `{{ contributing_task_runner }} test` and `{{ contributing_task_runner }} lint`.
+{%- else %}
+3. Run the test suite and the linter.
+{%- endif %}
+4. Commit with a Conventional Commits subject.
+5. Open a pull request.
+
+## Commit messages
+
+The commit-msg hook enforces Conventional Commits:
+
+```
+<type>[(<scope>)][!]: <description>
+```
+
+Types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`,
+`chore`, `revert`. A `!` marks a breaking change.
+
+The release tooling reads these to compute the next version and write the
+changelog, so the type decides whether a change ships as a patch, a minor, or a
+major.
+
+## Pull requests
+
+The CI gate has to pass. It is one required check that depends on every job, so a
+failure names which job failed.
+
+Keep a pull request to one concern. Two unrelated changes in one branch means a
+reviewer cannot approve half of it.
