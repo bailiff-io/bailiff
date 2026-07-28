@@ -119,7 +119,7 @@ names the choice axis. The group's `index.md` states what to do with each axis.
 | `repo/` | `repo:*`, `release:*`, `deps:*` | github-repo, gitlab-repo, cocogitto, release-please, dep-updates |
 | `docs/` | `docs:*` | mkdocs, decision-records |
 | `iac/` | `iac:*` | terraform, cdk, cloudformation |
-| `agentic/` | `agentic:*` | apm, agentic, agent-hooks |
+| `agentic/` | `agentic:*`, `tracker:*` | apm, agentic, agent-hooks, beads |
 | `workspace/` | `workspace:*` | moon, justfile, devcontainer, package-add |
 
 A group holds as many axes as its members need. `repo/` holds three axes: the

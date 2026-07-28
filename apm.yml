@@ -1,0 +1,30 @@
+name: bailiff
+version: 2.0.0
+description: >-
+  Agentic project setup. One skill interviews you, then drives copier to render
+  tool packages grouped by choice axis: languages, hooks, CI, repo metadata,
+  IaC, docs, and workspace. Scenario runbooks cover new projects, existing repos,
+  monorepos, and polyrepos. Setup only. Reproduce and update stay with copier.
+author: Sjors Robroek
+license: Apache-2.0
+type: skill
+target: all
+includes: auto
+category: scaffolding
+tags:
+  - skill
+  - scaffolding
+  - copier
+  - project-setup
+  - templates
+scripts:
+  scan: python3 .apm/skills/bailiff/scripts/scan.py
+  test: python3 -m pytest tests -q
+marketplace:
+  outputs:
+    claude: {}
+    codex: {}
+  versioning:
+    strategy: tag_pattern
+  build:
+    tagPattern: '{name}--v{version}'
