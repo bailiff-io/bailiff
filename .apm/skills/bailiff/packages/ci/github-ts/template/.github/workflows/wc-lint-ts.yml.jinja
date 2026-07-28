@@ -34,11 +34,17 @@ jobs:
 
       - name: Biome check
         run: {{ exec }}biome check --no-errors-on-unmatched .
-{%- elif ts_linter == "eslint" %}
+{%- elif ts_linter == "oxlint" %}
 
-      - name: ESLint
-        run: {{ exec }}eslint .
+      - name: oxlint
+        run: {{ exec }}oxlint
 
+      - name: oxfmt
+        run: {{ exec }}oxfmt --check
+{%- endif %}
+{%- if ts_linter != "none" %}
+
+      # Neither linter formats markdown or YAML.
       - name: Prettier
         run: {{ exec }}prettier --check .
 {%- endif %}

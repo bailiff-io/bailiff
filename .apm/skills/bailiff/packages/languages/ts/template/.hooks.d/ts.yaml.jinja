@@ -1,27 +1,44 @@
-{#- .hooks.d/ts.yaml -- the same lint and format hooks as the .pre-commit.d
-    fragment, in lefthook's schema. The commands run the locally installed
-    tools rather than a pinned hook repo, so the pins live in package.json. -#}
+{#- .hooks.d/ts.yaml -- the same hooks as the .pre-commit.d fragment, in
+    lefthook's schema. The commands run the locally installed tools rather than
+    a pinned hook repo, so the pins live in package.json. -#}
+{#- Each manager has its own runner: bun uses bunx, npm uses npx, and pnpm
+    uses `pnpm exec`. `bun exec` is not a command and fails with
+    "command not found". -#}
+{%- set x = {'bun': 'bunx', 'npm': 'npx', 'pnpm': 'pnpm exec'}[js_pkg_manager] %}
 pre-commit:
   parallel: true
   commands:
 {%- if ts_linter == 'biome' %}
-    # Biome covers JS, TS, JSX, JSON, and CSS.
+    # Biome covers JS, TS, JSX, JSON, and CSS, lint plus format in one binary.
     biome:
       glob: "*.{js,ts,jsx,tsx,json,css}"
-      run: {{ js_pkg_manager }} exec biome check --write {staged_files}
-      stage_fixed: true
-    # Prettier covers markdown and yaml, which Biome does not.
-    prettier:
-      glob: "*.{md,yaml,yml}"
-      run: {{ js_pkg_manager }} exec prettier --write {staged_files}
+      run: {{ x }} biome check --write {staged_files}
       stage_fixed: true
 {%- else %}
-    eslint:
+    # oxlint lints; oxfmt formats. Two binaries, where biome is one.
+    oxlint:
       glob: "*.{js,ts,jsx,tsx}"
-      run: {{ js_pkg_manager }} exec eslint --fix {staged_files}
+      run: {{ x }} oxlint --fix {staged_files}
       stage_fixed: true
+    oxfmt:
+      glob: "*.{js,ts,jsx,tsx}"
+      run: {{ x }} oxfmt {staged_files}
+      stage_fixed: true
+{%- endif %}
+    # Prettier covers markdown and yaml, which neither linter formats.
     prettier:
-      glob: "*.{js,ts,jsx,tsx,json,css,md,yaml,yml}"
-      run: {{ js_pkg_manager }} exec prettier --write {staged_files}
+      glob: "*.{md,yaml,yml}"
+      run: {{ x }} prettier --write {staged_files}
       stage_fixed: true
+{%- if ts_typecheck %}
+    # Whole-project, so no {staged_files}: a per-file run cannot resolve the type
+    # of an import from a file that was left out.
+    tsc:
+      glob: "*.{ts,tsx}"
+      run: {{ x }} tsc --noEmit
+{%- endif %}
+{%- if ts_dead_code %}
+    knip:
+      glob: "*.{ts,tsx,js,jsx,json}"
+      run: {{ x }} knip
 {%- endif %}

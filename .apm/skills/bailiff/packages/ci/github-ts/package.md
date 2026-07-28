@@ -23,8 +23,10 @@ both need.
    against a lockfile the chosen tool did not write.
 3. `ts_test_command` -- the package script name. Default `test`, so the job runs
    `pnpm run test`.
-4. `ts_linter` -- `biome`, `eslint`, or `none`. `biome` covers lint and format in
-   one step; `eslint` needs prettier alongside it, and the lint job runs both.
+4. `ts_linter` -- `biome`, `oxlint`, or `none`. Must match the answer given to
+   `languages/ts`, or the job runs a linter the project did not install. `biome`
+   covers lint and format in one step; `oxlint` needs `oxfmt` alongside it, and
+   the job runs both. Prettier runs either way, for markdown and YAML.
 5. `ts_typecheck` -- whether the lint job runs `tsc --noEmit`.
 6. `ci_cache` -- leave true. With `pnpm` and `npm` this uses the setup-node cache.
 7. `ci_os_matrix` -- ask only when the project targets more than Linux.

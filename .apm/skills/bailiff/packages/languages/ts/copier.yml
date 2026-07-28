@@ -19,13 +19,17 @@ js_pkg_manager:
   default: bun
   help: "Package manager that writes package.json."
 
+# eslint is gone: oxlint and biome cover it, both in Rust and both far faster.
+# biome is one binary for lint plus format across JS, TS, CSS, and JSON; oxlint
+# carries more lint rules (it ports eslint, typescript-eslint, unicorn, and react)
+# but formats through a second binary, oxfmt.
 ts_linter:
   type: str
   choices:
     - biome
-    - eslint-prettier
+    - oxlint
   default: biome
-  help: "biome renders biome.json. eslint-prettier renders eslint.config.mjs and .prettierrc.json."
+  help: "biome renders biome.json and covers lint plus format. oxlint renders .oxlintrc.json and pairs with oxfmt."
 
 test_runner:
   type: str
@@ -78,6 +82,30 @@ vite_template:
   # because this package renders a tsconfig.
   help: "create-vite template."
 
+ts_typecheck:
+  type: bool
+  default: true
+  help: "Add a tsc --noEmit hook. Neither biome nor oxlint checks types; only the compiler does."
+
+ts_coverage:
+  type: bool
+  default: true
+  when: "{{ test_runner not in ['none', 'playwright-only'] }}"
+  help: "Add @vitest/coverage-v8 and a coverage threshold. Vitest only; playwright measures end-to-end runs, not units."
+
+ts_coverage_min:
+  type: int
+  default: 0
+  when: "{{ test_runner not in ['none', 'playwright-only'] and ts_coverage }}"
+  help: "Fail under this line percentage. 0 records coverage without enforcing a floor."
+
+# knip covers two concerns at once, dead files/exports and unused dependencies,
+# so it replaces depcheck rather than joining it.
+ts_dead_code:
+  type: bool
+  default: true
+  help: "Add knip to detect unused files, exports, and dependencies."
+
 ui_kit:
   type: str
   choices:
@@ -97,6 +125,25 @@ _tasks:
   # mise trust precedes install: a freshly rendered .mise/conf.d is untrusted and
   # `mise install` would refuse to read it.
   - mise trust --yes && mise install
+  # Dev tooling as real devDependencies, so the hooks and the CI jobs run tools
+  # the project installs rather than whatever npx happens to fetch.
+  #
+  # copier.yml is YAML-parsed before jinja renders it, so the tool list is one
+  # inline expression rather than {% set %} blocks.
+  - command: >-
+      {{ js_pkg_manager }} add -d
+      {% if ts_linter == 'biome' %}@biomejs/biome {% else %}oxlint oxfmt {% endif %}
+      prettier typescript
+      {%- if ts_dead_code %} knip{% endif %}
+      {%- if test_runner not in ['none', 'playwright-only'] and ts_coverage %} @vitest/coverage-v8{% endif %}
+    when: "{{ js_pkg_manager != 'npm' }}"
+  - command: >-
+      npm install --save-dev
+      {% if ts_linter == 'biome' %}@biomejs/biome {% else %}oxlint oxfmt {% endif %}
+      prettier typescript
+      {%- if ts_dead_code %} knip{% endif %}
+      {%- if test_runner not in ['none', 'playwright-only'] and ts_coverage %} @vitest/coverage-v8{% endif %}
+    when: "{{ js_pkg_manager == 'npm' }}"
   # --minimal keeps bun init to package.json, tsconfig.json, and bunfig.toml.
   # Without it bun also writes README.md, CLAUDE.md, and index.ts, and README.md
   # belongs to the readme package.

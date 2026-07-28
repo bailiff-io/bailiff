@@ -27,7 +27,7 @@ ts_linter:
   type: str
   choices:
     - biome
-    - eslint
+    - oxlint
     - none
   default: biome
   help: "Linter the lint job runs. biome covers format and lint in one step."

@@ -1,0 +1,32 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": [
+    "typescript",
+    "unicorn",
+    "oxc",
+    "import"
+{%- if ts_framework in ["nuxt", "vite"] %},
+    "react",
+    "jsx-a11y"
+{%- endif %}
+  ],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "warn",
+    "pedantic": "warn"
+  },
+  "rules": {
+    "no-console": "warn",
+    "typescript/no-explicit-any": "warn",
+    "typescript/consistent-type-imports": "error"
+  },
+  "env": {
+    "builtin": true
+  },
+  "ignorePatterns": [
+    "dist",
+    "build",
+    "node_modules",
+    "coverage"
+  ]
+}

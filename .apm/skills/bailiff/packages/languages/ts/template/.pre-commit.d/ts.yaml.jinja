@@ -1,34 +1,62 @@
-# .pre-commit.d/ts.yaml -- lint and format hooks contributed by the ts package.
-# precommit reads .pre-commit.d/ and folds every fragment into its config.
+# .pre-commit.d/ts.yaml -- hooks contributed by the ts package.
+# hooks/manager folds every fragment here into .pre-commit-config.yaml. The
+# lefthook equivalent is .hooks.d/ts.yaml, from the same answers.
+{#- Each manager has its own runner: bun uses bunx, npm uses npx, and pnpm
+    uses `pnpm exec`. `bun exec` is not a command and fails with
+    "command not found". -#}
+{%- set x = {'bun': 'bunx', 'npm': 'npx', 'pnpm': 'pnpm exec'}[js_pkg_manager] %}
 repos:
-{% if ts_linter == 'biome' %}
-  # Biome covers JS, TS, JSX, JSON, and CSS.
+{%- if ts_linter == 'biome' %}
+  # Biome covers JS, TS, JSX, JSON, and CSS in one binary, lint plus format.
   - repo: https://github.com/biomejs/pre-commit
     rev: v0.6.1
     hooks:
       - id: biome-ci
-        additional_dependencies: ["@biomejs/biome@2.5.5"]
+        additional_dependencies: ["@biomejs/biome@2.5.6"]
+{%- endif %}
 
-  # Prettier covers markdown and yaml, which Biome does not.
+  # Prettier covers markdown and yaml, which neither biome nor oxlint formats.
   # rbubley/mirrors-prettier: pre-commit/mirrors-prettier was archived in 2024.
   - repo: https://github.com/rbubley/mirrors-prettier
     rev: v3.9.6
     hooks:
       - id: prettier
         types_or: [markdown, yaml]
-{% else %}
-  - repo: https://github.com/rbubley/mirrors-prettier
-    rev: v3.9.6
-    hooks:
-      - id: prettier
+{%- if ts_linter == 'oxlint' or ts_typecheck or ts_dead_code %}
 
-  - repo: https://github.com/pre-commit/mirrors-eslint
-    rev: v10.8.0
+  - repo: local
     hooks:
-      - id: eslint
-        files: \.(js|ts|jsx|tsx)$
-        additional_dependencies:
-          - "typescript-eslint@8.65.0"
-          - "@eslint/js@10.8.0"
-          - "eslint-config-prettier@10.1.8"
-{% endif %}
+{%- if ts_linter == 'oxlint' %}
+      # oxlint lints; oxfmt formats. Two binaries, where biome is one.
+      - id: oxlint
+        name: oxlint
+        entry: {{ x }} oxlint --fix
+        language: system
+        types_or: [javascript, ts, tsx, jsx]
+      - id: oxfmt
+        name: oxfmt
+        entry: {{ x }} oxfmt
+        language: system
+        types_or: [javascript, ts, tsx, jsx]
+{%- endif %}
+{%- if ts_typecheck %}
+      # Neither linter checks types. tsc reads the whole project, so it takes no
+      # file list: a per-file run cannot resolve an import's type.
+      - id: tsc
+        name: tsc --noEmit
+        entry: {{ x }} tsc --noEmit
+        language: system
+        types_or: [ts, tsx]
+        pass_filenames: false
+{%- endif %}
+{%- if ts_dead_code %}
+      # Whole-project by nature: an export is dead only when nothing anywhere
+      # imports it.
+      - id: knip
+        name: knip
+        entry: {{ x }} knip
+        language: system
+        pass_filenames: false
+        files: ^(package\.json|tsconfig\.json|.*\.(ts|tsx|js|jsx))$
+{%- endif %}
+{%- endif %}

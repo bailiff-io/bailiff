@@ -17,7 +17,13 @@ export default defineConfig({
     include: ["src/**/*.{test,spec}.{ts,tsx}"],
     coverage: {
       provider: "v8",
+      // lcov is what codecov and coveralls read; text is what a developer reads.
       reporter: ["text", "lcov"],
+{%- if ts_coverage is defined and ts_coverage and ts_coverage_min and ts_coverage_min > 0 %}
+      thresholds: {
+        lines: {{ ts_coverage_min }},
+      },
+{%- endif %}
     },
   },
 });
