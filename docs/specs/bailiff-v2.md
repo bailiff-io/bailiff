@@ -197,6 +197,12 @@ environment variables.
 Copier runs every task after rendering. A check that must precede rendering goes
 in the package's `precheck` script, which `render.py` runs first.
 
+`requires_bin` is a static list, so it holds only the binaries a package needs
+whatever the user answered. A binary that one answer needs and another does not
+goes in `precheck`, which reads answers as `BAILIFF_<KEY>` environment variables.
+`iac/cdk` splits both ways: `cdk` itself is in `requires_bin`, and the runtime
+`cdk_language` selects is checked in `precheck`.
+
 ## Trust
 
 `render.py` passes `unsafe=True`. Tool packages ship inside the bailiff package;
