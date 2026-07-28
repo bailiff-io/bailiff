@@ -3,7 +3,7 @@
 Work state for bailiff v2 tooling. Task tracking is in beads (`bd ready`), not
 here. This file records what is decided, what is verified, and what is unknown.
 
-Last updated: 2026-07-28, after commit `ca11aab`.
+Last updated: 2026-07-28, after commit `5910701`.
 
 ## Where to look
 
@@ -172,6 +172,28 @@ properly rather than dismissed. Verified by running it:
   outright.
 
 That was read as a blocker, and it is not one at single-user scope. See above.
+
+## The decision, as it now stands (`bfsh-asl`, P0)
+
+The landscape survey is complete, and the answer is the user's own proposal:
+**keep copier as the renderer, keep the 161 template files, hard-code the
+preferences, delete the machinery, and let the agent compute the derived parts.**
+
+The survey found nothing that justifies replacing copier. What is worth taking
+from elsewhere:
+
+| Source | What to take |
+|---|---|
+| `moon codegen` (already in use) | `extends:` for template inheritance, and per-file frontmatter for skip/force/destination -- conditional inclusion declared inside the file rather than encoded in its name |
+| better-t-stack | a declarative option schema as the single source of truth, with cross-option constraints beside the options |
+
+better-t-stack's `superRefine` is the cardinality check filed as `bfsh-uub` and
+never built. One zod file there yields the CLI flags, the prompts, the web builder
+UI, a JSON schema, and the validation. The equivalent here is a small YAML or
+Python file the skill reads.
+
+What the fourth option costs, stated plainly: no `copier update` on existing
+projects. A template improvement does not propagate; re-render and diff instead.
 
 ## structkit adoption is ON HOLD
 
