@@ -1,0 +1,14 @@
+# ruff.toml -- rendered by the bailiff python package.
+
+target-version = "py{{ python_version | replace('.', '') }}"
+line-length = {{ ruff_line_length }}
+
+[lint]
+{% if ruff_rule_profile == "strict" -%}
+select = ["E", "F", "I", "N", "W", "UP", "B", "SIM", "TC", "ANN", "RUF", "PERF", "C4", "PT"]
+{%- else -%}
+select = ["E", "F", "I", "N", "W", "UP", "B", "SIM", "TC"]
+{%- endif %}
+
+[format]
+quote-style = "{{ ruff_quote_style }}"

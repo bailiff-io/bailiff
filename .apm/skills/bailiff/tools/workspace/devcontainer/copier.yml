@@ -1,0 +1,6 @@
+_subdirectory: template
+
+project_name:
+  type: str
+  default: ""
+  help: "Container name shown in the editor. Use the project's name."

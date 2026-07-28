@@ -1,0 +1,6 @@
+# .cfnlintrc.yaml -- rendered from the cfnlint_ignore_rules answer.
+---
+{% if cfnlint_ignore_rules %}ignore_checks:
+{% for rule in cfnlint_ignore_rules %}  - {{ rule }}
+{% endfor %}{% else %}ignore_checks: []
+{% endif %}

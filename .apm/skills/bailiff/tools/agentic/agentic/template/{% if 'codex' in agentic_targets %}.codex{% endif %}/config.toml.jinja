@@ -1,0 +1,24 @@
+{#- .codex/config.toml -- MCP block from mcp_config, plugin block from
+   native_marketplace. -#}
+# Codex project configuration. The MCP and plugin sections are rendered from
+# .copier-answers.agentic.yml.
+{% if mcp_config and mcp_servers | length > 0 %}
+{% for server in mcp_servers %}
+[mcp_servers.{{ server.name }}]
+command = "{{ server.command }}"
+{% if server.args is defined and server.args -%}
+args = {{ server.args | tojson }}
+{% endif -%}
+{% if server.env is defined and server.env -%}
+{% for key, val in server.env.items() -%}
+env.{{ key }} = "{{ val }}"
+{% endfor -%}
+{% endif %}
+{% endfor %}
+{% endif %}
+{% if native_marketplace and agentic_plugins | length > 0 %}
+[plugins]
+{% for plugin in agentic_plugins -%}
+"{{ plugin.name }}" = { owner_repo = "{{ plugin.owner_repo }}" }
+{% endfor %}
+{% endif %}

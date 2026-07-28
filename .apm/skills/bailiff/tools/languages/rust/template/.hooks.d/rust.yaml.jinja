@@ -1,0 +1,22 @@
+{#- .hooks.d/rust.yaml -- cargo fmt and clippy in lefthook's schema. Both call
+    the local toolchain, so nothing is pinned here. clippy is crate-scoped and
+    takes no file list, which is why it has no glob-driven {staged_files}. -#}
+pre-commit:
+  parallel: false
+  commands:
+    cargo-fmt:
+      glob: "*.rs"
+      run: cargo fmt --all
+      stage_fixed: true
+{%- if clippy_stage == 'pre-commit' %}
+    clippy:
+      glob: "*.rs"
+      run: cargo clippy --all-targets --all-features -- -D warnings
+{%- endif %}
+{%- if clippy_stage != 'pre-commit' %}
+
+{{ clippy_stage }}:
+  commands:
+    clippy:
+      run: cargo clippy --all-targets --all-features -- -D warnings
+{%- endif %}

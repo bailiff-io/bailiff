@@ -1,0 +1,7 @@
+# Agent runtime files. The gitignore fold task merges every .gitignore.d/*
+# fragment into .gitignore.
+
+# Aider working files; its committed config files stay tracked.
+.aider*
+!.aider.conf.yml
+!.aiderignore

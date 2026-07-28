@@ -1,0 +1,19 @@
+_subdirectory: template
+
+project_name:
+  type: str
+  help: "Project name for the README heading. In a monorepo package directory this is the package name, not the repo name."
+
+description:
+  type: str
+  default: ""
+  help: "One-line description placed under the heading."
+
+stack:
+  type: str
+  default: ""
+  help: "Stack summary, for example 'Python/FastAPI/uv'. Selects the install command in the Getting Started section."
+
+# A README the user already wrote outranks a rendered skeleton.
+_skip_if_exists:
+  - README.md

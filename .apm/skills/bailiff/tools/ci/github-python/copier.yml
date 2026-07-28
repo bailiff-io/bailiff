@@ -2,6 +2,12 @@ _subdirectory: template
 
 python_version:
   type: str
+  choices:
+    - "3.14"
+    - "3.13"
+    - "3.12"
+    - "3.11"
+    - "3.10"
   default: "3.14"
   help: "Python version the CI jobs install. Match what the python language package uses."
 
@@ -34,11 +40,25 @@ ci_cache:
   help: "Cache the dependency install between runs."
 
 ci_os_matrix:
-  type: yaml
-  default: []
-  help: "Extra runner images beyond ubuntu-latest, as a yaml list. Each entry multiplies runner minutes."
+  type: str
+  multiselect: true
+  choices:
+    - ubuntu-latest
+    - ubuntu-24.04-arm
+    - macos-latest
+    - windows-latest
+  default:
+    - ubuntu-latest
+  help: "Runner images the test job builds a matrix from. Each extra entry multiplies runner minutes."
 
 ci_version_matrix:
-  type: yaml
+  type: str
+  multiselect: true
+  choices:
+    - "3.14"
+    - "3.13"
+    - "3.12"
+    - "3.11"
+    - "3.10"
   default: []
-  help: "Python versions to test against, as a yaml list. Empty tests only python_version."
+  help: "Python versions to test against. Empty tests only python_version."

@@ -2,8 +2,14 @@ _subdirectory: template
 
 rust_toolchain:
   type: str
-  default: "stable"
-  help: "Rust toolchain the CI jobs install. stable, or a pinned version like 1.90.0."
+  choices:
+    - stable
+    - beta
+    - nightly
+    - "1.90.0"
+    - "1.85.0"
+  default: stable
+  help: "Rust toolchain the CI jobs install. A pinned version keeps a clippy release from breaking an unrelated commit."
 
 rust_test_command:
   type: str
@@ -21,11 +27,25 @@ ci_cache:
   help: "Cache the cargo registry and target directory between runs, via rust-cache."
 
 ci_os_matrix:
-  type: yaml
-  default: []
-  help: "Extra runner images beyond ubuntu-latest, as a yaml list. Each entry multiplies runner minutes."
+  type: str
+  multiselect: true
+  choices:
+    - ubuntu-latest
+    - ubuntu-24.04-arm
+    - macos-latest
+    - windows-latest
+  default:
+    - ubuntu-latest
+  help: "Runner images the test job builds a matrix from. Each extra entry multiplies runner minutes."
 
 ci_version_matrix:
-  type: yaml
+  type: str
+  multiselect: true
+  choices:
+    - stable
+    - beta
+    - nightly
+    - "1.90.0"
+    - "1.85.0"
   default: []
-  help: "Toolchains to test against, as a yaml list. Empty tests only rust_toolchain."
+  help: "Toolchains to test against. Empty tests only rust_toolchain. Add the crate MSRV alongside stable."

@@ -1,0 +1,15 @@
+_subdirectory: template
+
+project_name:
+  type: str
+  default: ""
+  help: "Project name. Becomes the mkdocs site_name."
+
+description:
+  type: str
+  default: ""
+  help: "One-line site description. Becomes the mkdocs site_description. Empty omits the key."
+
+# docs/index.md is the project's own front page once it exists.
+_skip_if_exists:
+  - docs/index.md

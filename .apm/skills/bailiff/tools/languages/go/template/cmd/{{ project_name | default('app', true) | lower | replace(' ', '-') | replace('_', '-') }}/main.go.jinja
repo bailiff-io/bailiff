@@ -1,0 +1,9 @@
+{#- cmd/<name>/main.go -- seeded once (_skip_if_exists). Excluded when
+    app_kind is library, so a library renders no cmd/ directory at all. -#}
+package main
+
+import "fmt"
+
+func main() {
+	fmt.Println("{{ project_name | default('app', true) }}")
+}

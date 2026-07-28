@@ -1,0 +1,64 @@
+_subdirectory: template
+
+project_name:
+  type: str
+  default: ""
+  help: "Project name. Becomes the go module path and the cmd/<name>/ directory."
+
+description:
+  type: str
+  default: ""
+  help: "One-line project description."
+
+go_version:
+  type: str
+  default: "1.26"
+  choices:
+    - "1.26"
+    - "1.25"
+    - "1.24"
+  help: "Go toolchain version pinned in .mise/conf.d/go.toml."
+
+app_kind:
+  type: str
+  default: cli
+  choices:
+    - cli
+    - service
+    - library
+  help: "cli and service render cmd/<name>/main.go; library renders no cmd/ directory."
+
+test_runner:
+  type: str
+  default: go-test
+  choices:
+    - go-test
+    - gotestsum
+  help: "go-test uses the built-in runner; gotestsum adds gotestsum to the mise fragment."
+
+use_vendor_mode:
+  type: bool
+  default: false
+  help: "Add vendor/ to the gitignore fragment."
+
+golangci_hook_rev:
+  type: str
+  default: "v2.12.2"
+  help: "Rev for golangci/golangci-lint in .pre-commit.d/go.yaml. Empty renders no hook."
+
+_exclude:
+  - "{%- if app_kind == 'library' -%}cmd{%- endif -%}"
+
+_skip_if_exists:
+  - go.mod
+  - go.sum
+  - .golangci.yml
+  - "cmd/{{ project_name | default('app', true) | lower | replace(' ', '-') | replace('_', '-') }}/main.go"
+
+_tasks:
+  # git has no include directive, so the .gitignore.d fragment is inert until
+  # it is folded in. Idempotent and order-independent.
+  - 'python3 "{{ _copier_conf.src_path }}/tasks/fold_gitignore.py"'
+  - >-
+    test -f go.mod ||
+    go mod init "{{ project_name | default('app', true) | lower | replace(' ', '-') | replace('_', '-') }}"

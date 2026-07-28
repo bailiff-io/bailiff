@@ -1,0 +1,17 @@
+_subdirectory: template
+
+project_name:
+  type: str
+  default: ""
+  help: "Project name. Appears in the decision index heading."
+
+decisions_dir:
+  type: str
+  default: docs/decisions
+  help: "Directory holding the numbered decision records."
+
+# Both files are the project's own once written: the index accrues rows and the
+# template accrues local conventions.
+_skip_if_exists:
+  - "{{ decisions_dir }}/index.md"
+  - "{{ decisions_dir }}/0000-template.md"

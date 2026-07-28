@@ -2,6 +2,10 @@ _subdirectory: template
 
 node_version:
   type: str
+  choices:
+    - "24"
+    - "22"
+    - "20"
   default: "24"
   help: "Node version the CI jobs install. Match what the ts language package uses."
 
@@ -39,11 +43,23 @@ ci_cache:
   help: "Cache the dependency install between runs."
 
 ci_os_matrix:
-  type: yaml
-  default: []
-  help: "Extra runner images beyond ubuntu-latest, as a yaml list. Each entry multiplies runner minutes."
+  type: str
+  multiselect: true
+  choices:
+    - ubuntu-latest
+    - ubuntu-24.04-arm
+    - macos-latest
+    - windows-latest
+  default:
+    - ubuntu-latest
+  help: "Runner images the test job builds a matrix from. Each extra entry multiplies runner minutes."
 
 ci_version_matrix:
-  type: yaml
+  type: str
+  multiselect: true
+  choices:
+    - "24"
+    - "22"
+    - "20"
   default: []
-  help: "Node versions to test against, as a yaml list. Empty tests only node_version."
+  help: "Node versions to test against. Empty tests only node_version."

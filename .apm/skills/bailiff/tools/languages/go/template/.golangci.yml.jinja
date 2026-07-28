@@ -1,0 +1,18 @@
+{#- .golangci.yml -- seeded once (_skip_if_exists); tune it after setup. -#}
+version: "2"
+
+run:
+  timeout: 5m
+
+linters:
+  default: standard
+  enable:
+    - errcheck
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+
+issues:
+  max-issues-per-linter: 50
+  max-same-issues: 5

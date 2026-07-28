@@ -1,0 +1,68 @@
+_subdirectory: template
+
+name:
+  type: str
+  help: "New package name, e.g. 'api-client'. Also the manifest's package name."
+
+lang:
+  type: str
+  choices:
+    - ts
+    - python
+    - go
+    - rust
+  help: "Language of the new package."
+
+python_pkg_manager:
+  type: str
+  choices:
+    - uv
+    - pdm
+  default: uv
+  help: "Package manager that initialises the new package."
+  when: "{{ lang == 'python' }}"
+
+rust_edition:
+  type: str
+  choices:
+    - "2024"
+    - "2021"
+  default: "2024"
+  help: "Rust edition."
+  when: "{{ lang == 'rust' }}"
+
+js_pkg_manager:
+  type: str
+  choices:
+    - bun
+    - pnpm
+    - npm
+  default: bun
+  help: "JS package manager that initialises the new package."
+  when: "{{ lang == 'ts' }}"
+
+# The native init writes the manifest. Once the project edits it, a second render
+# must not clobber it.
+_skip_if_exists:
+  - package.json
+  - pyproject.toml
+  - go.mod
+  - Cargo.toml
+
+# Each task runs with the destination -- the new package directory -- as cwd, and
+# is guarded so re-running over a populated directory does not re-init.
+_tasks:
+  - command: >-
+      test -f package.json || {{ js_pkg_manager }} init {% if js_pkg_manager == 'bun' %}-y{% endif %}
+    when: "{{ lang == 'ts' }}"
+  # --vcs none: the destination sits inside the monorepo's repository already.
+  - command: "test -f pyproject.toml || uv init --name '{{ name }}' --vcs none"
+    when: "{{ lang == 'python' and python_pkg_manager == 'uv' }}"
+  - command: "test -f pyproject.toml || pdm init -n"
+    when: "{{ lang == 'python' and python_pkg_manager == 'pdm' }}"
+  - command: "test -f go.mod || go mod init '{{ name }}'"
+    when: "{{ lang == 'go' }}"
+  - command: >-
+      test -f Cargo.toml ||
+      cargo init --edition '{{ rust_edition }}' --name '{{ name }}' --vcs none
+    when: "{{ lang == 'rust' }}"

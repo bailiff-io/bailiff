@@ -1,0 +1,27 @@
+{#- .hooks.d/ts.yaml -- the same lint and format hooks as the .pre-commit.d
+    fragment, in lefthook's schema. The commands run the locally installed
+    tools rather than a pinned hook repo, so the pins live in package.json. -#}
+pre-commit:
+  parallel: true
+  commands:
+{%- if ts_linter == 'biome' %}
+    # Biome covers JS, TS, JSX, JSON, and CSS.
+    biome:
+      glob: "*.{js,ts,jsx,tsx,json,css}"
+      run: {{ js_pkg_manager }} exec biome check --write {staged_files}
+      stage_fixed: true
+    # Prettier covers markdown and yaml, which Biome does not.
+    prettier:
+      glob: "*.{md,yaml,yml}"
+      run: {{ js_pkg_manager }} exec prettier --write {staged_files}
+      stage_fixed: true
+{%- else %}
+    eslint:
+      glob: "*.{js,ts,jsx,tsx}"
+      run: {{ js_pkg_manager }} exec eslint --fix {staged_files}
+      stage_fixed: true
+    prettier:
+      glob: "*.{js,ts,jsx,tsx,json,css,md,yaml,yml}"
+      run: {{ js_pkg_manager }} exec prettier --write {staged_files}
+      stage_fixed: true
+{%- endif %}

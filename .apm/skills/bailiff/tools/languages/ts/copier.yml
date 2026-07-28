@@ -1,0 +1,104 @@
+_subdirectory: template
+
+project_name:
+  type: str
+  default: ""
+  help: "Project name. Recorded in the answers file."
+
+description:
+  type: str
+  default: ""
+  help: "One-line project description."
+
+js_pkg_manager:
+  type: str
+  choices:
+    - bun
+    - pnpm
+    - npm
+  default: bun
+  help: "Package manager that writes package.json."
+
+ts_linter:
+  type: str
+  choices:
+    - biome
+    - eslint-prettier
+  default: biome
+  help: "biome renders biome.json. eslint-prettier renders eslint.config.mjs and .prettierrc.json."
+
+test_runner:
+  type: str
+  choices:
+    - none
+    - vitest-node
+    - vitest-browser
+    - vitest+playwright
+    - bun-test
+    - playwright-only
+  default: none
+  help: "Test runner. Decides whether vitest.config.ts and playwright.config.ts render."
+
+node_version:
+  type: str
+  choices:
+    - "26"
+    - "24"
+    - "22"
+  default: "24"
+  help: "Node.js version pinned in .mise/conf.d/ts.toml."
+
+ts_framework:
+  type: str
+  choices:
+    - plain
+    - nuxt
+    - vite
+    - sst
+  default: plain
+  help: "Framework. Recorded in the answers file. Run its scaffold before this render."
+
+vite_template:
+  type: str
+  default: vanilla-ts
+  when: "{{ ts_framework == 'vite' }}"
+  help: "create-vite template: vanilla-ts, react-ts, vue-ts, and the rest of its list."
+
+ui_kit:
+  type: str
+  choices:
+    - none
+    - shadcn
+  default: none
+  help: "Recorded in the answers file. shadcn is a separate setup step."
+
+_skip_if_exists:
+  - package.json
+  - pnpm-workspace.yaml
+
+_tasks:
+  # git has no include directive, so the .gitignore.d fragment is inert until
+  # it is folded in. Idempotent and order-independent.
+  - 'python3 "{{ _copier_conf.src_path }}/tasks/fold_gitignore.py"'
+  # mise trust precedes install: a freshly rendered .mise/conf.d is untrusted and
+  # `mise install` would refuse to read it.
+  - mise trust --yes && mise install
+  # --minimal keeps bun init to package.json, tsconfig.json, and bunfig.toml.
+  # Without it bun also writes README.md, CLAUDE.md, and index.ts, and README.md
+  # belongs to the readme package.
+  - command: >-
+      test -f package.json ||
+      { bun init --yes --minimal &&
+      bun pm pkg set name="{{ project_name | default('project', true) | lower | replace(' ', '-') | replace('_', '-') }}"; }
+    when: "{{ js_pkg_manager == 'bun' }}"
+  # `pnpm init` names the package after the directory. `pkg set` corrects the name.
+  - command: >-
+      test -f package.json ||
+      { pnpm init &&
+      pnpm pkg set name="{{ project_name | default('project', true) | lower | replace(' ', '-') | replace('_', '-') }}"; }
+    when: "{{ js_pkg_manager == 'pnpm' }}"
+  - command: >-
+      test -f package.json ||
+      { npm init --yes &&
+      npm pkg set name="{{ project_name | default('project', true) | lower | replace(' ', '-') | replace('_', '-') }}"; }
+    when: "{{ js_pkg_manager == 'npm' }}"

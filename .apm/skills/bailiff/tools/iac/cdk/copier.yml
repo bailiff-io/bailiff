@@ -1,0 +1,30 @@
+_subdirectory: template
+
+project_name:
+  type: str
+  default: ""
+  help: "Project name. Recorded in the answers file. cdk init does not read it."
+
+cdk_language:
+  type: str
+  choices:
+    - typescript
+    - python
+    - go
+    - java
+    - csharp
+  default: typescript
+  help: "Language for the generated CDK app. Passed as the `cdk init` language argument."
+
+placement_dir:
+  type: str
+  default: infrastructure
+  help: "Directory where cdk init writes the app. Use a single dot for an IaC-only repo."
+
+_tasks:
+  # cdk init refuses to run in a non-empty directory, so the guard skips the
+  # whole step when an app is already there.
+  - >-
+    mkdir -p "{{ placement_dir }}" &&
+    { test -f "{{ placement_dir }}/cdk.json" ||
+    (cd "{{ placement_dir }}" && cdk init app --language={{ cdk_language }}); }

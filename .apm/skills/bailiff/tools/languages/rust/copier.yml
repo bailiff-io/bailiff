@@ -1,0 +1,82 @@
+_subdirectory: template
+
+project_name:
+  type: str
+  default: ""
+  help: "Project name. Passed to cargo init --name."
+
+description:
+  type: str
+  default: ""
+  help: "One-line project description."
+
+rust_channel:
+  type: str
+  default: stable
+  choices:
+    - stable
+    - beta
+    - nightly
+    - esp
+  help: "Toolchain channel written into rust-toolchain.toml."
+
+rust_edition:
+  type: str
+  default: "2024"
+  choices:
+    - "2024"
+    - "2021"
+    - "2018"
+  help: "Rust edition passed to cargo init."
+
+crate_kind:
+  type: str
+  default: bin
+  choices:
+    - bin
+    - lib
+  help: "bin builds a binary; lib builds a library and ignores Cargo.lock."
+
+test_runner:
+  type: str
+  default: nextest
+  choices:
+    - cargo-test
+    - nextest
+  help: "nextest adds cargo-nextest to the mise fragment; cargo-test uses the built-in runner."
+
+rustfmt_heuristics:
+  type: str
+  default: Max
+  choices:
+    - Default
+    - Max
+    - "Off"
+  help: "rustfmt use_small_heuristics. Off omits the setting and keeps max_width=100."
+
+clippy_stage:
+  type: str
+  default: pre-push
+  choices:
+    - pre-push
+    - pre-commit
+  help: "Hook stage at which clippy runs."
+
+_skip_if_exists:
+  - Cargo.toml
+  - src/main.rs
+  - src/lib.rs
+
+_tasks:
+  # git has no include directive, so the .gitignore.d fragment is inert until
+  # it is folded in. Idempotent and order-independent.
+  - 'python3 "{{ _copier_conf.src_path }}/tasks/fold_gitignore.py"'
+  # `cargo init`, not `cargo new`: the destination already holds the rendered
+  # files and `cargo new .` refuses a non-empty directory.
+  - >-
+    test -f Cargo.toml ||
+    cargo init
+    {% if crate_kind == 'lib' %}--lib{% endif %}
+    --name "{{ project_name | default('project', true) | lower | replace(' ', '-') | replace('_', '-') }}"
+    --edition "{{ rust_edition }}"
+    .

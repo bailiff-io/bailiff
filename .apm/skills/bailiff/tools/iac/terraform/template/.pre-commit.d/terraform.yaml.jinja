@@ -1,0 +1,17 @@
+{#-
+  .pre-commit.d/terraform.yaml -- this package's hook block only. The precommit
+  package merges every .pre-commit.d/*.yaml into .pre-commit-config.yaml. The
+  fragment is inert when precommit is not selected.
+-#}
+repos:
+  - repo: https://github.com/antonbabenko/pre-commit-terraform
+    {% if pre_commit_terraform_rev -%}
+    rev: "{{ pre_commit_terraform_rev }}"
+    {% else -%}
+    rev: ""  # pin via pre_commit_terraform_rev answer or update manually
+    {% endif -%}
+    hooks:
+      - id: terraform_fmt
+      - id: terraform_validate
+      - id: tflint
+      - id: terraform_trivy

@@ -1,0 +1,74 @@
+_subdirectory: template
+
+bd_prefix:
+  type: str
+  default: ""
+  help: "Issue id prefix. Empty uses the destination directory name. Every id carries it, so keep it short."
+
+bd_harnesses:
+  type: str
+  multiselect: true
+  choices:
+    - claude
+    - codex
+    - copilot
+    - cursor
+    - gemini
+    - aider
+    - opencode
+    - windsurf
+    - factory
+    - junie
+    - mux
+    - cody
+    - kilocode
+  default:
+    - claude
+  help: "Assistants to install beads integration for. Each one writes its own config file, so pick only the ones the user actually runs."
+
+# bd init points core.hooksPath at .beads/hooks, which displaces any other git
+# hook manager in the repo.
+bd_install_git_hooks:
+  type: bool
+  default: false
+  help: "Let bd manage the repo git hooks. Leave false when lefthook or precommit is selected."
+
+bd_dolt_sync:
+  type: str
+  choices:
+    - git-origin
+    - local-only
+  default: git-origin
+  help: "git-origin wires a Dolt remote from the repo git origin, which is what makes the database survive a reclone. local-only keeps it on this machine."
+
+bd_github_sync:
+  type: bool
+  default: false
+  help: "Mirror beads to GitHub issues. Separate from Dolt sync, which moves the database itself."
+
+bd_github_owner:
+  type: str
+  default: ""
+  when: "{{ bd_github_sync }}"
+  help: "GitHub owner or org for issue mirroring. bd does not derive this from git origin."
+
+bd_github_repo:
+  type: str
+  default: ""
+  when: "{{ bd_github_sync }}"
+  help: "GitHub repository name for issue mirroring."
+
+bd_auto_export:
+  type: bool
+  default: false
+  help: "Export .beads/issues.jsonl after writes. Needed only by a viewer such as bv. The Dolt database stays the source of truth."
+
+_tasks:
+  - >-
+    python3 "{{ _copier_conf.src_path }}/tasks/bd_init.py"
+    --prefix "{{ bd_prefix }}"
+    {% if not bd_install_git_hooks %}--skip-hooks{% endif %}
+    --dolt-sync "{{ bd_dolt_sync }}"
+    {% if bd_auto_export %}--auto-export{% endif %}
+    {% if bd_github_sync %}--github-owner "{{ bd_github_owner }}" --github-repo "{{ bd_github_repo }}"{% endif %}
+    {% for harness in bd_harnesses %}--setup "{{ harness }}" {% endfor %}

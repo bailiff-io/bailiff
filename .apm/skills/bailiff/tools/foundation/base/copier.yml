@@ -1,0 +1,90 @@
+_subdirectory: template
+
+project_name:
+  type: str
+  help: "Project name. Fills the AGENTS.md heading and the repo line. In a monorepo package directory this is the package name, not the repo name."
+
+org:
+  type: str
+  default: ""
+  help: "Owning person or organisation. Fills the repo line and the LICENSE copyright holder default."
+
+description:
+  type: str
+  default: ""
+  help: "One-line description of the project. Fills the AGENTS.md header."
+
+layout:
+  type: str
+  choices:
+    - single
+    - monorepo
+  default: single
+  help: "single for one deployable or library per repo; monorepo for several packages sharing one history."
+
+default_branch:
+  type: str
+  default: main
+  help: "Default branch name. Other packages ask for the same value; pass this answer to each."
+
+license:
+  type: str
+  choices:
+    - agpl-3.0
+    - apache-2.0
+    - bsd-2-clause
+    - bsd-3-clause
+    - bsl-1.0
+    - cc0-1.0
+    - epl-2.0
+    - gpl-2.0
+    - gpl-3.0
+    - lgpl-2.1
+    - mit
+    - mpl-2.0
+    - unlicense
+    - none
+  default: apache-2.0
+  help: "SPDX id. The LICENSE body is fetched from the GitHub Licenses API. Answer none to write no LICENSE."
+
+copyright_name:
+  type: str
+  default: "{{ org }}"
+  help: "LICENSE copyright holder. Defaults to org; answer a full legal name when they differ."
+
+branch_strategy:
+  type: str
+  choices:
+    - feature-branches-squash-merge
+    - trunk-based
+    - gitflow
+    - feature-branches-merge-commit
+  default: feature-branches-squash-merge
+  help: "Branch strategy recorded as a guidance line in AGENTS.md."
+
+docs_subdirs:
+  type: bool
+  default: true
+  help: "Create docs/architecture/, docs/decisions/, and docs/runbooks/?"
+
+extra_dirs:
+  type: yaml
+  default: []
+  help: "Directories to create with a .gitkeep, as a YAML list. In a monorepo this is where packages live, for example [packages, apps]."
+
+run_git_init:
+  type: bool
+  default: true
+  help: "Run git init in the destination? Answer false for a directory that is already a git repo."
+
+# AGENTS.md carries project-owned edits after the first render.
+_skip_if_exists:
+  - AGENTS.md
+
+_tasks:
+  - "{{ _copier_conf.src_path }}/tasks/gitignore.sh"
+  - "{{ _copier_conf.src_path }}/tasks/license.sh '{{ license }}' '{{ copyright_name or org or project_name }}'"
+  - command: "git init --quiet --initial-branch '{{ default_branch }}'"
+    when: "{{ run_git_init }}"
+  - >-
+    {% for d in extra_dirs %}mkdir -p '{{ d }}' && touch '{{ d }}/.gitkeep' && {% endfor %}true

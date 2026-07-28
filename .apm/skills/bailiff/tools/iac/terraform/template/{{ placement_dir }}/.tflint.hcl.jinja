@@ -1,0 +1,26 @@
+{#-
+  .tflint.hcl -- enables the terraform ruleset. Cloud-provider rulesets are
+  commented examples; uncomment the one matching the provider. Security scanning
+  runs through the trivy hook in .pre-commit.d/terraform.yaml.
+-#}
+plugin "terraform" {
+  enabled = true
+  preset  = "recommended"
+}
+
+# Cloud-provider rulesets — uncomment and pin to use:
+# plugin "aws" {
+#   enabled = true
+#   version = "0.38.0"
+#   source  = "github.com/terraform-linters/tflint-ruleset-aws"
+# }
+# plugin "azurerm" {
+#   enabled = true
+#   version = "0.27.0"
+#   source  = "github.com/terraform-linters/tflint-ruleset-azurerm"
+# }
+# plugin "google" {
+#   enabled = true
+#   version = "0.31.0"
+#   source  = "github.com/terraform-linters/tflint-ruleset-google"
+# }

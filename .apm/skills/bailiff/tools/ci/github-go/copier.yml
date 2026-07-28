@@ -2,6 +2,10 @@ _subdirectory: template
 
 go_version:
   type: str
+  choices:
+    - "1.26"
+    - "1.25"
+    - "1.24"
   default: "1.26"
   help: "Go version the CI jobs install. Match the go directive in go.mod."
 
@@ -21,11 +25,23 @@ ci_cache:
   help: "Cache modules and build output between runs, via setup-go."
 
 ci_os_matrix:
-  type: yaml
-  default: []
-  help: "Extra runner images beyond ubuntu-latest, as a yaml list. Each entry multiplies runner minutes."
+  type: str
+  multiselect: true
+  choices:
+    - ubuntu-latest
+    - ubuntu-24.04-arm
+    - macos-latest
+    - windows-latest
+  default:
+    - ubuntu-latest
+  help: "Runner images the test job builds a matrix from. Each extra entry multiplies runner minutes."
 
 ci_version_matrix:
-  type: yaml
+  type: str
+  multiselect: true
+  choices:
+    - "1.26"
+    - "1.25"
+    - "1.24"
   default: []
-  help: "Go versions to test against, as a yaml list. Empty tests only go_version."
+  help: "Go versions to test against. Empty tests only go_version."

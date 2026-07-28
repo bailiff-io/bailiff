@@ -1,0 +1,9 @@
+{#- .pre-commit.d/go.yaml -- golangci-lint hook contributed by the go package.
+    An empty golangci_hook_rev renders an empty fragment, which is valid. -#}
+{%- if golangci_hook_rev %}
+repos:
+  - repo: https://github.com/golangci/golangci-lint
+    rev: "{{ golangci_hook_rev }}"
+    hooks:
+      - id: golangci-lint
+{%- endif %}

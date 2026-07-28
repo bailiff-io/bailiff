@@ -1,0 +1,112 @@
+_subdirectory: template
+
+project_name:
+  type: str
+  default: ""
+  help: "Project name. Used as the package name passed to uv/pdm init."
+
+description:
+  type: str
+  default: ""
+  help: "One-line project description."
+
+python_pkg_manager:
+  type: str
+  choices:
+    - uv
+    - pdm
+  default: uv
+  help: "Package manager that writes pyproject.toml."
+
+python_version:
+  type: str
+  choices:
+    - "3.14"
+    - "3.13"
+    - "3.12"
+    - "3.11"
+  default: "3.14"
+  help: "Python version. Pins requires-python, ruff target-version, and the mise tool."
+
+python_layout:
+  type: str
+  choices:
+    - src
+    - flat
+  default: src
+  help: "Layout: src (uv init --package, installable) or flat."
+
+python_framework:
+  type: str
+  choices:
+    - none
+    - fastapi
+    - django
+    - flask
+  default: none
+  help: "Framework. Recorded in the answers file; no scaffolding branch."
+
+ruff_line_length:
+  type: str
+  choices:
+    - "79"
+    - "88"
+    - "100"
+    - "119"
+    - "120"
+  default: "88"
+  help: "Ruff line-length written to ruff.toml."
+
+ruff_quote_style:
+  type: str
+  choices:
+    - double
+    - single
+  default: double
+  help: "Ruff format.quote-style."
+
+ruff_rule_profile:
+  type: str
+  choices:
+    - standard
+    - strict
+  default: standard
+  help: "standard = [E, F, I, N, W, UP, B, SIM, TC]; strict adds [ANN, RUF, PERF, C4, PT]."
+
+add_tests:
+  type: bool
+  default: false
+  help: "Add tests/ with a pytest example."
+
+ruff_version:
+  type: str
+  default: "v0.16.0"
+  help: "Rev for astral-sh/ruff-pre-commit in .pre-commit.d/python.yaml."
+
+_skip_if_exists:
+  - pyproject.toml
+  - tests/test_example.py
+
+_tasks:
+  # git has no include directive, so the .gitignore.d fragment is inert until
+  # it is folded in. Idempotent and order-independent.
+  - 'python3 "{{ _copier_conf.src_path }}/tasks/fold_gitignore.py"'
+  # mise trust precedes install: a freshly rendered .mise/conf.d is untrusted and
+  # `mise install` would refuse to read it.
+  - mise trust --yes && mise install
+  - command: >-
+      test -f pyproject.toml ||
+      uv init
+      --name "{{ project_name | default('project', true) | lower | replace(' ', '-') | replace('_', '-') }}"
+      --python {{ python_version }} --package --no-readme
+    when: "{{ python_pkg_manager == 'uv' and python_layout == 'src' }}"
+  - command: >-
+      test -f pyproject.toml ||
+      uv init
+      --name "{{ project_name | default('project', true) | lower | replace(' ', '-') | replace('_', '-') }}"
+      --python {{ python_version }} --no-readme
+    when: "{{ python_pkg_manager == 'uv' and python_layout == 'flat' }}"
+  - command: >-
+      test -f pyproject.toml ||
+      pdm init --non-interactive --python {{ python_version }}
+    when: "{{ python_pkg_manager == 'pdm' }}"

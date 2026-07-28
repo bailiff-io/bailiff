@@ -1,0 +1,16 @@
+{#- .hooks.d/go.yaml -- gofmt and golangci-lint in lefthook's schema.
+    golangci-lint runs on the whole module rather than on staged files: it is
+    package-scoped, and a single-file invocation reports phantom errors for
+    symbols defined in the files that were left out. -#}
+pre-commit:
+  parallel: false
+  commands:
+    gofmt:
+      glob: "*.go"
+      run: gofmt -w {staged_files}
+      stage_fixed: true
+{%- if golangci_hook_rev %}
+    golangci-lint:
+      glob: "*.go"
+      run: golangci-lint run ./...
+{%- endif %}

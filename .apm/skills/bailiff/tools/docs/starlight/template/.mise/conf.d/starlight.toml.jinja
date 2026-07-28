@@ -1,0 +1,7 @@
+# .mise/conf.d/starlight.toml — managed by the starlight package; do not edit by hand.
+# mise merges all conf.d/*.toml at runtime; this fragment contributes only starlight tools.
+[tools]
+node = "{{ node_version }}"
+{% if js_pkg_manager == 'bun' %}bun = "latest"
+{% elif js_pkg_manager == 'pnpm' %}pnpm = "latest"
+{% endif %}

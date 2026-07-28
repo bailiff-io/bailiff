@@ -1,0 +1,6 @@
+# lefthook.yml -- managed by bailiff.
+# Hook definitions live in .hooks.d/<package>.yaml. lefthook expands the glob
+# below and merges every fragment it matches, including none.
+# https://lefthook.dev/configuration/extends.html
+extends:
+  - .hooks.d/*.yaml

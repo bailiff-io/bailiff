@@ -1,0 +1,11 @@
+{#- Codex marketplace manifest, from agentic_plugins. -#}
+{
+  "plugins": [
+{% for plugin in agentic_plugins %}
+    {
+      "name": "{{ plugin.name }}",
+      "ownerRepo": "{{ plugin.owner_repo }}"
+    }{% if not loop.last %},{% endif %}
+{% endfor %}
+  ]
+}

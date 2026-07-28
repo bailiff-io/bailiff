@@ -1,0 +1,12 @@
+{#- .gitignore.d/go -- Go ignore lines contributed by the go package. -#}
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+/bin/
+/dist/
+{% if use_vendor_mode %}vendor/
+{% endif %}

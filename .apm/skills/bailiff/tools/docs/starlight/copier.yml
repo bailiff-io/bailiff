@@ -1,0 +1,58 @@
+_subdirectory: template
+
+project_name:
+  type: str
+  default: ""
+  help: "Project name. Becomes the Starlight site title and the docs package name."
+
+description:
+  type: str
+  default: ""
+  help: "One-line site description. Empty omits the description key."
+
+placement_dir:
+  type: str
+  default: "docs"
+  help: "Subdirectory for the Astro project. Use a single dot for a docs-only repo."
+
+js_pkg_manager:
+  type: str
+  choices:
+    - bun
+    - pnpm
+    - npm
+  default: bun
+  help: "Package manager that installs the dependencies after rendering."
+
+node_version:
+  type: str
+  choices:
+    - "26"
+    - "24"
+    - "22"
+  default: "24"
+  help: "Node.js version pinned in .mise/conf.d/starlight.toml. Astro 7 needs >=22.12."
+
+sidebar_autogenerate:
+  type: bool
+  default: true
+  help: "true relies on Starlight's filesystem-derived sidebar. false renders an explicit sidebar list to extend."
+
+repo_url:
+  type: str
+  default: ""
+  help: "GitHub repository URL. Non-empty wires editLink.baseUrl and a GitHub social link. Empty omits both."
+
+# The site config and content are the project's own once they exist.
+_skip_if_exists:
+  - "{{ placement_dir }}/package.json"
+  - "{{ placement_dir }}/astro.config.mjs"
+  - "{{ placement_dir }}/src/content/docs/index.md"
+
+_tasks:
+  # git has no include directive, so the .gitignore.d fragment is inert until
+  # it is folded in. Idempotent and order-independent.
+  - 'python3 "{{ _copier_conf.src_path }}/tasks/fold_gitignore.py"'
+  # mise trust precedes install: a freshly rendered .mise/conf.d is untrusted and
+  # `mise install` would refuse to read it.
+  - mise trust --yes && mise install

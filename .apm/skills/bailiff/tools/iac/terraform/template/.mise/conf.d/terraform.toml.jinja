@@ -1,0 +1,11 @@
+{#-
+  .mise/conf.d/terraform.toml -- this package's tools only: the IaC binary and
+  tflint. mise merges every .mise/conf.d/*.toml at runtime.
+-#}
+[tools]
+{% if tf_flavor == 'opentofu' -%}
+opentofu = "{{ opentofu_version }}"
+{%- else -%}
+terraform = "{{ terraform_version }}"
+{%- endif %}
+tflint = "{{ tflint_version }}"

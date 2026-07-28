@@ -1,0 +1,36 @@
+{#-
+  backend.tf -- commented examples for a local and an S3 backend. OpenTofu locks
+  with use_lockfile; Terraform locks with a DynamoDB table. Every line is
+  commented: the package configures no state backend.
+-#}
+# backend.tf — uncomment and configure the state backend for your setup.
+#
+# --- Local backend (development / quick start) --------------------------------
+# terraform {
+#   backend "local" {
+#     path = "terraform.tfstate"
+#   }
+# }
+#
+{% if tf_flavor == 'opentofu' -%}
+# --- S3 backend (OpenTofu — uses native use_lockfile, no DynamoDB needed) -----
+# terraform {
+#   backend "s3" {
+#     bucket       = "my-tf-state"
+#     key          = "{{ project_name | default('project') }}/terraform.tfstate"
+#     region       = "us-east-1"
+#     use_lockfile = true   # OpenTofu native S3 locking (1.10+)
+#   }
+# }
+{% else -%}
+# --- S3 backend (Terraform — DynamoDB table for state locking) ----------------
+# terraform {
+#   backend "s3" {
+#     bucket         = "my-tf-state"
+#     key            = "{{ project_name | default('project') }}/terraform.tfstate"
+#     region         = "us-east-1"
+#     dynamodb_table = "terraform-state-lock"
+#     encrypt        = true
+#   }
+# }
+{% endif %}

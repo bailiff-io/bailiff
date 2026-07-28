@@ -1,0 +1,6 @@
+# .mise/conf.d/python.toml -- tools owned by the python package.
+# mise merges every .mise/conf.d/*.toml at runtime.
+[tools]
+python = "{{ python_version }}"
+{% if python_pkg_manager == 'uv' %}uv = "latest"
+{% endif %}

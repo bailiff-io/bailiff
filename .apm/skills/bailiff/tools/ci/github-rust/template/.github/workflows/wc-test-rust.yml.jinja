@@ -17,22 +17,23 @@ on:
 permissions:
   contents: read
 
+{%- set runners = ci_os_matrix or ['ubuntu-latest'] %}
 jobs:
   test:
     name: Test
-{%- if ci_os_matrix or ci_version_matrix %}
+{%- if runners|length > 1 or ci_version_matrix %}
     strategy:
       fail-fast: false
       matrix:
-{%- if ci_os_matrix %}
-        os: [ubuntu-latest{% for os in ci_os_matrix %}, {{ os }}{% endfor %}]
+{%- if runners|length > 1 %}
+        os: [{% for os in runners %}{{ os }}{{ ", " if not loop.last }}{% endfor %}]
 {%- endif %}
 {%- if ci_version_matrix %}
         toolchain: [{% for v in ci_version_matrix %}"{{ v }}"{{ ", " if not loop.last }}{% endfor %}]
 {%- endif %}
-    runs-on: {{ '${{ matrix.os }}' if ci_os_matrix else 'ubuntu-latest' }}
+    runs-on: {{ '${{ matrix.os }}' if runners|length > 1 else runners[0] }}
 {%- else %}
-    runs-on: ubuntu-latest
+    runs-on: {{ runners[0] }}
 {%- endif %}
     defaults:
       run:

@@ -1,0 +1,6 @@
+{#- .mise/conf.d/go.toml -- tools owned by the go package.
+    mise merges every .mise/conf.d/*.toml at runtime. -#}
+[tools]
+go = "{{ go_version }}"
+{% if test_runner == "gotestsum" %}gotestsum = "latest"
+{% endif %}

@@ -1,0 +1,9 @@
+# Node and TypeScript ignore lines contributed by the ts package.
+node_modules/
+dist/
+.next/
+.nuxt/
+.output/
+.sst/
+.open-next/
+*.tsbuildinfo

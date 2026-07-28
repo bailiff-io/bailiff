@@ -1,0 +1,7 @@
+# .mise/conf.d/ts.toml -- tools owned by the ts package.
+# mise merges every .mise/conf.d/*.toml at runtime.
+[tools]
+node = "{{ node_version }}"
+{% if js_pkg_manager == 'bun' %}bun = "latest"
+{% elif js_pkg_manager == 'pnpm' %}pnpm = "latest"
+{% endif %}

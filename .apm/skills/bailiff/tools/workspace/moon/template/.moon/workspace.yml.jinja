@@ -1,0 +1,25 @@
+{#- moon reads this as YAML, so the two-space indent under projects: is load-bearing. -#}
+# .moon/workspace.yml -- managed by bailiff.
+# https://moonrepo.dev/docs/config/workspace
+{% if layout == 'monorepo' and monorepo_packages %}
+projects:
+{% for pkg in monorepo_packages %}
+  {{ pkg.split('/')[-1] | replace('.', '-') }}: '{{ pkg }}'
+{% endfor %}
+{% elif layout == 'monorepo' %}
+# No package paths given: discover projects by glob. Pass monorepo_packages for
+# an explicit project map.
+projects:
+  globs:
+    - 'apps/*'
+    - 'packages/*'
+    - 'services/*'
+    - 'libs/*'
+{% else %}
+# Single-package layout: the repository root is the only project.
+projects:
+  root: '.'
+{% endif %}
+vcs:
+  manager: 'git'
+  defaultBranch: '{{ default_branch }}'

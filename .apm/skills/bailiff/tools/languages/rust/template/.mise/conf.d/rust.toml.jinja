@@ -1,0 +1,6 @@
+# .mise/conf.d/rust.toml -- tools owned by the rust package.
+# mise merges every .mise/conf.d/*.toml at runtime.
+[tools]
+rust = "{{ rust_channel }}"
+{% if test_runner == 'nextest' %}cargo-nextest = "latest"
+{% endif %}

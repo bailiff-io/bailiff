@@ -1,0 +1,25 @@
+_subdirectory: template
+
+# workspace.yml is YAML: block tags must not leave blank lines or eat the
+# two-space indent under projects:.
+_envops:
+  trim_blocks: true
+  lstrip_blocks: true
+
+layout:
+  type: str
+  choices:
+    - monorepo
+    - single
+  default: monorepo
+  help: "Repository layout. 'single' renders a one-project workspace."
+
+monorepo_packages:
+  type: yaml
+  default: []
+  help: "Package paths to register as moon projects, e.g. ['packages/api']. Empty falls back to globs."
+
+default_branch:
+  type: str
+  default: main
+  help: "Branch moon compares against for affected-target detection."

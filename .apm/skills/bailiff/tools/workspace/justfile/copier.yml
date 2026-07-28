@@ -1,0 +1,34 @@
+_subdirectory: template
+
+language:
+  type: str
+  choices:
+    - python
+    - ts
+    - go
+    - rust
+    - ""
+  default: ""
+  help: "Primary language for recipe bodies. Empty renders stubs that exit 1."
+
+js_pkg_manager:
+  type: str
+  choices:
+    - bun
+    - pnpm
+    - npm
+  default: bun
+  help: "JS package manager named by the ts recipes."
+
+hook_manager:
+  type: str
+  choices:
+    - pre-commit
+    - lefthook
+    - none
+  default: none
+  help: "Hook manager the lint recipe invokes. Must match the hooks package selected."
+
+# A justfile is user-maintained: re-rendering over real recipes destroys them.
+_skip_if_exists:
+  - justfile

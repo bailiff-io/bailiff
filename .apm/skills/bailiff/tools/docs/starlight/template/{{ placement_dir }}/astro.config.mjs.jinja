@@ -1,0 +1,32 @@
+// astro.config.mjs — managed by the starlight package; do not edit by hand
+// until the first manual change, then delete this header.
+import { defineConfig } from 'astro/config';
+import starlight from '@astrojs/starlight';
+
+export default defineConfig({
+	integrations: [
+		starlight({
+			title: '{{ project_name | default('Documentation', true) | replace("'", "\\'") }}',
+{%- if description %}
+			description: '{{ description | replace("'", "\\'") }}',
+{%- endif %}
+{%- if repo_url %}
+			editLink: {
+				baseUrl: '{{ repo_url | trim('/') }}/edit/main/{% if placement_dir != '.' %}{{ placement_dir }}/{% endif %}',
+			},
+			social: [
+				{ icon: 'github', label: 'GitHub', href: '{{ repo_url | trim('/') }}' },
+			],
+{%- endif %}
+{%- if not sidebar_autogenerate %}
+			// Explicit sidebar: add every new page here.
+			sidebar: [
+				{
+					label: 'Start here',
+					items: [{ label: 'Home', link: '/' }],
+				},
+			],
+{%- endif %}
+		}),
+	],
+});

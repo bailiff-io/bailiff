@@ -224,5 +224,26 @@ for them.
 | 679-line `ci.yml` template | Deterministic units plus an agent-composed caller |
 
 The `.gitignore.d/`, `.pre-commit.d/`, `.mise/conf.d/`, and `.hooks.d/` fragment
-conventions carry over. Each package writes one namespaced file, and the
-consuming tool reads the directory natively.
+conventions carry over: each package writes one namespaced file rather than
+editing a shared one, so two packages never contend for the same lines.
+
+Only two of the four are read natively. mise reads `.mise/conf.d/`, and lefthook
+reads `.hooks.d/` because `lefthook.yml` carries `extends: [.hooks.d/*.yaml]`.
+The other two need a task, because neither consumer has an include directive:
+
+| Directory | Merged by | Owner |
+|---|---|---|
+| `.mise/conf.d/` | mise, natively | -- |
+| `.hooks.d/` | lefthook, via `extends` | -- |
+| `.pre-commit.d/` | `tasks/merge_precommit.py` | `hooks/precommit` |
+| `.gitignore.d/` | `tasks/fold_gitignore.py` | every contributing package |
+
+A fragment is written in its consumer's own schema; the conventions share a
+directory shape, not a format. lefthook reports `hooks: Value is array but
+should be object` and then runs nothing when handed a pre-commit-shaped
+fragment, so a fragment that lints clean as YAML can still be inert.
+
+`fold_gitignore.py` ships as a byte-identical copy in each package that writes a
+`.gitignore.d/` fragment, because a copier template cannot reference a sibling
+package's files. It is idempotent and rewrites its own delimited block, so
+render order does not matter and a re-render converges.

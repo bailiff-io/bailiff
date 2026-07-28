@@ -1,0 +1,18 @@
+{#-
+  apm.yml -- the APM dependency layer, rendered from the apm_packages list.
+
+  APM has no separate source block in a project apm.yml: each dependency locator
+  carries its own source inline (owner/repo/packages/name#constraint). The
+  apm_packages validator refuses the empty list, so dependencies.apm is non-empty.
+-#}
+name: {{ project_name | default('project', true) }}
+version: 0.1.0
+description: {{ description | default('APM dependency layer for ' ~ (project_name | default('project', true)), true) }}
+target: {{ apm_target }}
+includes: auto
+
+dependencies:
+  apm:
+{%- for pkg in apm_packages %}
+    - {{ pkg }}
+{%- endfor %}

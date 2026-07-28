@@ -1,0 +1,27 @@
+{#- .claude/settings.json -- the parent directory is a conditional path, so this
+   renders only with claude in agentic_targets. -#}
+{
+  "version": 1,
+  "project": {
+    "name": "{{ project_name | default('project', true) }}"{% if mcp_config or (native_marketplace and agentic_plugins | length > 0) %},{% endif %}
+
+{% if mcp_config %}
+    "enableAllProjectMcpServers": true{% if native_marketplace and agentic_plugins | length > 0 %},{% endif %}
+{% endif %}
+{% if native_marketplace and agentic_plugins | length > 0 %}
+    "extraKnownMarketplaces": [
+{% for plugin in agentic_plugins %}
+      {
+        "name": "{{ plugin.name }}",
+        "ownerRepo": "{{ plugin.owner_repo }}"
+      }{% if not loop.last %},{% endif %}
+{% endfor %}
+    ],
+    "enabledPlugins": [
+{% for plugin in agentic_plugins %}
+      "{{ plugin.name }}"{% if not loop.last %},{% endif %}
+{% endfor %}
+    ]
+{% endif %}
+  }
+}

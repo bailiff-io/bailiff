@@ -1,0 +1,14 @@
+_subdirectory: template
+
+project_name:
+  type: str
+  default: ""
+  help: "Project name. Becomes OpenAPI info.title."
+
+description:
+  type: str
+  default: ""
+  help: "One-line project description. Becomes OpenAPI info.description."
+
+_skip_if_exists:
+  - openapi.yaml

@@ -1,0 +1,14 @@
+_subdirectory: template
+
+# Open list, no choices: the identifiers are whatever the hook runner recognises,
+# not a set this package owns. An empty list suppresses the hook file, because the
+# directory name is a jinja conditional.
+hook_languages:
+  type: yaml
+  default: []
+  help: "Language identifiers the agent hooks run commands for, such as [python, typescript]."
+
+_tasks:
+  # git has no include directive, so the .gitignore.d fragment is inert until
+  # it is folded in. Idempotent and order-independent.
+  - 'python3 "{{ _copier_conf.src_path }}/tasks/fold_gitignore.py"'

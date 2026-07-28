@@ -1,0 +1,17 @@
+# .pre-commit.d/rust.yaml -- clippy and rustfmt hooks contributed by the rust package.
+# The hooks call the local toolchain, so no upstream hook repo pins a rev.
+repos:
+  - repo: local
+    hooks:
+      - id: cargo-fmt
+        name: cargo fmt
+        entry: cargo fmt --all --
+        language: system
+        types: [rust]
+      - id: clippy
+        name: cargo clippy
+        entry: cargo clippy --all-targets --all-features -- -D warnings
+        language: system
+        types: [rust]
+        pass_filenames: false
+        stages: ["{{ clippy_stage }}"]

@@ -1,0 +1,59 @@
+{#-
+  AGENTS.md — rendered once, then project-owned (_skip_if_exists in copier.yml).
+  Placeholder comments mark the spans the agent fills after the language and CI
+  packages have rendered, when the commands are known.
+-#}
+# {{ project_name }}
+
+{% if description %}{{ description }}{% else %}<!-- PROJECT DESCRIPTION: to be filled by agent -->{% endif %}
+
+## Agent Guidance
+
+<!-- AGENT GUIDANCE: to be filled by agent -->
+
+## AGENTS Layering
+
+- This root `AGENTS.md` applies to the whole repository unless a deeper file overrides it.
+- Put repo-wide workflow, architecture, tool, and source-of-truth guidance here.
+- Add nested `AGENTS.md` files only for subtrees that need materially different rules.
+- Prefer subtree placement over invented path metadata.
+
+## Architecture
+
+<!-- ARCHITECTURE: to be filled by agent -->
+{% if layout == 'monorepo' %}
+## Packages
+
+| Path | Contents |
+|------|----------|
+{% for d in extra_dirs %}| `{{ d }}/` | <!-- to be filled as packages are added --> |
+{% endfor %}
+## Build & Run
+
+<!-- BUILD COMMANDS: to be filled by agent after language setup -->
+
+## Repo
+
+- **Owner**: {{ org }}
+- **Default branch**: {{ default_branch }}
+- **Branch strategy**: {{ branch_strategy }}
+{% else %}
+## Path Mapping
+
+| Path | Contents |
+|------|----------|
+| `docs/` | Documentation{% if docs_subdirs %} — `architecture/`, `decisions/` (ADRs), `runbooks/`{% endif %} |
+| `tests/` | Integration and E2E tests |
+| `scripts/` | Build tooling, automation |
+{% for d in extra_dirs %}| `{{ d }}/` | <!-- to be filled by agent --> |
+{% endfor %}
+## Build & Run
+
+<!-- BUILD COMMANDS: to be filled by agent after language setup -->
+
+## Repo
+
+- **Repo**: {% if org %}{{ org }}/{% endif %}{{ project_name }}
+- **Default branch**: {{ default_branch }}
+- **Branch strategy**: {{ branch_strategy }}
+{% endif %}

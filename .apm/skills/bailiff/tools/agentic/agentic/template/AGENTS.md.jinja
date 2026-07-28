@@ -1,0 +1,45 @@
+{#-
+  AGENTS.md -- every harness in agentic_targets reads this file. It records the
+  active harnesses and the setup steps that cannot be committed as file state.
+-#}
+# {{ project_name | default('project', true) }}
+
+## Agent harnesses
+
+{% if agentic_targets | length == 0 -%}
+No harness configured. Add one to `agentic_targets` and re-render.
+{%- else -%}
+| Harness | Config |
+|---|---|
+{% if 'claude' in agentic_targets -%}
+| claude | `.claude/settings.json`{% if mcp_config %}, `.mcp.json`{% endif %} |
+{% endif -%}
+{% if 'codex' in agentic_targets -%}
+| codex | `.codex/config.toml`{% if native_marketplace %}, `.agents/plugins/marketplace.json`{% endif %} |
+{% endif -%}
+{% if 'opencode' in agentic_targets -%}
+| opencode | `opencode.json` |
+{% endif -%}
+{% if 'kiro' in agentic_targets -%}
+| kiro | `.kiro/steering/project.md`{% if mcp_config %}, `.kiro/settings/mcp.json`{% endif %}{% if kiro_cli_agents %}, `.kiro/agents/agents.json`{% endif %} |
+{% endif -%}
+{%- endif %}
+
+## Setup outside git
+{% if native_marketplace and 'claude' in agentic_targets and agentic_plugins | length > 0 %}
+Register the marketplace plugins once per workspace. Claude stores this outside
+the repository, so no committed file can carry it.
+
+```sh
+{% for plugin in agentic_plugins -%}
+claude plugin install {{ plugin.name }}@{{ plugin.owner_repo }} --scope project
+{% endfor -%}
+```
+{% endif %}
+{% if 'kiro' in agentic_targets and mcp_config %}
+Open Kiro, then Settings, MCP, and switch on "Enable MCP servers". The server
+list itself is committed at `.kiro/settings/mcp.json`.
+{% endif %}
+{% if not (native_marketplace and 'claude' in agentic_targets and agentic_plugins | length > 0) and not ('kiro' in agentic_targets and mcp_config) %}
+Nothing. The committed configuration is the whole setup.
+{% endif %}

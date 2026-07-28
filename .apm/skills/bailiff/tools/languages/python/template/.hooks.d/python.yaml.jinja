@@ -1,0 +1,15 @@
+{#- .hooks.d/python.yaml -- the same ruff hooks as the .pre-commit.d fragment,
+    written in lefthook's own schema. lefthook merges whatever its `extends`
+    glob matches and does not translate between formats, so the top-level key
+    has to be a stage name. {staged_files} limits each run to the commit. -#}
+pre-commit:
+  parallel: true
+  commands:
+    ruff:
+      glob: "*.py"
+      run: ruff check --fix {staged_files}
+      stage_fixed: true
+    ruff-format:
+      glob: "*.py"
+      run: ruff format {staged_files}
+      stage_fixed: true

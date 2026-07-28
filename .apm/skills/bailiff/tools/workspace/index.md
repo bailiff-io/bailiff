@@ -19,6 +19,10 @@ A monorepo runs without `moon`: the language toolchain's own workspace support
 `moon` adds task orchestration and affected-target detection across languages.
 Offer it when the monorepo spans more than one language, and ask otherwise.
 
+Its `layout` answer takes `monorepo` or `single`. `single` renders a valid
+one-project workspace, so the package works on a single-package repo. Pass the
+layout the user already described.
+
 ## justfile
 
 Renders a `justfile` with recipes wrapping the project's real commands. Its
@@ -38,7 +42,14 @@ Adds one package to an existing monorepo. Unlike everything else in the catalog,
 this runs against a repo that is already set up, and it runs once per package the
 user adds. `runbooks/monorepo/add-package/index.md` drives it.
 
-Its destination is the new package's directory, not the repo root.
+Its destination is the new package's directory. Pass
+`<repo>/<parent-dir>/<name>`, for example `/repo/packages/api-client`. Passing
+the repository root initialises the new package over the repository's own
+manifest.
+
+It has no `depends_on: [moon]`. The language's own workspace support registers
+the package, and `moon` is optional in a monorepo. Register with moon after
+rendering when the project uses it.
 
 ## Order
 

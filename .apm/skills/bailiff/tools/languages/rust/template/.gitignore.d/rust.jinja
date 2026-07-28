@@ -1,0 +1,6 @@
+{#- .gitignore.d/rust -- Rust ignore lines contributed by the rust package.
+    A library ignores Cargo.lock; a binary commits it so builds are reproducible.
+    https://doc.rust-lang.org/cargo/faq.html#why-do-binaries-have-cargolock-in-version-control-but-not-libraries -#}
+/target
+{% if crate_kind == 'lib' %}Cargo.lock
+{% endif %}

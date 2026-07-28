@@ -1,0 +1,8 @@
+---
+title: {{ project_name | default('Documentation', true) }}
+{%- if description %}
+description: {{ description }}
+{%- endif %}
+---
+
+{{ description | default('Documentation for ' ~ (project_name | default('this project', true)) ~ '.', true) }}

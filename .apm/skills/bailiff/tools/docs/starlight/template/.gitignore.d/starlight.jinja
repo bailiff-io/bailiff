@@ -1,0 +1,8 @@
+# Astro and Starlight ignore lines contributed by the starlight package.
+{% if placement_dir != '.' %}{{ placement_dir }}/dist/
+{{ placement_dir }}/.astro/
+{{ placement_dir }}/node_modules/
+{% else %}dist/
+.astro/
+node_modules/
+{% endif %}

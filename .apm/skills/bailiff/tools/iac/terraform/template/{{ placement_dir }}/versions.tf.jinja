@@ -1,0 +1,16 @@
+{#-
+  versions.tf -- pins required_version for the chosen flavor. required_providers
+  is a commented example: the package asks no cloud_provider question, so the
+  user adds the real provider constraints.
+-#}
+terraform {
+  required_version = ">={{ terraform_version if tf_flavor == 'terraform' else opentofu_version }}"
+
+  # Add provider version constraints below. Example:
+  # required_providers {
+  #   aws = {
+  #     source  = "hashicorp/aws"
+  #     version = "~> 5.0"
+  #   }
+  # }
+}

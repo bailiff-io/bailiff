@@ -1,0 +1,34 @@
+# .pre-commit.d/ts.yaml -- lint and format hooks contributed by the ts package.
+# precommit reads .pre-commit.d/ and folds every fragment into its config.
+repos:
+{% if ts_linter == 'biome' %}
+  # Biome covers JS, TS, JSX, JSON, and CSS.
+  - repo: https://github.com/biomejs/pre-commit
+    rev: v0.6.1
+    hooks:
+      - id: biome-ci
+        additional_dependencies: ["@biomejs/biome@2.5.5"]
+
+  # Prettier covers markdown and yaml, which Biome does not.
+  # rbubley/mirrors-prettier: pre-commit/mirrors-prettier was archived in 2024.
+  - repo: https://github.com/rbubley/mirrors-prettier
+    rev: v3.9.6
+    hooks:
+      - id: prettier
+        types_or: [markdown, yaml]
+{% else %}
+  - repo: https://github.com/rbubley/mirrors-prettier
+    rev: v3.9.6
+    hooks:
+      - id: prettier
+
+  - repo: https://github.com/pre-commit/mirrors-eslint
+    rev: v10.8.0
+    hooks:
+      - id: eslint
+        files: \.(js|ts|jsx|tsx)$
+        additional_dependencies:
+          - "typescript-eslint@8.65.0"
+          - "@eslint/js@10.8.0"
+          - "eslint-config-prettier@10.1.8"
+{% endif %}

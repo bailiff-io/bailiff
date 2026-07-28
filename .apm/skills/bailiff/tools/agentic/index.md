@@ -28,16 +28,18 @@ A repo that merely uses agents does not need it.
 
 ## agent-hooks
 
-Renders `.agents/hooks/` entries that run project quality commands at agent tool
-boundaries. It reads the language list to know which commands exist, so render it
-after the language packages.
+Renders `.agents/hooks/quality-languages`, the language list a separately
+installed hook runner reads to decide which commands run at agent tool
+boundaries. Render it after the language packages, whose answers it reads.
 
 ## beads
 
 Renders nothing that copier owns. Its task runs `bd init --init-if-missing
---non-interactive`, which creates `.beads/`, the Dolt database, and the agent
-instruction file. The `--init-if-missing` flag makes a second run exit zero
-rather than fail.
+--non-interactive --skip-agents`, which creates `.beads/` and the Dolt database.
+The `--init-if-missing` flag makes a second run exit zero rather than fail.
+`--skip-agents` keeps `bd init` from installing the claude and codex integrations
+unasked, so the `bd_harnesses` answer decides those: the task runs one
+`bd setup <harness>` per selected assistant.
 
 Offer `beads` when the user describes multi-agent work, long-running task
 tracking, or work spanning sessions. A single-session project does not need it.
@@ -49,3 +51,7 @@ tracking, or work spanning sessions. A single-session project does not need it.
 
 Render `base` first for `project_name`. Render `agent-hooks` after the language
 packages. `beads` needs `git init` to have run, which `base` does.
+
+Render `beads` after `agentic`. Both write `AGENTS.md`: `agentic` renders the
+whole file, then `bd setup codex` appends a delimited block to it. The reverse
+order drops the beads block.

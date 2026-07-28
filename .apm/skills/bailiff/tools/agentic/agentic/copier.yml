@@ -1,0 +1,49 @@
+_subdirectory: template
+
+project_name:
+  type: str
+  default: ""
+  help: "Project name. Appears in AGENTS.md and each harness config."
+
+# Empty selection renders AGENTS.md and nothing else.
+agentic_targets:
+  type: str
+  multiselect: true
+  choices:
+    - claude
+    - codex
+    - opencode
+    - kiro
+  default: []
+  help: "Harnesses to configure. Each one adds files only a user of that harness opens."
+
+kiro_cli_agents:
+  type: bool
+  default: false
+  help: "With kiro selected, also render .kiro/agents/agents.json for CLI agent definitions."
+
+mcp_config:
+  type: bool
+  default: false
+  help: "Render the per-harness MCP config file from the mcp_servers list."
+
+native_marketplace:
+  type: bool
+  default: false
+  help: "Render marketplace manifests. Claude and Codex only."
+
+# Each entry: {name, command, args: [...], env: {KEY: "${VAR}"}}. Env values are
+# ${VAR} references; a literal secret in an answers file would be committed.
+mcp_servers:
+  type: yaml
+  default: []
+  help: "MCP servers, fanned out per harness. Write env values as ${VAR} references."
+
+agentic_plugins:
+  type: yaml
+  default: []
+  help: "Marketplace plugin definitions shaped {name, owner_repo}."
+
+# The project team edits its own steering after the first write.
+_skip_if_exists:
+  - .kiro/steering/project.md

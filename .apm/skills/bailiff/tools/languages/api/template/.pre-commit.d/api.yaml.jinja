@@ -1,0 +1,11 @@
+# .pre-commit.d/api.yaml -- spectral lint hook contributed by the api package.
+# precommit reads .pre-commit.d/ and folds every fragment into its config.
+repos:
+  - repo: local
+    hooks:
+      - id: spectral-lint
+        name: spectral lint (OpenAPI)
+        entry: spectral lint openapi.yaml
+        language: system
+        files: ^openapi\.yaml$
+        pass_filenames: false

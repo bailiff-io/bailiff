@@ -1,0 +1,43 @@
+_subdirectory: template
+
+mode:
+  type: str
+  choices:
+    - raw
+    - sam
+  default: raw
+  help: "raw writes plain CloudFormation. sam adds the SAM transform and a commented Globals block."
+
+stack_description:
+  type: str
+  default: ""
+  help: "One-line stack description written into template.yaml."
+
+environment_names:
+  type: yaml
+  default:
+    - dev
+    - prod
+  help: "Environment names. Each becomes an AllowedValue and a parameters/<env>.json file."
+
+cfnlint_ignore_rules:
+  type: yaml
+  default: []
+  help: "cfn-lint rule IDs to suppress, such as [W3002, E3001]."
+
+placement_dir:
+  type: str
+  default: infrastructure
+  help: "Directory for the CloudFormation files. Use a single dot for an IaC-only repo."
+
+# template.yaml holds the real resource definitions once the project edits it.
+_skip_if_exists:
+  - "{{ placement_dir }}/template.yaml"
+
+_tasks:
+  # The file count comes from environment_names, so copier cannot render these
+  # paths from the template tree.
+  - >-
+    python3 "{{ _copier_conf.src_path }}/tasks/seed_parameters.py"
+    "{{ placement_dir }}"
+    {% for env in environment_names %}"{{ env }}" {% endfor %}

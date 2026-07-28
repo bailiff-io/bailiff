@@ -1,0 +1,12 @@
+{#- Kiro CLI agent definitions. Kiro has no marketplace; packages arrive via APM. -#}
+{
+  "agents": [
+{% for plugin in agentic_plugins %}
+    {
+      "name": "{{ plugin.name }}",
+      "source": "{{ plugin.owner_repo }}"{% if plugin.category is defined %},
+      "category": "{{ plugin.category }}"{% endif %}
+    }{% if not loop.last %},{% endif %}
+{% endfor %}
+  ]
+}
