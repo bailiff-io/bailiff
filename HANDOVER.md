@@ -1,0 +1,144 @@
+# Handover
+
+Work state for bailiff v2 tooling. Task tracking is in beads (`bd ready`), not
+here. This file records what is decided, what is verified, and what is unknown.
+
+Last updated: 2026-07-28, after commit `7067e7b`.
+
+## Where to look
+
+| For | Read |
+|---|---|
+| Open work, priorities, dependencies | `bd ready`, `bd list` |
+| Why a package is shaped as it is | that package's `package.md` |
+| Architecture | `docs/specs/bailiff-v2.md` |
+| Package rules | `.apm/skills/bailiff/packages/CONTRACT.md` |
+
+## Landed this session
+
+| Commit | What |
+|---|---|
+| `77aa38a` | `moon` and `package-add` into `repo/`; cocogitto `after: [base]` |
+| `a6e05bd` | prek as a third hook manager (superseded by `9b714a4`) |
+| `9b714a4` | hooks split into `baseline` + `manager`; CI defaults hardened |
+| `3375ec2` | `fold_gitignore.py` deduplicated, 7 copies to 1 |
+| `7067e7b` | Python type checker, coverage, deptry, docstring rules, nox |
+
+## Decisions that govern the remaining work
+
+These came from the user and are not open for re-litigation.
+
+- **Mutually exclusive options become one copier question, not one package per
+  option.** The hooks group proved it: 4 packages became 2, and the manager
+  choice is a `hook_manager` enum. Apply the same to `release:tool` (7+ options),
+  `workspace:tasks` (justfile/taskfile), and `docs:site`.
+- **A category holds one kind of thing.** Do not mix a real either/or with a
+  boolean-in-costume in the same group.
+- **prek is the default hook manager.** It reads pre-commit's config format
+  unchanged and needs no Python runtime. Offer `pre-commit` only when asked for
+  by name.
+- **eslint is dropped.** `ts_linter` is `biome` or `oxlint`.
+- **betterleaks over gitleaks** for commit-time scanning, with trufflehog
+  verifying credentials against live APIs. CodeRabbit independently ships
+  betterleaks.
+- **opengrep over semgrep** for security rules.
+- **Sample projects are generated with `claude -p` and no steering beyond a plain
+  project-creation prompt.** The point is to test the steering, not to drive the
+  scripts by hand.
+
+## Verified facts worth not rediscovering
+
+**copier 9.17.0 enforces all four cardinalities natively**, which is why the
+`scan.py` cardinality lint was dropped in favour of enums:
+
+| Cardinality | Mechanism |
+|---|---|
+| exactly one | `choices:` |
+| at most one | `choices:` including a none member |
+| zero or more | `multiselect: true` |
+| one or more | `multiselect: true` + `validator:` erroring on empty |
+
+Also verified in copier:
+
+- `validator:` is a jinja render with the answer in scope, so it can read prior
+  answers and `_external_data`, and supports `regex_search`.
+- `_external_data` resolves **relative to the destination**, so a package can
+  read a sibling's `.copier-answers.*.yml` directly. A missing file warns and
+  falls back to the default, so packages still render standalone. This is the
+  mechanism for `bfsh-d89` (one answers file per destination).
+- `copier.yml` is parsed as YAML **before** jinja renders it. Top-level
+  `{% set %}` blocks fail with "found character '%' that cannot start any token".
+  Use inline expressions inside a value.
+- Conditional filenames need a guard per path segment, which is why
+  `agentic/agentic` has a two-clause condition repeated in one path.
+
+**Measured hook timings** (212-file repo, warm), which decided the
+commit-vs-CI split:
+
+| Tool | Time |
+|---|---|
+| actionlint | 44-154ms |
+| zizmor `--offline` | 54ms |
+| lychee `--offline` | 64ms |
+| scc | 199ms |
+| lizard (12 files) | 208ms |
+| taplo | 399ms |
+| yamllint | 1.1s |
+| markdownlint-cli2 | 1.2s |
+| pinact (network) | 1.4s |
+| cspell | 1.7s |
+| lizard (212 files) | 3.1s |
+
+**Tool behaviour confirmed by running it:**
+
+- `prek` supports `repo: builtin` (26 hygiene hooks, no clone, offline) and hook
+  `groups:`. pre-commit rejects `repo: builtin` with "Missing required key: rev",
+  so `use_builtin_hygiene` must match `hook_manager`.
+- zizmor's `unpinned-uses` audit rejects a tag on **any** action including
+  `actions/*`. Every template is now SHA-pinned because baseline runs zizmor.
+- ruff `DOC` rules are preview-gated and silently do nothing without
+  `preview = true`.
+- ruff has no per-rule severity, so warn-vs-block needs two invocations.
+- gitleaks and betterleaks found the same 4 of 7 planted secrets with 0 false
+  positives; trufflehog found 3 including an AWS key pair both missed. AWS's
+  documented example key is allowlisted, which made an early test look like a
+  miss.
+- `on.push.paths` cannot replace job-level path filtering: it gates the whole
+  workflow, and a workflow that never runs leaves required checks pending
+  forever, so a docs-only PR cannot merge.
+
+## Unknowns and open questions
+
+- **Container base image policy** (`bfsh-u95`). distroless vs slim vs alpine, and
+  who owns the Dockerfile when a framework (nuxi, sst) generates one. Needs a
+  decision before the container group can be written.
+- **GitLab** (`bfsh-wr1`). `repo/gitlab-repo` is offered but `ci:host` has only
+  github, so choosing GitLab yields a repo with no CI. Either build the host or
+  drop the package; the user leaned toward building it.
+- **Group renaming** (`bfsh-yoo`). Filed as a decision to be made. The rename
+  invalidates every `<group>/<package>` id and buys tidiness rather than
+  correctness. 16 of 33 axes hold exactly one package, so axis-as-directory would
+  create single-member directories.
+- **`depends_on` deletion** (`bfsh-ypu`) deliberately deferred, not blocked. All
+  7 edges are subsets of `after:`, so they carry no ordering, but deleting them
+  also deletes the only machine check that a dependent package was selected
+  without its requirement. Revisit after the CI collapse removes 5 of the 7.
+- **`install_hooks: true` is untestable on this machine.** git-defender owns a
+  global `core.hooksPath`, so `lefthook install` fails with a permission error on
+  `/usr/local/amazon/var/git-defender/hooks/`. Hook *installation* is therefore
+  unverified; hook *config* is verified via `lefthook validate` and
+  `prek validate-config`.
+- **`scan.py`'s `axes` field contradicts four group indexes.** It keys an axis on
+  the namespace before the colon, so `docs:site` and `docs:decisions` both
+  collapse to `docs`. Any lint built on it would reject `mkdocs +
+  decision-records`, which `docs/index.md` explicitly permits. This already bit
+  once: `repo:monorepo` merged into `repo:host` and broke a test, which is why
+  `moon`/`package-add` now tag `monorepo:*`.
+
+## Sequencing
+
+`bfsh-2sx` (collapse `ci/` to one package per host) gates the most: publish jobs,
+coverage jobs, the container job, GitLab, and JVM all become answers inside one
+package rather than ~15 new packages. Its own risk, raised by the challenger that
+proposed it: a 6-language x 6-job matrix means ~36 conditional filenames with no
+lint that any is reachable. Mitigate with a rendered-file-set test per selection.
