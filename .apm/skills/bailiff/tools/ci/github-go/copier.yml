@@ -1,0 +1,31 @@
+_subdirectory: template
+
+go_version:
+  type: str
+  default: "1.26"
+  help: "Go version the CI jobs install. Match the go directive in go.mod."
+
+go_race:
+  type: bool
+  default: true
+  help: "Run tests with -race. Catches data races; roughly doubles test time."
+
+go_coverage:
+  type: bool
+  default: false
+  help: "Write a coverage profile in the test job."
+
+ci_cache:
+  type: bool
+  default: true
+  help: "Cache modules and build output between runs, via setup-go."
+
+ci_os_matrix:
+  type: yaml
+  default: []
+  help: "Extra runner images beyond ubuntu-latest, as a yaml list. Each entry multiplies runner minutes."
+
+ci_version_matrix:
+  type: yaml
+  default: []
+  help: "Go versions to test against, as a yaml list. Empty tests only go_version."

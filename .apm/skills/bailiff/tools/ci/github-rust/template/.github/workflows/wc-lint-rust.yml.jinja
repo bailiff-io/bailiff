@@ -1,0 +1,31 @@
+name: Lint Rust
+
+on:
+  workflow_call:
+    inputs:
+      working-directory:
+        description: Directory to run in. Set this per crate in a workspace.
+        required: false
+        type: string
+        default: "."
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ '{{' }} inputs.working-directory }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: ./.github/actions/setup-rust
+
+      - name: rustfmt
+        run: cargo fmt --all -- --check
+
+      - name: clippy
+        run: cargo clippy --all-targets{{ ' --all-features' if rust_all_features }} -- -D warnings

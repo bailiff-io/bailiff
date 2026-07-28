@@ -1,0 +1,22 @@
+name: Set up Rust
+description: Installs the {{ rust_toolchain }} Rust toolchain with rustfmt and clippy.
+
+inputs:
+  toolchain:
+    description: Rust toolchain to install.
+    required: false
+    default: "{{ rust_toolchain }}"
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Rust
+      uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4 # stable
+      with:
+        toolchain: ${{ '{{' }} inputs.toolchain }}
+        components: rustfmt, clippy
+{%- if ci_cache %}
+
+    - name: Cache cargo
+      uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
+{%- endif %}

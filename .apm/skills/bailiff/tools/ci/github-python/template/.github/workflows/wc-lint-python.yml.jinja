@@ -1,0 +1,37 @@
+name: Lint Python
+
+on:
+  workflow_call:
+    inputs:
+      working-directory:
+        description: Directory to run in. Set this per package in a monorepo.
+        required: false
+        type: string
+        default: "."
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ '{{' }} inputs.working-directory }}
+    steps:
+      - uses: actions/checkout@v7
+
+{% set run = "uv run " if python_pkg_manager == "uv" else ("pdm run " if python_pkg_manager == "pdm" else "") %}
+      - uses: ./.github/actions/setup-python
+
+      - name: Ruff check
+        run: {{ run }}ruff check .
+
+      - name: Ruff format
+        run: {{ run }}ruff format --check .
+{%- if python_type_checker != "none" %}
+
+      - name: Type check
+        run: {{ run }}{{ python_type_checker }} .
+{%- endif %}

@@ -1,0 +1,20 @@
+{#- cog 7.x moved monorepo packages under [monorepo.packages] (was [packages]).
+    Top-level keys must precede every table header, so they come first. -#}
+# cog.toml -- cocogitto configuration for {{ project_name | default('this project', true) }}.
+# Reference: https://docs.cocogitto.io/reference/config
+# Run `cog bump` and `cog changelog` yourself; bailiff does not tag or bump.
+tag_prefix = "v"
+{%- if layout == 'monorepo' %}
+# Per-package tags <package>-vX.Y.Z, with no umbrella tag across the workspace.
+generate_mono_repository_global_tag = false
+{%- endif %}
+
+[changelog]
+path = "CHANGELOG.md"
+{%- if layout == 'monorepo' %}
+
+[monorepo.packages]
+{%- for pkg in monorepo_packages | default([]) %}
+{{ pkg | replace('/', '-') }} = { path = "{{ pkg }}", changelog_path = "{{ pkg }}/CHANGELOG.md" }
+{%- endfor %}
+{%- endif %}

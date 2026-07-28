@@ -1,0 +1,52 @@
+name: Test Rust
+
+on:
+  workflow_call:
+    inputs:
+      toolchain:
+        description: Override the Rust toolchain.
+        required: false
+        type: string
+        default: "{{ rust_toolchain }}"
+      working-directory:
+        description: Directory to run in. Set this per crate in a workspace.
+        required: false
+        type: string
+        default: "."
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test
+{%- if ci_os_matrix or ci_version_matrix %}
+    strategy:
+      fail-fast: false
+      matrix:
+{%- if ci_os_matrix %}
+        os: [ubuntu-latest{% for os in ci_os_matrix %}, {{ os }}{% endfor %}]
+{%- endif %}
+{%- if ci_version_matrix %}
+        toolchain: [{% for v in ci_version_matrix %}"{{ v }}"{{ ", " if not loop.last }}{% endfor %}]
+{%- endif %}
+    runs-on: {{ '${{ matrix.os }}' if ci_os_matrix else 'ubuntu-latest' }}
+{%- else %}
+    runs-on: ubuntu-latest
+{%- endif %}
+    defaults:
+      run:
+        working-directory: ${{ '{{' }} inputs.working-directory }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: ./.github/actions/setup-rust
+        with:
+{%- if ci_version_matrix %}
+          toolchain: ${{ '{{' }} matrix.toolchain }}
+{%- else %}
+          toolchain: ${{ '{{' }} inputs.toolchain }}
+{%- endif %}
+
+      - name: Test
+        run: cargo {{ rust_test_command }}{{ ' --all-features' if rust_all_features }}

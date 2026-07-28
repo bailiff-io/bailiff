@@ -115,7 +115,7 @@ names the choice axis. The group's `index.md` states what to do with each axis.
 | `foundation/` | `scaffold:*` | base, readme, editorconfig |
 | `languages/` | `language:*` | python, ts, go, rust, api |
 | `hooks/` | `hooks:manager` | lefthook, precommit |
-| `ci/` | `ci:*`, `ci-job:*` | github-test-python, github-lint-python, github-security, and one per host and job |
+| `ci/` | `ci:*`, `ci-job:*` | github, github-python, github-ts, github-go, github-rust, github-security |
 | `repo/` | `repo:*`, `release:*`, `deps:*` | github-repo, gitlab-repo, cocogitto, release-please, dep-updates |
 | `docs/` | `docs:*` | mkdocs, decision-records |
 | `iac/` | `iac:*` | terraform, cdk, cloudformation |

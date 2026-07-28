@@ -1,0 +1,29 @@
+_subdirectory: template
+
+project_name:
+  type: str
+  default: ""
+  help: "Project name; written into the cog.toml header comment."
+
+layout:
+  type: str
+  choices:
+    - single
+    - monorepo
+  default: single
+  help: "Repository shape. 'monorepo' emits per-package tags and a [monorepo.packages] table."
+
+monorepo_packages:
+  type: yaml
+  default: []
+  help: "Package directories relative to the repo root, as a YAML list. Used only when layout is monorepo."
+
+# mise is not in requires_bin: without it the cog.toml and fragments still
+# render, and the user installs cog by hand.
+_tasks:
+  - command: >-
+      command -v mise >/dev/null 2>&1 ||
+      { echo "cocogitto: mise not found; install cog yourself (https://docs.cocogitto.io)." >&2; exit 0; }
+  - command: >-
+      mise install
+      || { echo "cocogitto: 'mise install' failed; run it yourself to get cog." >&2; exit 0; }

@@ -1,0 +1,74 @@
+_subdirectory: template
+
+project_name:
+  type: str
+  default: ""
+  help: "Project name; used for the created project path."
+
+org:
+  type: str
+  default: ""
+  help: "GitLab group or user handle written into .gitlab/CODEOWNERS."
+
+create_remote:
+  type: bool
+  default: false
+  help: "Run 'glab repo create' after rendering. false renders .gitlab/ only."
+
+visibility:
+  type: str
+  choices:
+    - private
+    - public
+    - internal
+  default: private
+  help: "Project visibility. 'public' requires the public_confirm answer."
+
+public_confirm:
+  type: str
+  default: ""
+  help: "Type the project name to confirm a public project. Required only when visibility is public and create_remote is true."
+
+remote_protocol:
+  type: str
+  choices:
+    - https
+    - ssh
+  default: https
+  help: "Remote URL protocol for the created remote."
+
+push_after_create:
+  type: bool
+  default: false
+  help: "Push the current branch to origin after the project is created."
+
+team:
+  type: str
+  default: ""
+  help: "GitLab group path to create the project under. Empty uses your personal namespace."
+
+# glab is deliberately absent from requires_bin: a missing glab skips remote
+# creation and leaves the rendered .gitlab/ files in place.
+_tasks:
+  - command: >-
+      command -v glab >/dev/null 2>&1 ||
+      { echo "gitlab-repo: glab not found; skipping project creation." >&2; exit 0; }
+    when: "{{ create_remote }}"
+
+  - command: >-
+      glab config set git_protocol {{ remote_protocol }}
+      || { echo "gitlab-repo: glab config set git_protocol failed; continuing." >&2; exit 0; }
+    when: "{{ create_remote }}"
+
+  - command: >-
+      glab repo create
+      "{{ project_name | default('project', true) | lower | replace(' ', '-') }}"
+      --{{ visibility }}
+      {% if team %}--group "{{ team }}"{% endif %}
+      || { echo "gitlab-repo: glab repo create failed; create the project by hand." >&2; exit 0; }
+    when: "{{ create_remote }}"
+
+  - command: >-
+      git push -u origin HEAD
+      || { echo "gitlab-repo: git push failed; push by hand." >&2; exit 0; }
+    when: "{{ create_remote and push_after_create }}"

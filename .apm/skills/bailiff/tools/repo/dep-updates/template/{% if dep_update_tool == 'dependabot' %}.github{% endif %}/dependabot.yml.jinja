@@ -1,0 +1,15 @@
+# .github/dependabot.yml -- https://docs.github.com/en/code-security/dependabot/working-with-dependabot/dependabot-options-reference
+version: 2
+updates:
+{%- for eco in dep_ecosystems %}
+  - package-ecosystem: "{{ eco }}"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+{%- endfor %}
+{%- if not dep_ecosystems %}
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+{%- endif %}

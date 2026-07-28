@@ -1,0 +1,21 @@
+_subdirectory: template
+
+sec_codeql:
+  type: bool
+  default: true
+  help: "Run CodeQL static analysis. Free on public repos; needs GitHub Advanced Security on private ones."
+
+sec_codeql_languages:
+  type: yaml
+  default: []
+  help: "CodeQL languages, as a yaml list: python, javascript-typescript, go, rust, java-kotlin, csharp, cpp, ruby, swift, actions."
+
+sec_trivy:
+  type: bool
+  default: true
+  help: "Scan the filesystem for vulnerable dependencies and misconfigured IaC with Trivy."
+
+sec_gitleaks:
+  type: bool
+  default: true
+  help: "Scan history for committed secrets with gitleaks."

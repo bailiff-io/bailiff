@@ -1,0 +1,35 @@
+_subdirectory: template
+
+release_type:
+  type: str
+  choices:
+    - node
+    - python
+    - rust
+    - go
+    - simple
+  default: simple
+  help: "release-please strategy applied to every package. 'simple' bumps a version.txt only."
+
+layout:
+  type: str
+  choices:
+    - single
+    - monorepo
+  default: single
+  help: "Repository shape. 'monorepo' writes one packages entry per directory and per-package tags."
+
+monorepo_packages:
+  type: yaml
+  default: []
+  help: "Package directories relative to the repo root, as a YAML list. Used only when layout is monorepo."
+
+initial_version:
+  type: str
+  default: 0.1.0
+  help: "Version recorded in .release-please-manifest.json for every package before the first release."
+
+default_branch:
+  type: str
+  default: main
+  help: "Branch the release workflow triggers on."

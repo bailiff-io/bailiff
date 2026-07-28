@@ -1,0 +1,46 @@
+name: Set up Python
+description: Installs Python {{ python_version }} and the project dependencies with {{ python_pkg_manager }}.
+
+inputs:
+  python-version:
+    description: Python version to install.
+    required: false
+    default: "{{ python_version }}"
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@v7
+      with:
+        python-version: ${{ '{{' }} inputs.python-version }}
+{%- if python_pkg_manager == "uv" %}
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+      with:
+        enable-cache: {{ ci_cache | lower }}
+        cache-dependency-glob: uv.lock
+
+    - name: Install dependencies
+      shell: bash
+      run: uv sync --frozen
+{%- elif python_pkg_manager == "pdm" %}
+
+    - name: Install pdm
+      shell: bash
+      run: pip install pdm --quiet
+{%- if ci_cache %}
+
+    - name: Cache pdm
+      uses: actions/cache@v6
+      with:
+        path: ~/.cache/pdm
+        key: ${{ '{{' }} runner.os }}-pdm-${{ '{{' }} hashFiles('**/pdm.lock') }}
+        restore-keys: ${{ '{{' }} runner.os }}-pdm-
+{%- endif %}
+
+    - name: Install dependencies
+      shell: bash
+      run: pdm install
+{%- endif %}

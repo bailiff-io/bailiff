@@ -1,0 +1,75 @@
+_subdirectory: template
+
+project_name:
+  type: str
+  default: ""
+  help: "Project name; used for the created repository name."
+
+org:
+  type: str
+  default: ""
+  help: "GitHub owner or team handle written into .github/CODEOWNERS."
+
+create_remote:
+  type: bool
+  default: false
+  help: "Run 'gh repo create' after rendering. false renders .github/ only."
+
+visibility:
+  type: str
+  choices:
+    - private
+    - public
+    - internal
+  default: private
+  help: "Repository visibility. 'public' requires the public_confirm answer."
+
+public_confirm:
+  type: str
+  default: ""
+  help: "Type the project name to confirm a public repository. Required only when visibility is public and create_remote is true."
+
+remote_protocol:
+  type: str
+  choices:
+    - https
+    - ssh
+  default: https
+  help: "Remote URL protocol for the created remote."
+
+push_after_create:
+  type: bool
+  default: false
+  help: "Push the current branch to origin after the repository is created."
+
+team:
+  type: str
+  default: ""
+  help: "GitHub team slug to grant access after creation. Empty omits --team."
+
+# gh is deliberately absent from requires_bin: a missing gh skips remote
+# creation and leaves the rendered .github/ files in place.
+_tasks:
+  - command: >-
+      command -v gh >/dev/null 2>&1 ||
+      { echo "github-repo: gh not found; skipping repo creation." >&2; exit 0; }
+    when: "{{ create_remote }}"
+
+  - command: >-
+      gh config set git_protocol {{ remote_protocol }}
+      || { echo "github-repo: gh config set git_protocol failed; continuing." >&2; exit 0; }
+    when: "{{ create_remote }}"
+
+  - command: >-
+      gh repo create
+      --source .
+      --remote origin
+      --{{ visibility }}
+      {% if team %}--team {{ team }}{% endif %}
+      || { echo "github-repo: gh repo create failed; create the remote by hand." >&2; exit 0; }
+    when: "{{ create_remote }}"
+
+  - command: >-
+      git push -u origin HEAD
+      || { echo "github-repo: git push failed; push by hand." >&2; exit 0; }
+    when: "{{ create_remote and push_after_create }}"

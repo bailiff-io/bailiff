@@ -1,0 +1,9 @@
+# .pre-commit.d/cocogitto.yaml -- fragment read by the precommit package.
+repos:
+  - repo: local
+    hooks:
+      - id: cocogitto-commit-msg
+        name: cocogitto verify (conventional commits)
+        entry: cog verify --file
+        language: system
+        stages: [commit-msg]

@@ -1,0 +1,49 @@
+_subdirectory: template
+
+node_version:
+  type: str
+  default: "24"
+  help: "Node version the CI jobs install. Match what the ts language package uses."
+
+ts_pkg_manager:
+  type: str
+  choices:
+    - pnpm
+    - bun
+    - npm
+  default: pnpm
+  help: "Package manager the CI jobs install dependencies with. Match the ts language package."
+
+ts_test_command:
+  type: str
+  default: test
+  help: "Package script the test job runs, without the run prefix."
+
+ts_linter:
+  type: str
+  choices:
+    - biome
+    - eslint
+    - none
+  default: biome
+  help: "Linter the lint job runs. biome covers format and lint in one step."
+
+ts_typecheck:
+  type: bool
+  default: true
+  help: "Run tsc --noEmit in the lint job."
+
+ci_cache:
+  type: bool
+  default: true
+  help: "Cache the dependency install between runs."
+
+ci_os_matrix:
+  type: yaml
+  default: []
+  help: "Extra runner images beyond ubuntu-latest, as a yaml list. Each entry multiplies runner minutes."
+
+ci_version_matrix:
+  type: yaml
+  default: []
+  help: "Node versions to test against, as a yaml list. Empty tests only node_version."

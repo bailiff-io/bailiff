@@ -4,8 +4,8 @@ CI packages render deterministic units. You write the workflow that calls them.
 
 | Axis | How many | Packages |
 |---|---|---|
-| `ci:host` | Exactly one, or none | github, gitlab |
-| `ci-job:*` | One or more, matched to the languages present | github-test-python, github-lint-python, github-test-ts, github-lint-ts, github-test-go, github-lint-go, github-test-rust, github-lint-rust, github-security |
+| `ci:host` | Exactly one, or none | github |
+| `ci-job:*` | One or more, matched to the languages present | github-python, github-ts, github-go, github-rust, github-security |
 
 ## What renders and what you write
 
@@ -22,9 +22,14 @@ cover those decisions would need a conditional per combination.
 
 ## Pick the jobs
 
-Render one test job package and one lint job package per language the project
-has. Take the language list from what you rendered in `languages/`, and confirm
+Render one language package per language the project has. Each one provides both
+a test job and a lint job, as two reusable workflows sharing one composite setup
+action. Take the language list from what you rendered in `languages/`, and confirm
 it with the user rather than inferring it from files on disk.
+
+Every workflow takes a `working-directory` input defaulting to `.`. One render of
+`github-python` therefore serves every Python package in a monorepo; the caller
+passes a different directory per job. Do not render a language package twice.
 
 `github-security` is language-independent. Offer it once.
 

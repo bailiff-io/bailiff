@@ -1,0 +1,22 @@
+name: Gate
+
+on:
+  workflow_call:
+    inputs:
+      needs:
+        description: The caller's needs context, passed as toJSON(needs).
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  gate:
+    name: Required gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/ci-gate
+        with:
+          needs: ${{ inputs.needs }}

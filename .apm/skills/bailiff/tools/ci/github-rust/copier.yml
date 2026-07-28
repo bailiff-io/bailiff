@@ -1,0 +1,31 @@
+_subdirectory: template
+
+rust_toolchain:
+  type: str
+  default: "stable"
+  help: "Rust toolchain the CI jobs install. stable, or a pinned version like 1.90.0."
+
+rust_test_command:
+  type: str
+  default: "test --workspace"
+  help: "Cargo subcommand the test job runs, without the leading cargo. Use nextest run if the project uses nextest."
+
+rust_all_features:
+  type: bool
+  default: true
+  help: "Pass --all-features to test and clippy. Turn it off when features are mutually exclusive."
+
+ci_cache:
+  type: bool
+  default: true
+  help: "Cache the cargo registry and target directory between runs, via rust-cache."
+
+ci_os_matrix:
+  type: yaml
+  default: []
+  help: "Extra runner images beyond ubuntu-latest, as a yaml list. Each entry multiplies runner minutes."
+
+ci_version_matrix:
+  type: yaml
+  default: []
+  help: "Toolchains to test against, as a yaml list. Empty tests only rust_toolchain."

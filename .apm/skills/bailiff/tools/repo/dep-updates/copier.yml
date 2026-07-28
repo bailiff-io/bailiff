@@ -1,0 +1,14 @@
+_subdirectory: template
+
+dep_update_tool:
+  type: str
+  choices:
+    - renovate
+    - dependabot
+  default: renovate
+  help: "Dependency-update tool. Decides which config file renders."
+
+dep_ecosystems:
+  type: yaml
+  default: []
+  help: "Ecosystem ids in the chosen tool's vocabulary, as a YAML list."

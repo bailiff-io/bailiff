@@ -1,0 +1,44 @@
+{%- set run = "bun run " if ts_pkg_manager == "bun" else ("pnpm run " if ts_pkg_manager == "pnpm" else "npm run ") -%}
+{%- set exec = "bunx " if ts_pkg_manager == "bun" else ("pnpm dlx " if ts_pkg_manager == "pnpm" else "npx ") -%}
+name: Lint TypeScript
+
+on:
+  workflow_call:
+    inputs:
+      working-directory:
+        description: Directory to run in. Set this per package in a monorepo.
+        required: false
+        type: string
+        default: "."
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ '{{' }} inputs.working-directory }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: ./.github/actions/setup-ts
+{%- if ts_linter == "biome" %}
+
+      - name: Biome check
+        run: {{ exec }}biome check --no-errors-on-unmatched .
+{%- elif ts_linter == "eslint" %}
+
+      - name: ESLint
+        run: {{ exec }}eslint .
+
+      - name: Prettier
+        run: {{ exec }}prettier --check .
+{%- endif %}
+{%- if ts_typecheck %}
+
+      - name: Type check
+        run: {{ exec }}tsc --noEmit
+{%- endif %}

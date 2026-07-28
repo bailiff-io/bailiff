@@ -1,0 +1,9 @@
+{
+{%- if layout == 'monorepo' %}
+{%- for pkg in monorepo_packages | default([]) %}
+  "{{ pkg }}": "{{ initial_version }}"{% if not loop.last %},{% endif %}
+{%- endfor %}
+{%- else %}
+  ".": "{{ initial_version }}"
+{%- endif %}
+}

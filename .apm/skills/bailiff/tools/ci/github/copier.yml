@@ -1,0 +1,4 @@
+# Zero questions. Everything host-level renders the same way, and the decisions
+# that do vary (triggers, branches, job graph) live in the caller workflow the
+# agent writes. See package.md.
+_subdirectory: template
