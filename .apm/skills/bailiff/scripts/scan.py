@@ -5,7 +5,7 @@
 # ///
 """Emit the bailiff tool catalog as JSON.
 
-Reads every tools/<group>/<package>/package.md frontmatter and the sibling
+Reads every packages/<group>/<package>/package.md frontmatter and the sibling
 copier.yml, groups packages by choice axis, and reports contract violations
 under "lint". Exits 1 when any violation is found.
 """
@@ -29,8 +29,8 @@ KNOWN_FIELDS = set(LIST_FIELDS) | set(SCALAR_FIELDS)
 COPIER_RESERVED_PREFIX = "_"
 
 
-def tools_root(skill_dir: Path) -> Path:
-    return skill_dir / "tools"
+def packages_root(skill_dir: Path) -> Path:
+    return skill_dir / "packages"
 
 
 def _as_list(value: Any) -> list[str]:
@@ -165,7 +165,7 @@ def read_package(pkg_dir: Path, group: str) -> tuple[dict[str, Any] | None, list
         "requires_bin": _as_list(meta.get("requires_bin")),
         "renders": renders,
         "precheck": str(precheck) if precheck else None,
-        "steering": f"tools/{rel}/package.md",
+        "steering": f"packages/{rel}/package.md",
     }
     if questions:
         package["questions"] = questions
@@ -173,13 +173,13 @@ def read_package(pkg_dir: Path, group: str) -> tuple[dict[str, Any] | None, list
 
 
 def build_catalog(skill_dir: Path) -> dict[str, Any]:
-    root = tools_root(skill_dir)
+    root = packages_root(skill_dir)
     lint: list[str] = []
     groups: list[dict[str, Any]] = []
     all_names: set[str] = set()
 
     if not root.is_dir():
-        return {"groups": [], "lint": [f"no tools directory at {root}"]}
+        return {"groups": [], "lint": [f"no packages directory at {root}"]}
 
     for group_dir in sorted(p for p in root.iterdir() if p.is_dir()):
         group = group_dir.name
@@ -203,7 +203,7 @@ def build_catalog(skill_dir: Path) -> dict[str, Any]:
         groups.append(
             {
                 "name": group,
-                "index": f"tools/{group}/index.md",
+                "index": f"packages/{group}/index.md",
                 "axes": {a: sorted(names) for a, names in sorted(axes.items())},
                 "packages": packages,
             }

@@ -51,4 +51,4 @@ where package directories live and how they resolve each other.
 
 A repo carries both a language-native workspace and `moon`. The language workspace
 resolves dependencies; `moon` orchestrates tasks across them. See
-`tools/workspace/index.md`.
+`packages/workspace/index.md`.

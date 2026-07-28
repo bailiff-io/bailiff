@@ -41,7 +41,7 @@ apm.yml
   scripts/
     scan.py                     # emits the catalog as JSON
     render.py                   # precheck, then copier.run_copy
-  tools/
+  packages/
     <group>/
       index.md                  # selection semantics per axis
       <package>/
@@ -62,8 +62,8 @@ The agent loads one file per level and never the whole tree.
 | Level | File | Loaded when |
 |---|---|---|
 | Scenario | `runbooks/<scenario>/index.md` | The agent identifies the repo shape |
-| Group | `tools/<group>/index.md` | The agent considers that group's axis |
-| Package | `tools/<group>/<package>/package.md` | The user picks that package |
+| Group | `packages/<group>/index.md` | The agent considers that group's axis |
+| Package | `packages/<group>/<package>/package.md` | The user picks that package |
 
 `SKILL.md` carries the dispatch table and the invariants. It does not carry
 procedure detail for any scenario.

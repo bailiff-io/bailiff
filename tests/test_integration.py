@@ -17,11 +17,11 @@ import sys
 import pytest
 import yaml
 
-from conftest import REPO, TOOLS, render
+from conftest import REPO, PACKAGES, render
 
 pytestmark = pytest.mark.integration
 
-SKILL = TOOLS.parent
+SKILL = PACKAGES.parent
 
 
 def have(binary: str) -> bool:

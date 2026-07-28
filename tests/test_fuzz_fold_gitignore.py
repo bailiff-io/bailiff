@@ -21,9 +21,9 @@ import pytest
 from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 
-from conftest import TOOLS
+from conftest import PACKAGES
 
-SCRIPT = TOOLS / "languages/python/tasks/fold_gitignore.py"
+SCRIPT = PACKAGES / "languages/python/tasks/fold_gitignore.py"
 
 NO_SHRINK = settings(
     max_examples=60,
@@ -54,7 +54,7 @@ def run_in(path: Path) -> int:
 def test_every_copy_is_identical():
     """The script must not drift between packages, or one package would fold
     differently from another."""
-    copies = sorted(TOOLS.glob("*/*/tasks/fold_gitignore.py"))
+    copies = sorted(PACKAGES.glob("*/*/tasks/fold_gitignore.py"))
     assert len(copies) >= 6
     digests = {
         hashlib.sha256(p.read_bytes()).hexdigest() for p in copies

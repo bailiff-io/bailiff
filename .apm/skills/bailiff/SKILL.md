@@ -82,7 +82,7 @@ order, and what to recommend.
 
 1. **Scan.** Run `scripts/scan.py`. It gives you groups, their choice axes, and
    each package's summary.
-2. **Visit a group.** Read `tools/<group>/index.md`. It states how each axis
+2. **Visit a group.** Read `packages/<group>/index.md`. It states how each axis
    behaves: one pick, at most one, many, or one per package.
 3. **Offer and collect.** Present the axis's packages with their summaries. Ask
    which the user wants, one question at a time.
@@ -98,7 +98,7 @@ order, and what to recommend.
    package the user did not pick, say so and let them decide.
 8. **Render.** Write the answers file, then run `render.py` per package in order.
 9. **Compose what packages cannot render.** CI callers are yours to write; see
-   `tools/ci/index.md`.
+   `packages/ci/index.md`.
 10. **Report.** Name every file written, every task that ran, and what the user
     should do next.
 

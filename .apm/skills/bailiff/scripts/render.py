@@ -120,9 +120,9 @@ def render(
             f"malformed package id '{package_id}'; expected <group>/<package>", EXIT_USAGE
         )
 
-    root = (skill_dir / "tools").resolve()
+    root = (skill_dir / "packages").resolve()
     pkg_dir = (root / package_id).resolve()
-    # The id is well-formed, but a symlink inside tools/ can still point out of
+    # The id is well-formed, but a symlink inside packages/ can still point out of
     # it, so containment is checked after resolution rather than inferred.
     if not pkg_dir.is_relative_to(root):
         raise RenderError(f"package '{package_id}' resolves outside {root}", EXIT_USAGE)

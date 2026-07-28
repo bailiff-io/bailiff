@@ -1,12 +1,12 @@
 # Tool package contract
 
-Every directory under `tools/<group>/<package>/` obeys this. `scan.py` enforces
+Every directory under `packages/<group>/<package>/` obeys this. `scan.py` enforces
 the mechanical half and exits 1 on a violation.
 
 ## Required files
 
 ```
-tools/<group>/<package>/
+packages/<group>/<package>/
   package.md            frontmatter manifest + agent steering prose
   copier.yml            copier config; omit for a steering-only package
   template/             the render subtree; copier.yml sets _subdirectory: template

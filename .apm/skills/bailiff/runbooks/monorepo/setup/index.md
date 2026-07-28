@@ -66,7 +66,7 @@ Reusing one file across packages puts the wrong `project_name` in a manifest.
 ## CI in a monorepo
 
 Path filtering is the decision that matters here. A push touching one package
-should run that package's jobs and no others. `tools/ci/index.md` covers the
+should run that package's jobs and no others. `packages/ci/index.md` covers the
 patterns; the caller you write needs one filter per package directory.
 
 ## After rendering

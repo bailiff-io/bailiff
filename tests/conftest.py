@@ -10,7 +10,7 @@ from types import ModuleType
 
 REPO = Path(__file__).resolve().parent.parent
 SCRIPTS = REPO / ".apm/skills/bailiff/scripts"
-TOOLS = REPO / ".apm/skills/bailiff/tools"
+PACKAGES = REPO / ".apm/skills/bailiff/packages"
 
 
 def _load(name: str) -> ModuleType:
@@ -34,12 +34,12 @@ def make_skill(root: Path, packages: dict[str, dict[str, str]]) -> Path:
     because a missing one is a lint finding of its own and would mask the
     finding under test.
     """
-    tools = root / "tools"
+    catalog = root / "packages"
     for pkg_id, files in packages.items():
         group, _, name = pkg_id.partition("/")
-        pkg_dir = tools / group / name
+        pkg_dir = catalog / group / name
         pkg_dir.mkdir(parents=True, exist_ok=True)
-        (tools / group / "index.md").write_text(f"# {group}\n", encoding="utf-8")
+        (catalog / group / "index.md").write_text(f"# {group}\n", encoding="utf-8")
         for rel, content in files.items():
             target = pkg_dir / rel
             target.parent.mkdir(parents=True, exist_ok=True)

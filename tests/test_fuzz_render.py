@@ -1,7 +1,7 @@
 """Fuzz render.py against hostile package ids, answers files, and destinations.
 
 The invariants: a bad input produces a RenderError with a documented exit code,
-never a traceback; and no input reaches a directory outside the tools tree.
+never a traceback; and no input reaches a directory outside the packages tree.
 """
 
 from __future__ import annotations
@@ -83,16 +83,16 @@ def test_absolute_path_outside_tools_is_rejected(skill, tmp_path):
     outside = tmp_path / "outside"
     make_skill(outside, {"g/alpha": good_package()})
     with pytest.raises(render.RenderError) as caught:
-        render.render(skill, str(outside / "tools/g/alpha"), tmp_path / "d", {})
+        render.render(skill, str(outside / "packages/g/alpha"), tmp_path / "d", {})
     assert caught.value.code == render.EXIT_USAGE
 
 
 def test_symlink_out_of_tools_is_rejected(skill, tmp_path):
-    """A symlink inside tools/ pointing out of it must not be followed."""
+    """A symlink inside packages/ pointing out of it must not be followed."""
     outside = tmp_path / "outside"
     make_skill(outside, {"g/evil": good_package("evil")})
-    link = skill / "tools/g/link"
-    link.symlink_to(outside / "tools/g/evil")
+    link = skill / "packages/g/link"
+    link.symlink_to(outside / "packages/g/evil")
     with pytest.raises(render.RenderError) as caught:
         render.render(skill, "g/link", tmp_path / "d", {})
     assert caught.value.code == render.EXIT_USAGE
@@ -194,14 +194,14 @@ def test_arbitrary_answers_render_or_error_cleanly(tmp_path_factory, answers):
 
 
 def test_missing_package_md_is_usage_error(skill, tmp_path):
-    (skill / "tools/g/bare").mkdir(parents=True)
+    (skill / "packages/g/bare").mkdir(parents=True)
     with pytest.raises(render.RenderError) as caught:
         render.render(skill, "g/bare", tmp_path / "d", {})
     assert caught.value.code == render.EXIT_USAGE
 
 
 def test_requires_bin_missing_stops_before_rendering(skill, tmp_path):
-    pkg = skill / "tools/g/alpha/package.md"
+    pkg = skill / "packages/g/alpha/package.md"
     pkg.write_text(
         "---\nname: alpha\nsummary: s\nprovides: [test:alpha]\n"
         "requires_bin: [definitely-not-a-real-binary-xyz]\n---\n\nB.\n",
@@ -216,10 +216,10 @@ def test_requires_bin_missing_stops_before_rendering(skill, tmp_path):
 
 
 def test_precheck_nonzero_renders_nothing(skill, tmp_path):
-    (skill / "tools/g/alpha/precheck.py").write_text(
+    (skill / "packages/g/alpha/precheck.py").write_text(
         "import sys\nsys.exit(9)\n", encoding="utf-8"
     )
-    (skill / "tools/g/alpha/package.md").write_text(
+    (skill / "packages/g/alpha/package.md").write_text(
         "---\nname: alpha\nsummary: s\nprovides: [test:alpha]\n"
         "precheck: precheck.py\n---\n\nB.\n",
         encoding="utf-8",
@@ -232,7 +232,7 @@ def test_precheck_nonzero_renders_nothing(skill, tmp_path):
 
 
 def test_precheck_that_does_not_exist_is_usage_error(skill, tmp_path):
-    (skill / "tools/g/alpha/package.md").write_text(
+    (skill / "packages/g/alpha/package.md").write_text(
         "---\nname: alpha\nsummary: s\nprovides: [test:alpha]\n"
         "precheck: nope.py\n---\n\nB.\n",
         encoding="utf-8",
@@ -245,14 +245,14 @@ def test_precheck_that_does_not_exist_is_usage_error(skill, tmp_path):
 def test_precheck_receives_only_scalar_answers(skill, tmp_path):
     """Env vars are strings, so a dict or list answer has no faithful encoding.
     render.py drops them; this pins that so a precheck cannot read a stale one."""
-    (skill / "tools/g/alpha/precheck.py").write_text(
+    (skill / "packages/g/alpha/precheck.py").write_text(
         "import os, sys\n"
         "assert os.environ['BAILIFF_FLAT'] == 'x', os.environ.get('BAILIFF_FLAT')\n"
         "assert 'BAILIFF_NESTED' not in os.environ\n"
         "assert os.environ['BAILIFF_DEST']\n",
         encoding="utf-8",
     )
-    (skill / "tools/g/alpha/package.md").write_text(
+    (skill / "packages/g/alpha/package.md").write_text(
         "---\nname: alpha\nsummary: s\nprovides: [test:alpha]\n"
         "precheck: precheck.py\n---\n\nB.\n",
         encoding="utf-8",
@@ -267,7 +267,7 @@ def test_precheck_receives_only_scalar_answers(skill, tmp_path):
 
 
 def test_steering_only_package_renders_nothing(skill, tmp_path):
-    (skill / "tools/g/alpha/copier.yml").unlink()
+    (skill / "packages/g/alpha/copier.yml").unlink()
     result = render.render(skill, "g/alpha", tmp_path / "dest", {}, quiet=True)
     assert result["renders"] is False
 
